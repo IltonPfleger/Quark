@@ -15,26 +15,21 @@ void Memory::init() {
 
     new (&allocator_) Allocator();
 
-    uintptr_t free = 0;
     for (uintptr_t c = RamEnd - PageSize; c >= RamStart; c -= PageSize) {
         Chunk page(c, PageSize);
-        if (page.overlaps(__kmm.text)) continue;
-        if (page.overlaps(__kmm.rodata)) continue;
-        if (page.overlaps(__kmm.data)) continue;
-        if (page.overlaps(__kmm.bss)) continue;
+        if (page.overlaps(BootInformation::kernel())) continue;
         if (page.overlaps(__bmm)) continue;
         if (page.overlaps(Chunk(Traits<Payload>::Address, Traits<Payload>::Size))) continue;
         allocator_.insert(reinterpret_cast<void *>(page.start()), page.size());
-        free++;
     }
 
-    Trace("System Size: ");
-    Trace((__kmm.text.size() + __kmm.rodata.size() + __kmm.data.size() + __kmm.bss.size()) / 1024);
-    Trace("KB\n");
+    // Trace("System Size: ");
+    // Trace((__kmm.text.size() + __kmm.rodata.size() + __kmm.data.size() + __kmm.bss.size()) / 1024);
+    // Trace("KB\n");
 
-    Trace("Available Memory: ");
-    Trace(free * (PageSize / 1024));
-    Trace("KB\n");
+    // Trace("Available Memory: ");
+    // Trace(free * (PageSize / 1024));
+    // Trace("KB\n");
 
     TraceOut();
 }

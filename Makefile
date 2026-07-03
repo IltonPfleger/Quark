@@ -20,9 +20,9 @@ gdb:
 $(IMAGE).bin: $(SYSTEM_BINARY) $(PAYLOAD_ELF)
 	$(DD) bs=1M conv=notrunc if=$(SYSTEM_BINARY) of=$@
 
-$(SYSTEM_BINARY) : $(SYSTEM_ELF) $(PAYLOAD_ELF) $(MAPPER)
-	$(MAPPER) $(SYSTEM_ELF) $(MAP)
-	$(OBJCOPY) --update-section .__kernel_mm__=$(MAP) $(SYSTEM_ELF)
+$(SYSTEM_BINARY) : $(SYSTEM_ELF) $(PAYLOAD_ELF) #$(MAPPER)
+	#$(MAPPER) $(SYSTEM_ELF) $(MAP)
+	#$(OBJCOPY) --update-section .__kernel_mm__=$(MAP) $(SYSTEM_ELF)
 	$(OBJCOPY) --update-section .__payload__=$(PAYLOAD_ELF) $(SYSTEM_ELF)
 	$(OBJCOPY) -O binary $(SYSTEM_ELF) $(SYSTEM_BINARY)
 
@@ -30,11 +30,11 @@ $(PAYLOAD_ELF): $(SYSTEM_ELF)
 	make PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
 
 $(SYSTEM_ELF): $(KERNEL_OBJECTS)
-	$(LD) --no-gc-sections -e _init --section-start=.init=$(MemoryMap_BootStart) --image-base=$(MemoryMap_BootStart) -o $@ $^
+	$(LD) -T Linker.ld --defsym=__BOOT__=$(MemoryMap_BootStart) -o $@ $^
 
-$(BUILD)/%: $(TOOLS)/%.cpp 
-	mkdir -p $(dir $@)
-	g++ $(CCFLAGS) -o $@ $<
+#$(BUILD)/%: $(TOOLS)/%.cpp 
+#	mkdir -p $(dir $@)
+#	g++ $(CCFLAGS) -o $@ $<
 
 $(BUILD)/%.o: src/%.cpp 
 	mkdir -p $(dir $@)
