@@ -1,2 +1,2 @@
 build:
-	find . | cpio -o -H newc > ../initramfs.cpio
+	find . | cpio -o -H newc > ../initrd.cpio

@@ -1,28 +1,23 @@
 include ../../Makedefs.mk
 
-TARGET_BUILD_DIR := $(BUILD)/$(PAYLOAD)
+PAYLOAD_TARGET       := $(BUILD)/$(PAYLOAD).elf
+PAYLOAD_BUILD        := $(BUILD)/$(PAYLOAD)
+PAYLOAD_SOURCES      := $(shell find . -name '*.cpp')
+PAYLOAD_OBJECTS      := $(PAYLOAD_SOURCES:%=$(PAYLOAD_BUILD)/%.o)
+PAYLOAD_DEPENDENCIES := $(PAYLOAD_OBJECTS:.o=.d)
+LINUX                := ./linux
+INITRD               := ./initrd.cpio
 
-ELF := $(BUILD)/$(PAYLOAD).elf
+all: $(PAYLOAD_TARGET)
 
-SOURCES := $(shell find . -name '*.cpp')
-OBJECTS := $(patsubst %.cpp,$(TARGET_BUILD_DIR)/%.o,$(SOURCES))
-DEPENDENCIES := $(OBJECTS:.o=.d)
-
-LINUX = ./Image
-INITRAMFS = ./initramfs.cpio
-KERNEL_BLOB = $(TARGET_BUILD_DIR)/$(KERNEL).inc
-INITRAMFS_BLOB = $(TARGET_BUILD_DIR)/$(INITRAMFS).inc
-
-all: $(ELF)
-
-$(ELF): $(OBJECTS)
+$(PAYLOAD_TARGET): $(PAYLOAD_OBJECTS)
 	@mkdir -p $(dir $@)
 	$(LD) -e main --just-symbols $(SYSTEM).elf -Ttext=$(Payload_Address) --image-base=$(Payload_Address) -o $@ $^
-	$(OBJCOPY) --update-section .__linux__=$(LINUX) $(ELF)
-	$(OBJCOPY) --update-section .__initrd__=$(INITRAMFS) $(ELF)
+	$(OBJCOPY) --update-section .__linux__=$(LINUX) $@
+	$(OBJCOPY) --update-section .__initrd__=$(INITRD) $@
 
-$(TARGET_BUILD_DIR)/%.o: %.cpp
+$(PAYLOAD_BUILD)/%.cpp.o: %.cpp $(CONFIG)
 	@mkdir -p $(dir $@)
-	$(CC) -I$(TARGET_BUILD_DIR) -I../include -MMD -MP -c $< -o $@ $(MACH_CCFLAGS)
+	$(CC) $(MACH_CCFLAGS) -I../include -MMD -MP -c $< -o $@
 
--include $(DEPENDENCIES)
+-include $(PAYLOAD_DEPENDENCIES)
