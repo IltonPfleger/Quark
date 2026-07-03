@@ -52,15 +52,15 @@ class MIC {
             csrs<MachineMode::IE>(MachineMode::EI);
         }
 
-        TrapHandler::install(2, fpu, TrapHandler::Exception);
-        TrapHandler::install(11, abi, TrapHandler::Exception);
+        // TrapHandler::install(2, fpu, TrapHandler::Exception);
+        // TrapHandler::install(11, abi, TrapHandler::Exception);
     }
 
   private:
-    static void abi(ContextFrame *c) {
-        c->a0 = reinterpret_cast<uintptr_t>(ABI::Handler::dispatch(static_cast<ABI::Function>(c->a7), &c->a0));
-        c->pc += 4;
-    }
+    // static void abi(ContextFrame *c) {
+    //     c->a0 = reinterpret_cast<uintptr_t>(ABI::Handler::dispatch(static_cast<ABI::Function>(c->a7), &c->a0));
+    //     c->pc += 4;
+    // }
 };
 
 } // namespace QUARK

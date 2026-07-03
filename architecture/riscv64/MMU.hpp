@@ -64,21 +64,21 @@ class MMU {
             PageTable *current = reinterpret_cast<PageTable *>(root << 12);
 
             uintptr_t pte2 = current->m_entries[vpn2];
-            if (!(pte2 & V)) return 0;
+            assert(pte2 & V);
             if (pte2 & (R | W | X)) {
                 return ((pte2 >> 10) << 12) | (va & 0x3FFFFFFF);
             }
 
             PageTable *l1  = reinterpret_cast<PageTable *>((pte2 >> 10) << 12);
             uintptr_t pte1 = l1->m_entries[vpn1];
-            if (!(pte1 & V)) return 0;
+            assert(pte1 & V);
             if (pte1 & (R | W | X)) {
                 return ((pte1 >> 10) << 12) | (va & 0x1FFFFF);
             }
 
             PageTable *l0  = reinterpret_cast<PageTable *>((pte1 >> 10) << 12);
             uintptr_t pte0 = l0->m_entries[vpn0];
-            if (!(pte0 & V)) return 0;
+            assert(pte0 & V);
 
             return ((pte0 >> 10) << 12) | (va & 0xFFF);
         }

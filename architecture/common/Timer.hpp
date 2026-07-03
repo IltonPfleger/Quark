@@ -27,7 +27,7 @@ class Timer {
     }
 
   private:
-    static inline constinit Meta::Tuple<ThreadTicker, AlarmTicker> tickers_{};
+    static inline constinit Meta::Tuple<AlarmTicker, ThreadTicker> tickers_{};
 };
 
 } // namespace ArchitectureCommon

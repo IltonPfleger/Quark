@@ -7,25 +7,6 @@
 namespace QUARK {
 
 class ExceptionHandler {
-    // static constexpr const char *Descriptions[] = {
-    //     "Instruction Address Misaligned", // 0
-    //     "Instruction Access Fault",       // 1
-    //     "Illegal Instruction",            // 2
-    //     "Breakpoint",                     // 3
-    //     "Load Address Misaligned",        // 4
-    //     "Load Access Fault",              // 5
-    //     "Store/AMO Address Misaligned",   // 6
-    //     "Store/AMO Access Fault",         // 7
-    //     "Environment Call from U-mode",   // 8
-    //     "Environment Call from S-mode",   // 9
-    //     "Reserved (10)",                  // 10
-    //     "Environment Call from M-mode",   // 11
-    //     "Instruction Page Fault",         // 12
-    //     "Load Page Fault",                // 13
-    //     "Reserved (14)",                  // 14
-    //     "Store/AMO Page Fault"            // 15
-    // };
-
   public:
     static void onTrap(ContextFrame *c) {
         Console::panic();

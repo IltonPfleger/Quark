@@ -37,6 +37,8 @@ class FixedCore {
         collections::FIFO<Node, Spin> queues_[NumberOfCores][2];
     };
 
+    operator uint8_t() { return rank(); }
+
   private:
     uint32_t cpu() const { return cpu_; }
     uint8_t rank() const { return rank_; }

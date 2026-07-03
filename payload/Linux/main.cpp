@@ -17,10 +17,8 @@ using namespace QUARK;
 
 constexpr size_t MB = 1024 * 1024;
 
+__attribute__((section(".__linux__"))) static uint8_t LINUX[32 * MB];
 struct LinuxImage {
-    alignas(2 * MB) static constexpr unsigned char Kernel[] = {
-#include __STR(__KERNEL__)
-    };
     alignas(1 * MB) static constexpr unsigned char Initramfs[] = {
 #include __STR(__INITRAMFS__)
     };
@@ -33,7 +31,7 @@ class LinuxLauncher {
     using InterruptController = VirtualPLIC<0xc000000>;
     using LinuxMachine        = GenericVirtualMachine<Serial, InterruptController>;
 
-    LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs, Thread::Criterion criterion)
+    LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs)
         : size_(size),
           start_(nullptr),
           initramfs_(initramfs),
@@ -54,7 +52,7 @@ class LinuxLauncher {
 
         dtb(current, size_ - initramfs.length() - kernel.length());
 
-        new Thread(worker, this, criterion);
+        new Thread(worker, this);
     }
 
     static void *worker(void *pointer) {
@@ -205,19 +203,13 @@ class Interference {
 int main() {
     TraceIn();
 
-    Span<const uint8_t> kernel(static_cast<const uint8_t *>(LinuxImage::Kernel), sizeof(LinuxImage::Kernel));
+    Span<const uint8_t> kernel(static_cast<const uint8_t *>(LINUX), sizeof(LINUX));
     Span<const uint8_t> initramfs(static_cast<const uint8_t *>(LinuxImage::Initramfs), sizeof(LinuxImage::Initramfs));
 
-    LinuxLauncher vm0(128 * 1024 * 1024, kernel, initramfs, Thread::Criterion(Thread::Criterion::NORMAL, 1));
-    // LinuxLauncher vm1(128 * 1024 * 1024, kernel, initramfs, Thread::Criterion(Thread::Criterion::NORMAL, 1));
-    //  LinuxLauncher vm1(128 * 1024 * 1024, kernel, initramfs, Thread::Criterion(Thread::Criterion::NORMAL, 1));
-    //   LinuxLauncher vm2(128 * 1024 * 1024, kernel, initramfs, Thread::Criterion(Thread::Criterion::NORMAL, 1));
-    //   LinuxLauncher vm3(128 * 1024 * 1024, kernel, initramfs, Thread::Criterion(Thread::Criterion::NORMAL, 1));
-    //   LinuxLauncher vm4(128 * 1024 * 1024, kernel, initramfs, Thread::Criterion(Thread::Criterion::NORMAL, 1));
+    LinuxLauncher vm0(128 * 1024 * 1024, kernel, initramfs);
 
     while (1)
         Delay(Second(1));
-    ;
 
     return 0;
 }

@@ -1,5 +1,4 @@
-#ifndef __QUARK_TRAITS__
-#define __QUARK_TRAITS__
+#pragma once
 
 #include <macros.hpp>
 #include <types.hpp>
@@ -28,7 +27,7 @@ template <> struct Traits<Kernel> {
 };
 
 template <> struct Traits<Timer> {
-    static constexpr Hz Frequency = 10'000;
+    static constexpr Hz Frequency = 100;
     static constexpr bool Enable  = true;
 };
 
@@ -48,7 +47,8 @@ template <> struct Traits<Console> {
 };
 
 template <> struct Traits<Scheduler> {
-    typedef FixedCore Criterion;
+    typedef RR Criterion;
+    // typedef FixedCore Criterion;
 };
 
 } // namespace QUARK
@@ -67,5 +67,3 @@ template <> struct Traits<Thread> {
 };
 
 } // namespace QUARK
-
-#endif
