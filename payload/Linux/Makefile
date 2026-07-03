@@ -19,13 +19,10 @@ $(ELF): $(OBJECTS)
 	@mkdir -p $(dir $@)
 	$(LD) -e main --just-symbols $(SYSTEM).elf -Ttext=$(Payload_Address) --image-base=$(Payload_Address) -o $@ $^
 	$(OBJCOPY) --update-section .__linux__=$(LINUX) $(ELF)
+	$(OBJCOPY) --update-section .__initrd__=$(INITRAMFS) $(ELF)
 
-$(TARGET_BUILD_DIR)/%.o: %.cpp $(INITRAMFS_BLOB)
+$(TARGET_BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
-	$(CC) -D__INITRAMFS__=$(INITRAMFS_BLOB) -I$(TARGET_BUILD_DIR) -I../include -MMD -MP -c $< -o $@ $(MACH_CCFLAGS)
-
-$(INITRAMFS_BLOB): $(INITRAMFS)
-	@mkdir -p $(dir $@)
-	xxd -i $< | sed '1d' | head -n -2 > $@
+	$(CC) -I$(TARGET_BUILD_DIR) -I../include -MMD -MP -c $< -o $@ $(MACH_CCFLAGS)
 
 -include $(DEPENDENCIES)

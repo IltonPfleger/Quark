@@ -10,19 +10,12 @@
 #include <utility/Delay.hpp>
 #include <utility/Span.hpp>
 
-#define ___STR(X) #X
-#define __STR(X) ___STR(X)
-
 using namespace QUARK;
 
 constexpr size_t MB = 1024 * 1024;
 
-__attribute__((section(".__linux__"))) static uint8_t LINUX[32 * MB];
-struct LinuxImage {
-    alignas(1 * MB) static constexpr unsigned char Initramfs[] = {
-#include __STR(__INITRAMFS__)
-    };
-};
+__attribute__((section(".__linux__"), used)) static uint8_t LINUX[32 * MB];
+__attribute__((section(".__initrd__"), used)) static uint8_t INITRD[8 * MB];
 
 class LinuxLauncher {
   public:
@@ -58,7 +51,7 @@ class LinuxLauncher {
     static void *worker(void *pointer) {
         LinuxLauncher *self = reinterpret_cast<LinuxLauncher *>(pointer);
         Console::println("\n *** Linux is at core ", CPU::id(), " ***");
-        LinuxMachine *vm = new LinuxMachine(self->start_, self->size_);
+        auto *vm = new LinuxMachine(self->start_, self->size_);
         vm->boot(0, self->dtb_);
         return nullptr;
     }
@@ -179,32 +172,11 @@ class LinuxLauncher {
     LinuxMachine *vm_;
 };
 
-class Interference {
-  public:
-    Interference()
-        : running_(true) {
-        for (auto &i : threads_) {
-            i = new Thread(worker, this);
-        }
-    }
-
-    static void *worker(void *pointer) {
-        Interference *self = reinterpret_cast<Interference *>(pointer);
-        while (self->running_)
-            ;
-        return nullptr;
-    }
-
-  private:
-    volatile bool running_;
-    Thread *threads_[Traits<CPU>::Active];
-};
-
 int main() {
     TraceIn();
 
-    Span<const uint8_t> kernel(static_cast<const uint8_t *>(LINUX), sizeof(LINUX));
-    Span<const uint8_t> initramfs(static_cast<const uint8_t *>(LinuxImage::Initramfs), sizeof(LinuxImage::Initramfs));
+    Span<const uint8_t> kernel(LINUX, sizeof(LINUX));
+    Span<const uint8_t> initramfs(INITRD, sizeof(INITRD));
 
     LinuxLauncher vm0(128 * 1024 * 1024, kernel, initramfs);
 

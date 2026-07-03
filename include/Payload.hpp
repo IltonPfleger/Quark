@@ -11,13 +11,13 @@
 
 namespace QUARK {
 
-class Payload {
+class Payload : Traits<Payload> {
   public:
-    static void copy() {
+    Payload() {
         Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(Image);
-        assert(header);
         assert(header->valid());
         load(header);
+        entry_ = header->e_entry;
     }
 
     static void load(Elf_Ehdr *header) {
@@ -39,15 +39,16 @@ class Payload {
         }
     }
 
-    static void init() {
-        Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(Image);
-        auto main        = reinterpret_cast<Thread::Return (*)(Thread::Argument)>(header->e_entry);
+    void init() {
+        auto main = reinterpret_cast<Thread::Return (*)(Thread::Argument)>(entry_);
         new Thread(main, 0, Thread::Criterion::NORMAL);
     };
 
   private:
-    static constexpr size_t Size = Traits<Payload>::Size;
     __attribute__((section(".__payload__"), used)) static inline uint8_t Image[Size];
+
+  private:
+    uintptr_t entry_;
 };
 
 } // namespace QUARK

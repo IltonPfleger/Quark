@@ -18,6 +18,7 @@ void Memory::init() {
     for (uintptr_t c = RamEnd - PageSize; c >= RamStart; c -= PageSize) {
         Chunk page(c, PageSize);
         if (page.overlaps(BootInformation::kernel())) continue;
+        if (page.overlaps(BootInformation::payload())) continue;
         if (page.overlaps(__bmm)) continue;
         if (page.overlaps(Chunk(Traits<Payload>::Address, Traits<Payload>::Size))) continue;
         allocator_.insert(reinterpret_cast<void *>(page.start()), page.size());

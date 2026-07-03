@@ -10,10 +10,10 @@ extern "C" void init() {
     if (CPU::id() == Traits<CPU>::BSP) {
         Console::println('\n');
         TraceIn();
-        Payload::copy();
+        Payload PAYLOAD;
         Memory::init();
         Thread::init();
-        Payload::init();
+        PAYLOAD.init();
     }
 
     if constexpr (Traits<Timer>::Enable) Timer::init();
