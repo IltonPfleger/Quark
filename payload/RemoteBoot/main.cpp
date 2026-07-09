@@ -75,4 +75,7 @@ int main() {
     }
 
     g_sense = 1;
+
+    while (1)
+        ;
 }
