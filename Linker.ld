@@ -9,7 +9,7 @@ SECTIONS
     .init :
     {
         __init_start = .;
-        *(.init)
+		KEEP(*(.init))
         *(.init.*)
         __init_end = .;
     }
@@ -47,11 +47,9 @@ SECTIONS
         __bss_end = .;
     }
 
-	.__payload__ :
+	.payload :
     {
-        __payload_start = .;
-        KEEP(*(.__payload__))
-        __payload_end = .;
+        KEEP(*(.payload))
     }
 
     __kernel_end = .;

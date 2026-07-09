@@ -42,8 +42,8 @@ inline Chunk kernel() { return make(__kernel_start, __kernel_end); }
 
 } // namespace BootInformation
 
-__attribute__((section(".__payload_mm__"))) inline Chunk __pmm;
-__attribute__((section(".__all_mm__"))) inline Chunk __amm;
-__attribute__((section(".__boot_mm__"))) inline Chunk __bmm;
+__attribute__((section(".init.data"), used)) inline Chunk __pmm;
+__attribute__((section(".init.data"), used)) inline Chunk __amm;
+__attribute__((section(".init.data"), used)) inline Chunk __bmm;
 
 } // namespace QUARK

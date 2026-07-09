@@ -21,7 +21,7 @@ $(IMAGE).bin: $(SYSTEM_BINARY) $(PAYLOAD_ELF)
 	$(DD) bs=1M conv=notrunc if=$(SYSTEM_BINARY) of=$@
 
 $(SYSTEM_BINARY) : $(SYSTEM_ELF) $(PAYLOAD_ELF)
-	$(OBJCOPY) --update-section .__payload__=$(PAYLOAD_ELF) $(SYSTEM_ELF)
+	$(OBJCOPY) --update-section .payload=$(PAYLOAD_ELF) $(SYSTEM_ELF)
 	$(OBJCOPY) -O binary $(SYSTEM_ELF) $(SYSTEM_BINARY)
 
 $(PAYLOAD_ELF): $(SYSTEM_ELF)

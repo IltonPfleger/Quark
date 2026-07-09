@@ -67,7 +67,7 @@ class Payload : Traits<Payload> {
     };
 
   private:
-    __attribute__((section(".__payload__"), used)) static inline uint8_t Image[Size];
+    __attribute__((section(".payload"), used)) static inline uint8_t Image[Size];
 
   private:
     uintptr_t entry_;
