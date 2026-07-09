@@ -25,9 +25,6 @@ extern uint8_t __data_end[];
 
 extern uint8_t __bss_start[];
 extern uint8_t __bss_end[];
-
-extern uint8_t __payload_start[];
-extern uint8_t __payload_end[];
 }
 
 inline Chunk make(uint8_t *start, uint8_t *end) {
@@ -42,10 +39,10 @@ inline Chunk rodata() { return make(__rodata_start, __rodata_end); }
 inline Chunk bss() { return make(__bss_start, __bss_end); }
 inline Chunk init() { return make(__init_start, __init_end); }
 inline Chunk kernel() { return make(__kernel_start, __kernel_end); }
-inline Chunk payload() { return make(__payload_start, __payload_end); }
 
 } // namespace BootInformation
 
+__attribute__((section(".__payload_mm__"))) inline Chunk __pmm;
 __attribute__((section(".__all_mm__"))) inline Chunk __amm;
 __attribute__((section(".__boot_mm__"))) inline Chunk __bmm;
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <abi/ABI.hpp>
-#include <cstdint>
+#include <types.hpp>
 
 namespace QUARK::ABI {
 

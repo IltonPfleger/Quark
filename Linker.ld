@@ -47,13 +47,12 @@ SECTIONS
         __bss_end = .;
     }
 
-    __kernel_end = .;
-
-
 	.__payload__ :
     {
         __payload_start = .;
         KEEP(*(.__payload__))
         __payload_end = .;
     }
+
+    __kernel_end = .;
 }

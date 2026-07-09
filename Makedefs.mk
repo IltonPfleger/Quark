@@ -18,7 +18,7 @@ TRAITS         := $(shell find $(HERE) -name "Traits.hpp")
 HASH           := $(BUILD)/Traits.hash
 MAPPER         := $(BUILD)/Mapper
 
-TOOL           := riscv64-unknown-elf
+TOOL           := riscv64-linux-gnu
 CC             := $(TOOL)-g++
 LD             := $(TOOL)-ld
 NM             := $(TOOL)-nm
@@ -36,7 +36,7 @@ PAYLOAD        ?= HelloWorld
 CCFLAGS        := -std=c++23
 CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH) -I$(HERE)/machine/$(MACHINE)
 CCFLAGS        += -Wall -Wextra -Werror -pedantic
-CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -g -O3
+CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -g 
 
 build: $(IMAGE).img
 

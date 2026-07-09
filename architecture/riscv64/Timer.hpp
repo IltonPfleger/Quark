@@ -11,7 +11,7 @@ namespace QUARK {
 
 class Timer : public ArchitectureCommon::Timer {
   public:
-    static Nanosecond now() { return ns(CLINT::mtime()); }
+    static Microsecond now() { return us(CLINT::mtime()); }
 
     static void delay(Microsecond delta) {
         Microsecond elapsed = now() + delta;
@@ -31,9 +31,7 @@ class Timer : public ArchitectureCommon::Timer {
     }
 
   private:
-    static Nanosecond ns(uintmax_t ticks) {
-        return Nanosecond((static_cast<__uint128_t>(ticks) * 1000000000ULL) / Traits<CLINT>::Clock);
-    }
+    static Microsecond us(uintmax_t ticks) { return Microsecond((ticks * 1'000'000ULL) / Traits<CLINT>::Clock); }
 
     static void dispatch(ContextFrame *) {
         if constexpr (Traits<Payload>::Virtualized) {
