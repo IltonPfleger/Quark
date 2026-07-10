@@ -25,6 +25,25 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
 
     ~TFTP() { udp_.detach(this); }
 
+    void request(const char *filename) {
+        NetworkBuffer *packet = udp_.alloc(512);
+        size_t length         = strlen(filename);
+        uint16_t *operation   = packet->data<uint16_t *>();
+        *operation            = CPU::htobe16(Operation::RRQ);
+        char *pointer         = reinterpret_cast<char *>(operation + 1);
+        memcpy(pointer, filename, length + 1);
+        pointer += length + 1;
+        memcpy(pointer, "octet", 6);
+        pointer += 6;
+        memcpy(pointer, "blksize", 8);
+        pointer += 8;
+        memcpy(pointer, k_blksize_string, sizeof(k_blksize_string));
+        pointer += sizeof(k_blksize_string);
+        size_t total = 2 + length + 6 + 8 + sizeof(k_blksize_string) + 1;
+        packet->shrink(packet->length() - packet->offset() - total);
+        udp_.send(server_, 69, packet);
+    }
+
     size_t request(const NetworkAddress &&address, const char *filename, void *buffer, size_t size) {
         buffer_      = static_cast<uint8_t *>(buffer);
         buffer_size_ = size;
@@ -32,36 +51,9 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         block_       = 1;
         done_        = false;
         error_       = false;
-        _server      = address;
+        server_      = address;
 
-        NetworkBuffer *packet = udp_.alloc(256);
-
-        size_t name_length = strlen(filename);
-
-        uint16_t *operation = packet->data<uint16_t *>();
-
-        *operation = CPU::htobe16(Operation::RRQ);
-
-        char *ptr = reinterpret_cast<char *>(operation + 1);
-
-        memcpy(ptr, filename, name_length + 1);
-        ptr += name_length + 1;
-
-        memcpy(ptr, "octet", 6);
-        ptr += 6;
-
-        memcpy(ptr, "blksize", 8);
-        ptr += 8;
-
-        memcpy(ptr, k_blksize_string, sizeof(k_blksize_string));
-        ptr += sizeof(k_blksize_string);
-
-        size_t total = 2 + name_length + 6 + 8 + sizeof(k_blksize_string) + 1;
-
-        packet->shrink(packet->length() - packet->offset() - total);
-
-        udp_.send(_server, 69, packet);
-
+        request(filename);
         semaphore_.p();
 
         if (!error_) {
@@ -135,7 +127,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         uint16_t *payload     = buffer->data<uint16_t *>();
         payload[0]            = CPU::htobe16(Operation::ACK);
         payload[1]            = CPU::htobe16(block);
-        udp_.send(_server, source, buffer);
+        udp_.send(server_, source, buffer);
     }
 
   private:
@@ -145,7 +137,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
 
   private:
     UDP &udp_;
-    NetworkAddress _server;
+    NetworkAddress server_;
     Semaphore semaphore_;
 
     uint8_t *buffer_;
