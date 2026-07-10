@@ -5,36 +5,63 @@
 
 namespace QUARK {
 
-bool Alarm::elapsed(Microsecond us) { return static_cast<intmax_t>(Timer::now() - us) >= 0; }
+Alarm::operator bool() { return Timer::now() >= node_.criterion; }
 
-Alarm::Alarm(Microsecond us)
-    : node_(this, us) {
-    Spin lock;
+Alarm::Alarm(Microsecond at)
+    : Alarm(at, local_) {}
+
+Alarm::Alarm(Microsecond at, Semaphore &handler)
+    : node_(this, at),
+      local_(0),
+      handler_(handler) {
 
     CPU::IRQ::Guard _;
 
-    Alarms &alarms = alarms_[CPU::id()];
+    core_ = CPU::id();
 
+    Alarms &alarms = alarms_[core_];
+    Spin &lock     = locks_[core_];
+
+    lock.acquire();
     alarms.insert(&node_);
+    lock.release();
 
-    Thread::sleep(&thread_, &lock);
+    handler_.p();
+}
+
+Alarm::~Alarm() {
+    CPU::IRQ::Guard _;
+
+    Alarms &alarms = alarms_[core_];
+    Spin &lock     = locks_[core_];
+
+    lock.acquire();
+    alarms.remove(&this->node_);
+    lock.release();
 }
 
 void Alarm::handler() {
-    Alarms &alarms = alarms_[CPU::id()];
+    size_t core = CPU::id();
+
+    Alarms &alarms = alarms_[core];
+    Spin &lock     = locks_[core];
+
+    lock.acquire();
 
     while (1) {
         Node *head = alarms.remove();
 
         if (!head) break;
 
-        if (!elapsed(head->criterion)) {
+        if (!*head->value) {
             alarms.insert(head);
             break;
         }
 
-        Thread::wakeup(&head->value->thread_);
+        head->value->handler_.v();
     }
+
+    lock.release();
 }
 
 } // namespace QUARK

@@ -1,3 +1,4 @@
+#include <Alarm.hpp>
 #include <Semaphore.hpp>
 #include <Thread.hpp>
 #include <memory/Heap.hpp>
@@ -26,6 +27,10 @@ void *philosopher(void *p) {
         Console::println("<", CPU::id(), ">", " Filósofo ", id, " está pensando! <", iterations, ">");
         console->v();
 
+        {
+            Alarm _(1);
+        }
+
         if (id == Number - 1) {
             forks[right]->p();
             forks[left]->p();
@@ -37,6 +42,10 @@ void *philosopher(void *p) {
         console->p();
         Console::println("<", CPU::id(), ">", " Filósofo ", id, " está comendo! <", iterations, ">");
         console->v();
+
+        {
+            Alarm _(1);
+        }
 
         forks[right]->v();
         forks[left]->v();

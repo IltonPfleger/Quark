@@ -38,7 +38,8 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
     struct Entry {
         HA ha{};
         PA pa{};
-        ConditionalVariable waiters{};
+        size_t waiting{0};
+        Semaphore handler{};
         Mutex mutex{};
         bool valid{false};
     };
@@ -61,6 +62,7 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
     bool resolve(const PA &pa, const HA &solver, HA &destination) {
         while (true) {
             auto &entry = table_[pa];
+
             entry.mutex.acquire();
 
             if (entry.valid && entry.pa == pa) {
@@ -69,8 +71,11 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
                 return true;
             }
 
+            entry.waiting++;
             request(pa, solver);
-            entry.waiters.wait(entry.mutex);
+            entry.mutex.release();
+
+            Alarm _(TimeoutDelay, entry.handler);
         }
     }
 
@@ -110,7 +115,10 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
         entry.pa    = received.spa;
         entry.ha    = received.sha;
         entry.valid = true;
-        entry.waiters.send();
+        for (size_t i = 0; i < entry.waiting; i++) {
+            entry.handler.v();
+            entry.waiting = 0;
+        }
         entry.mutex.release();
     }
 
@@ -131,6 +139,9 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
             device_.send(received.sha, ProtocolValue, buffer);
         }
     }
+
+  private:
+    static constexpr Microsecond TimeoutDelay = 1'000'000;
 
   private:
     HardwareLayerType &device_;
