@@ -18,7 +18,11 @@ class Receiver {
   public:
     Receiver(TFTP &tftp) {
         IPv4::Address server(192, 168, 1, 100);
-        g_size = tftp.request(server, "QUARK-OS-Remote-Boot-Image", g_buffer, k_size);
+        int result = -1;
+        while (result < 0) {
+            result = tftp.request(server, "QUARK-OS-Remote-Boot-Image", g_buffer, k_size);
+        }
+        g_size = result;
     }
 };
 

@@ -1,5 +1,4 @@
-#ifndef __QUARK_ORDERED_LIST__
-#define __QUARK_ORDERED_LIST__
+#pragma once
 
 namespace QUARK::collections {
 
@@ -107,5 +106,3 @@ template <typename T, typename Lock = void> class OrderedList {
 };
 
 } // namespace QUARK::collections
-
-#endif
