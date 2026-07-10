@@ -1,3 +1,4 @@
+#include <Thread.hpp>
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
 #include <machine/Machine.hpp>
@@ -6,10 +7,10 @@
 
 using namespace QUARK;
 
-static constexpr size_t k_kb             = 1024;
-static constexpr size_t k_mb             = 1024 * k_kb;
-static constexpr size_t k_size           = 128 * k_mb;
-static volatile constinit size_t g_sense = 0;
+static constexpr size_t k_kb               = 1024;
+static constexpr size_t k_mb               = 1024 * k_kb;
+static constexpr size_t k_size             = 128 * k_mb;
+static volatile constinit size_t g_counter = 0;
 static size_t g_size;
 static uint8_t g_buffer[k_size];
 
@@ -22,42 +23,39 @@ class Receiver {
 };
 
 static void barrier() {
-    static constinit volatile bool gsense = 1;
+    static constinit volatile bool gsense = true;
     static constinit volatile int ready   = Traits<QUARK::CPU>::Active;
 
-    auto sense   = !CPU::Atomic::load(gsense);
-    int position = CPU::Atomic::fdec(ready);
+    bool sense   = !__atomic_load_n(&gsense, __ATOMIC_ACQUIRE);
+    int position = __atomic_fetch_sub(&ready, 1, __ATOMIC_ACQ_REL);
 
     if (position == 1) {
-        CPU::Atomic::store(ready, Traits<QUARK::CPU>::Active);
-        CPU::Atomic::store(gsense, sense);
+        __atomic_store_n(&ready, Traits<QUARK::CPU>::Active, __ATOMIC_RELEASE);
+        __atomic_store_n(&gsense, sense, __ATOMIC_RELEASE);
     } else {
-        while (CPU::Atomic::load(gsense) != sense)
-            ;
+        while (__atomic_load_n(&gsense, __ATOMIC_ACQUIRE) != sense) {
+        }
     }
 }
 
-static void *worker(void *) {
-    while (g_sense != 1)
-        ;
+__attribute__((naked)) static void jumper() {
+    barrier();
+    for (size_t i = 0; i < g_size; i++)
+        reinterpret_cast<uint8_t *>(Traits<MemoryMap>::BootStart)[i] = g_buffer[i];
+    barrier();
+    reinterpret_cast<void (*)()>(Traits<MemoryMap>::BootStart)();
+}
 
+static void *worker(void *) {
     CPU::IRQ::disable();
 
-    barrier();
+    CPU::Atomic::finc(g_counter);
 
-    int core = CPU::id();
+    while (g_counter != Traits<CPU>::Active)
+        Thread::yield();
 
-    barrier();
-
-    if (core == Traits<CPU>::BSP) {
-        for (size_t i = 0; i < g_size; i++) {
-            reinterpret_cast<uint8_t *>(Traits<MemoryMap>::BootStart)[i] = g_buffer[i];
-        }
-    }
-
-    barrier();
-
-    return reinterpret_cast<void *(*)()>(Traits<MemoryMap>::BootStart)();
+    jumper();
+    return nullptr;
 }
 
 int main() {
@@ -71,11 +69,6 @@ int main() {
     Receiver receiver(*tftp);
 
     for (size_t i = 0; i < Traits<CPU>::Active; i++) {
-        new Thread(worker, (void *)i, Thread::Criterion(Thread::Criterion::NORMAL, i));
+        new Thread(worker, nullptr, Thread::Criterion(Thread::Criterion::NORMAL, i));
     }
-
-    g_sense = 1;
-
-    while (1)
-        ;
 }

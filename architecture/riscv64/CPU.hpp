@@ -47,8 +47,8 @@ class CPU : public ArchitectureCommon::CPU {
         }
 
         static uint64_t disable() {
-            mb();
             uint64_t status = csrrc<KernelMode::STATUS>(KernelMode::IRQE);
+            mb();
             return status & KernelMode::IRQE;
         }
 

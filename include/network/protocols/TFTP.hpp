@@ -6,20 +6,28 @@
 namespace QUARK {
 
 class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
+
     enum Operation : uint16_t {
-        RRQ   = 1,
-        WRQ   = 2,
-        DATA  = 3,
-        ACK   = 4,
-        ERROR = 5,
-        OACK  = 6,
+        RRQ  = 1,
+        WRQ  = 2,
+        DATA = 3,
+        ACK  = 4,
+        ERR  = 5,
+        OACK = 6,
+    };
+
+    enum class State {
+        ERROR,
+        DONE,
+        WAITING,
+        RECEIVING,
     };
 
   public:
     TFTP(UDP &udp)
         : udp_(udp),
-          semaphore_(0),
-          done_(true) {
+          handler_(0),
+          state_(State::DONE) {
         udp_.attach(this);
     }
 
@@ -37,31 +45,28 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         pointer += 6;
         memcpy(pointer, "blksize", 8);
         pointer += 8;
-        memcpy(pointer, k_blksize_string, sizeof(k_blksize_string));
-        pointer += sizeof(k_blksize_string);
-        size_t total = 2 + length + 6 + 8 + sizeof(k_blksize_string) + 1;
+        memcpy(pointer, BlockSizeString, sizeof(BlockSizeString));
+        pointer += sizeof(BlockSizeString);
+        size_t total = 2 + length + 6 + 8 + sizeof(BlockSizeString) + 1;
         packet->shrink(packet->length() - packet->offset() - total);
         udp_.send(server_, 69, packet);
     }
 
-    size_t request(const NetworkAddress &&address, const char *filename, void *buffer, size_t size) {
-        buffer_      = static_cast<uint8_t *>(buffer);
-        buffer_size_ = size;
-        received_    = 0;
-        block_       = 1;
-        done_        = false;
-        error_       = false;
-        server_      = address;
+    int request(const NetworkAddress &&address, const char *filename, void *buffer, size_t size) {
+        buffer_   = static_cast<uint8_t *>(buffer);
+        size_     = size;
+        received_ = 0;
+        block_    = 1;
+        server_   = address;
+        state_    = State::WAITING;
 
         request(filename);
-        semaphore_.p();
+        handler_.p();
 
-        if (!error_) {
-            Console::println("\n[OK]");
-            return received_;
-        }
+        if (state_ != State::DONE) return -1;
 
-        return 0;
+        Console::println("\n[OK]");
+        return received_;
     }
 
     void update(NetworkBuffer packet, uint16_t, uint16_t source) override {
@@ -74,13 +79,15 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
                 break;
             }
             case DATA: {
+                if (state_ == State::WAITING) state_ = State::RECEIVING;
+                if (state_ != State::RECEIVING) return;
                 uint16_t block = CPU::be16toh(*(header + 1));
                 size_t length  = packet.length() - packet.offset() - 4;
                 uint8_t *data  = reinterpret_cast<uint8_t *>(header + 2);
                 onData(data, block, length, source);
                 break;
             }
-            case ERROR: {
+            case ERR: {
                 onError();
                 break;
             }
@@ -88,9 +95,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
     }
 
     void onData(uint8_t *data, uint16_t block, size_t length, uint16_t source) {
-        if (done_) return;
-
-        if (received_ + length > buffer_size_) {
+        if (received_ + length > size_) {
             onError();
             return;
         }
@@ -108,18 +113,17 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
 
         received_ += length;
 
-        if constexpr (Trace)
-            if (block % 32 == 0) Console::print('#');
+        if (block % 32 == 0) Trace('#');
 
-        if (length < k_blksize_int) {
-            done_ = true;
-            semaphore_.v();
+        if (length < BlockSize) {
+            state_ = State::DONE;
+            handler_.v();
         }
     }
 
     void onError() {
-        error_ = true;
-        semaphore_.v();
+        state_ = State::ERROR;
+        handler_.v();
     }
 
     void ack(uint16_t block, uint16_t source) {
@@ -131,24 +135,18 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
     }
 
   private:
-    static constexpr const char *k_blksize_string     = "1468";
-    static constexpr const unsigned int k_blksize_int = 1468;
-    static constexpr bool Trace                       = true;
+    static constexpr const char *BlockSizeString  = "1468";
+    static constexpr const unsigned int BlockSize = 1468;
 
   private:
     UDP &udp_;
     NetworkAddress server_;
-    Semaphore semaphore_;
-
+    Semaphore handler_;
+    State state_;
     uint8_t *buffer_;
-    size_t buffer_size_;
-
+    size_t size_;
     size_t received_;
-
     uint16_t block_;
-
-    volatile bool done_;
-    volatile bool error_;
 };
 
 } // namespace QUARK
