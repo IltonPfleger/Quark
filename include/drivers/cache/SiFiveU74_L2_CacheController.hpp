@@ -45,21 +45,21 @@ template <typename Tag> class SiFiveU74_L2_CacheController {
     static void barrier() { asm volatile("fence iorw, iorw" ::: "memory"); }
 
     static void init() {
-        *WayEnable |= (1 << Traits<Tag>::NumberOfWays) - 1;
+        *WayEnable |= 0xFF;
         if constexpr (Traits<Tag>::CoreIsolation) {
             size_t core        = CPU::id() + Traits<CPU>::Offset;
             size_t ways        = Traits<Tag>::NumberOfWays / Traits<CPU>::Active;
-            uint64_t activated = ((1ULL << ways) - 1) << (core * ways);
+            uint64_t activated = (((1ULL << ways) - 1) << (core * ways));
             color(activated, core);
         }
     }
 
   private:
-    static constexpr uintptr_t Address      = 0x2010000;
-    static inline uint64_t *const WayMask   = reinterpret_cast<uint64_t *>(Address + 0x800);
-    static inline uint64_t *const Flush64   = reinterpret_cast<uint64_t *>(Address + 0x200);
-    static inline uint64_t *const Flush32   = reinterpret_cast<uint64_t *>(Address + 0x240);
-    static inline uint64_t *const WayEnable = reinterpret_cast<uint64_t *>(Address + 0x8);
+    static constexpr uintptr_t Address     = 0x2010000;
+    static inline uint64_t *const WayMask  = reinterpret_cast<uint64_t *>(Address + 0x800);
+    static inline uint64_t *const Flush64  = reinterpret_cast<uint64_t *>(Address + 0x200);
+    static inline uint64_t *const Flush32  = reinterpret_cast<uint64_t *>(Address + 0x240);
+    static inline uint8_t *const WayEnable = reinterpret_cast<uint8_t *>(Address + 0x8);
 };
 
 } // namespace QUARK
