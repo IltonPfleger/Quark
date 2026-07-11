@@ -62,7 +62,7 @@ class Machine : Driver {
             GPIO::map(GPIO::OutputSignal::GPO_SYS_IOMUX_U0_CAN_CTRL_STB, 47);
         }
 
-        SiFiveU74_L2_CacheController<void>::init();
+        Meta::forEach(Traits<CacheController>::Devices{}, []<typename T>() { T::init(); });
         Meta::forEach(Traits<UART>::Devices{}, []<typename T>() { T::init(); });
         CPU::barrier();
     }

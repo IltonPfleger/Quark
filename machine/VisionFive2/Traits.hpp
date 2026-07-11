@@ -21,6 +21,7 @@ class PMIC;
 class I2C;
 class I2C5;
 class DVFS;
+class CacheController0;
 class CacheController;
 class Ethernet;
 
@@ -78,17 +79,27 @@ template <> struct Traits<MemoryMap> {
     static constexpr unsigned long AON_SYSCON = 0x17010000;
 };
 
+/* ********** CacheController ********** */
+template <> struct Traits<CacheController0> {
+    static constexpr size_t CacheSize     = 2 * 1024 * 1024;
+    static constexpr size_t NumberOfWays  = 16;
+    static constexpr size_t CacheLineSize = 64;
+    static constexpr bool CoreIsolation   = true;
+};
+
 template <> struct Traits<CacheController> {
-    typedef Meta::TypeList<SiFiveU74_L2_CacheController<void>> Devices;
+    typedef Meta::TypeList<SiFiveU74_L2_CacheController<CacheController0>> Devices;
     static constexpr unsigned int NumberOfDevices = Devices::Length;
 };
 
+/* ********** CLINT ********** */
 template <> struct Traits<CLINT> {
     static constexpr bool Enable           = Traits<Timer>::Enable;
     static constexpr unsigned long Address = Traits<MemoryMap>::CLINT;
     static constexpr unsigned long Clock   = 4'000'000;
 };
 
+/* ********** PLIC ********** */
 template <> struct Traits<PLIC> {
     static constexpr bool Enable               = true;
     static constexpr int NumberOfInterruptions = 127;
