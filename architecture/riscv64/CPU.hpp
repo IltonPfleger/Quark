@@ -21,6 +21,7 @@ class CPU : public ArchitectureCommon::CPU {
     using NotSupervisorContext = Meta::IF<!Virtualized, QUARK::MachineContext<>, HypervisorContext>::Result;
     using Context              = Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
+    static void tp(size_t tp) { asm("mv tp, %0" ::"r"(tp)); }
     static void halt() { asm("1: wfi; j 1b"); }
     static auto idle() { asm("wfi"); }
     static void syscall() { asm("ecall"); }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <architecture/riscv64/ContextFrame.hpp>
+#include <architecture/riscv64/Decoder.hpp>
 #include <architecture/riscv64/ExceptionHandler.hpp>
 #include <architecture/riscv64/Modes.hpp>
 
@@ -14,14 +15,21 @@ class StoreAccessFault {
 
     static void dispatch(ContextFrame *c) {
         if (((c->status >> 11) & 0x3) == 1) {
-            uintptr_t address        = PageTable::virt2phys(csrr<MachineMode::TVAL>());
-            unsigned int instruction = *reinterpret_cast<unsigned int *>(PageTable::virt2phys(c->pc));
-            unsigned int i           = (instruction >> 20) & 0x1F;
-            uintmax_t source         = (*c)[i];
-            if (VirtualCPU::write(address, source)) {
+            uintptr_t address   = PageTable::virt2phys(csrr<MachineMode::TVAL>());
+            uintptr_t pc        = PageTable::virt2phys(c->pc);
+            uint16_t compressed = Decoder::compressed(pc);
+            uint8_t i;
+            if (compressed) {
+                i = Decoder::rs2(compressed);
+                c->pc += 2;
+            } else {
+                uint32_t instruction = Decoder::uncompressed(pc);
+                i                    = Decoder::rs2(instruction);
                 c->pc += 4;
-                return;
             }
+
+            uintmax_t source = (*c)[i];
+            if (VirtualCPU::write(address, source)) return;
         }
         ExceptionHandler::onTrap(c);
     }

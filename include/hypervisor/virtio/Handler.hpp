@@ -45,6 +45,7 @@ class Handler {
 
     template <typename Self> bool read(this Self &&self, uintptr_t address, uint32_t *destination) {
         const int offset = address - self.Address;
+        uint32_t result;
         switch (offset) {
             case Register::Magic:
             case Register::Version:
@@ -53,10 +54,12 @@ class Handler {
             case Register::Status:
             case Register::DeviceFeatures:
             case Register::QueueSizeMax:
-            case Register::InterruptStatus: *destination = self.header(offset); return true;
-            case Register::QueuePFN: *destination = self.pfn(); return true;
+            case Register::InterruptStatus: result = self.header(offset); break;
+            case Register::QueuePFN: result = self.pfn(); break;
             default: return false;
         }
+        *destination = result;
+        return true;
     }
 
     template <typename Self> bool write(this Self &&self, uintptr_t address, uint32_t value) {

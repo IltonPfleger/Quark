@@ -36,36 +36,16 @@ class Decoder {
         return instruction & 0x7F;
     }
 
-    [[nodiscard]]
-    static uint8_t rd(uint16_t instruction16) {
-        return 8 + ((instruction16 >> 2) & 0x7);
-    }
+    static uint8_t rd(uint16_t instruction16) { return 8 + ((instruction16 >> 2) & 0x7); }
+    static uint8_t rd(uint32_t instruction) { return (instruction >> 7) & 0x1F; }
+    static uint8_t rs2(uint16_t instruction) { return 8 + ((instruction >> 2) & 0x7); }
+    static uint8_t rs2(uint32_t instruction) { return (instruction >> 20) & 0x1f; }
 
-    [[nodiscard]]
-    static uint8_t rd(uint32_t instruction) {
-        return (instruction >> 7) & 0x1F;
-    }
-
-    struct LD {};
-    static uint8_t rd(LD, uintptr_t pc) {
+    static uint32_t uncompressed(uintptr_t pc) { return *reinterpret_cast<uint32_t *>(pc); }
+    static uint16_t compressed(uintptr_t pc) {
         const uint16_t instruction16 = *reinterpret_cast<const uint16_t *>(pc);
-        if ((instruction16 & 0x3) != 0x3)
-            return rd(instruction16);
-        else {
-            uint32_t instruction = *reinterpret_cast<const uint32_t *>(pc);
-            return rd(instruction);
-        }
-    }
-
-    struct SD {};
-    static uint8_t rs2(SD, uintptr_t pc) {
-        const uint16_t instruction16 = *reinterpret_cast<const uint16_t *>(pc);
-        if ((instruction16 & 0x3) != 0x3)
-            return 8 + ((instruction16 >> 2) & 0x7);
-        else {
-            uint32_t instruction = *reinterpret_cast<const uint32_t *>(pc);
-            return (instruction >> 20) & 0x1f;
-        }
+        if ((instruction16 & 0x3) != 0x3) return instruction16;
+        return 0;
     }
 };
 

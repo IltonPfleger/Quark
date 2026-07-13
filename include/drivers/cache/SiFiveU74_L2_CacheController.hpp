@@ -46,11 +46,16 @@ template <typename Tag> class SiFiveU74_L2_CacheController {
 
     static void init() {
         *WayEnable |= 0xFF;
-        if constexpr (Traits<Tag>::CoreIsolation) {
-            size_t core        = CPU::id() + Traits<CPU>::Offset;
+        // size_t ways = (1 << (Traits<Tag>::NumberOfWays / 2)) - 1;
+        // if (core % 2 == 0) {
+        //     ways = ~ways;
+        // }
+        // color(ways, core + Traits<CPU>::Offset);
+        if constexpr (Traits<Tag>::Isolation) {
+            size_t core        = CPU::id();
             size_t ways        = Traits<Tag>::NumberOfWays / Traits<CPU>::Active;
             uint64_t activated = (((1ULL << ways) - 1) << (core * ways));
-            color(activated, core);
+            color(activated, core + Traits<CPU>::Offset);
         }
     }
 

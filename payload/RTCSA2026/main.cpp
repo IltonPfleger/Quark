@@ -356,11 +356,12 @@ int main() {
     auto *receiver = new Receiver(*tftp);
 
     const size_t MemorySize = 1024 * 1024 * 128;
-    // const auto &linux       = receiver->linux();
-    // const auto &initramfs   = receiver->initramfs();
-    const auto &epos = receiver->epos();
+    const auto &linux       = receiver->linux();
+    const auto &initramfs   = receiver->initramfs();
+    const auto &epos        = receiver->epos();
 
-    // new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
+    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
+    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
 
     //// DYNAMICS STATE
     // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
@@ -384,8 +385,8 @@ int main() {
 
     // Camera
     new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    while (QUARK::sbi::Counter::counter_ != 5)
-        ;
+    // while (QUARK::sbi::Counter::counter_ != 5)
+    //     ;
 
     // QUARK::Delay(QUARK::Microsecond(5'000'000));
 

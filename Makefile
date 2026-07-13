@@ -15,7 +15,10 @@ debug: $(IMAGE).img
 	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $< -S -gdb tcp::1234
 
 gdb:
-	$(GDB) -ex "file build/QUARK.elf" -ex "target extended-remote:1234"\
+	$(GDB) -ex "file ~/LISHA/SBESC2026/Code/FullLinux/linux-7.0.10/vmlinux"\
+		-ex "add-symbol-file build/QUARK.elf 0x80000000"\
+		-ex "target extended-remote:1234"
+	#$(GDB) -ex "file build/QUARK.elf" -ex "target extended-remote:1234"\
 
 $(IMAGE).bin: $(SYSTEM_BINARY) $(PAYLOAD_ELF)
 	$(DD) bs=1M conv=notrunc if=$(SYSTEM_BINARY) of=$@

@@ -32,14 +32,15 @@ class VirtualCPU {
           registers_(),
           vm_(vm) {}
 
-    void boot(auto... args) {
+    void boot(size_t core, auto... args) {
         CPU::IRQ::disable();
         activate();
         restore();
         csrs<MachineMode::STATUS>(MachineMode::TW | MachineMode::PP_S | MachineMode::PIRQE);
         csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE);
         csrw<MachineMode::EPC>(vm_->memory().start());
-        dispatch(args...);
+        CPU::tp(core);
+        dispatch(core, args...);
     }
 
     void activate() {
