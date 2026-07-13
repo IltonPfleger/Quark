@@ -252,7 +252,7 @@ public:
 };
 
 #include <network/ethernet.h>
-#include <network/only_data_udp_wrpayloader.h>
+#include <network/only_data_udp_wrapper.h>
 
 // Polymorphic NIC base class
 template<typename Family>

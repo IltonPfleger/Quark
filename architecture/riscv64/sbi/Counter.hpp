@@ -45,7 +45,7 @@ class Counter {
 
   public:
     static constinit volatile inline size_t counter_ = 0;
-    static constinit volatile inline size_t end_     = 5;
+    static constinit volatile inline size_t end_     = 1;
     static constinit inline Semaphore lock_          = 0;
 };
 

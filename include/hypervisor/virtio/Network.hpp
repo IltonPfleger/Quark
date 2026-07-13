@@ -42,7 +42,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         auto data = buffer->start();
         auto size = buffer->length();
 
-        auto &queue = this->m_queues[RX];
+        auto &queue = this->queues_[RX];
 
         if (!queue.available()) return;
 
@@ -70,7 +70,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
             if (!running_) break;
 
-            auto &queue = this->m_queues[TX];
+            auto &queue = this->queues_[TX];
 
             while (queue.available()) {
                 int head      = queue.alloc();

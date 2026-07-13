@@ -15,23 +15,23 @@
 #include <network/protocols/TFTP.hpp>
 #include <utility/Span.hpp>
 
-#define ARTERY_PROJECT
-#define NO_DATA_SOURCE
-
-#include <boolean_filters.h>
-#include <main_traits.h>
-#include <seu.h>
-#include <smartdata.h>
-#include <transducer.h>
-#include <transformer.h>
-
-using DS                = Dynamics_State;
-using DS_Proxy          = Interested_SmartData<DS::Unit::Wrap<DS::UNIT>>;
-using OBRT_Fuser        = Object_Recognition_And_Tracking_Fuser;
-using OBRT_Fuser_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 10)>>;
-using OBRT_Camera_Proxy = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 11)>>;
-using OBRT_LiDAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 12)>>;
-using OBRT_RADAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 13)>>;
+// #define ARTERY_PROJECT
+// #define NO_DATA_SOURCE
+//
+// #include <boolean_filters.h>
+// #include <main_traits.h>
+// #include <seu.h>
+// #include <smartdata.h>
+// #include <transducer.h>
+// #include <transformer.h>
+//
+// using DS                = Dynamics_State;
+// using DS_Proxy          = Interested_SmartData<DS::Unit::Wrap<DS::UNIT>>;
+// using OBRT_Fuser        = Object_Recognition_And_Tracking_Fuser;
+// using OBRT_Fuser_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 10)>>;
+// using OBRT_Camera_Proxy = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 11)>>;
+// using OBRT_LiDAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 12)>>;
+// using OBRT_RADAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 13)>>;
 
 namespace QUARK {
 
@@ -86,7 +86,7 @@ class Receiver {
 class LinuxLauncher {
   public:
     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-    using Serial              = virtio::Console<SerialDevice, 0x30000000>;
+    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
     using InterruptController = VirtualPLIC<0xc000000>;
     using LinuxMachine        = GenericVirtualMachine<InterruptController, Serial>;
 
@@ -244,7 +244,7 @@ class EPOS_Launcher {
     using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
     using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-    using Serial              = virtio::Console<SerialDevice, 0x30000000>;
+    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
     using InterruptController = VirtualPLIC<0xc000000>;
     using EPOS_Machine        = GenericVirtualMachine<InterruptController, Serial, Network>;
 
@@ -274,75 +274,75 @@ class EPOS_Launcher {
 
 } // namespace QUARK
 
-class Overhead : public Transducer<SmartData::Unit::Antigravity> {
-    friend Responsive_SmartData<Overhead>;
-
-  public:
-    static const bool active             = true;
-    static const Uncertainty UNCERTAINTY = UNKNOWN;
-    static const Type TYPE               = SENSOR | ACTUATOR;
-
-  public:
-    Overhead(const Device_Id &dev)
-        : _value(0) {
-        new Thread(worker, this, Thread::Criterion{Thread::Criterion::NORMAL, 3});
-    }
-
-    ~Overhead() {}
-
-    static void *worker(void *pointer) {
-        Overhead *self = reinterpret_cast<Overhead *>(pointer);
-        while (1) {
-            self->notify();
-            QUARK::Delay(5'000);
-        }
-        return nullptr;
-    }
-
-    virtual Value sense() { return _value; }
-    virtual Signature signature() { return 0; }
-    virtual void actuate(const Value &value) { _value = value; }
-
-  private:
-    Value _value;
-};
-
-void smartdata() {
-    TSTP::init();
-
-    // SEU_SmartData *seu = new SEU_SmartData();
-
-    // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
-    // rp->set_default();
-
-    // Unit_Dev_Expiry::List *ud_list;
-
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
-
-    // ud_list = new Unit_Dev_Expiry::List();
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
-
-    // ud_list = new Unit_Dev_Expiry::List();
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
-
-    // ud_list = new Unit_Dev_Expiry::List();
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
-
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
-    // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
-    // seu->add_boolean_filter(rss);
-
-    new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000);
-    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), 40'000);
-    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), 150'000);
-    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), 100'000);
-    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), 40'000);
-    new Antigravity_Proxy(Antigravity_Proxy::Region(0, 0, 0, 100, Antigravity_Proxy::now(), INFINITE), 10'000);
-}
+// class Overhead : public Transducer<SmartData::Unit::Antigravity> {
+//     friend Responsive_SmartData<Overhead>;
+//
+//   public:
+//     static const bool active             = true;
+//     static const Uncertainty UNCERTAINTY = UNKNOWN;
+//     static const Type TYPE               = SENSOR | ACTUATOR;
+//
+//   public:
+//     Overhead(const Device_Id &dev)
+//         : _value(0) {
+//         new Thread(worker, this, Thread::Criterion{Thread::Criterion::NORMAL, 3});
+//     }
+//
+//     ~Overhead() {}
+//
+//     static void *worker(void *pointer) {
+//         Overhead *self = reinterpret_cast<Overhead *>(pointer);
+//         while (1) {
+//             self->notify();
+//             QUARK::Delay(5'000);
+//         }
+//         return nullptr;
+//     }
+//
+//     virtual Value sense() { return _value; }
+//     virtual Signature signature() { return 0; }
+//     virtual void actuate(const Value &value) { _value = value; }
+//
+//   private:
+//     Value _value;
+// };
+//
+// void smartdata() {
+//     TSTP::init();
+//
+//     // SEU_SmartData *seu = new SEU_SmartData();
+//
+//     // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
+//     // rp->set_default();
+//
+//     // Unit_Dev_Expiry::List *ud_list;
+//
+//     // ud_list = new Unit_Dev_Expiry::List();
+//     // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
+//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
+//
+//     // ud_list = new Unit_Dev_Expiry::List();
+//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
+//
+//     // ud_list = new Unit_Dev_Expiry::List();
+//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
+//
+//     // ud_list = new Unit_Dev_Expiry::List();
+//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
+//
+//     // ud_list = new Unit_Dev_Expiry::List();
+//     // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
+//     // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
+//     // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
+//     // seu->add_boolean_filter(rss);
+//
+//     new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000);
+//     new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), 40'000);
+//     new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), 150'000);
+//     new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), 100'000);
+//     new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), 40'000);
+//     new Antigravity_Proxy(Antigravity_Proxy::Region(0, 0, 0, 100, Antigravity_Proxy::now(), INFINITE), 10'000);
+// }
 
 int main() {
     using namespace QUARK;
@@ -356,40 +356,40 @@ int main() {
     auto *receiver = new Receiver(*tftp);
 
     const size_t MemorySize = 1024 * 1024 * 128;
-    const auto &linux       = receiver->linux();
-    const auto &initramfs   = receiver->initramfs();
-    const auto &epos        = receiver->epos();
+    // const auto &linux       = receiver->linux();
+    // const auto &initramfs   = receiver->initramfs();
+    const auto &epos = receiver->epos();
 
-    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
+    // new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
 
-    // DYNAMICS STATE
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    while (QUARK::sbi::Counter::counter_ != 1)
-        ;
+    //// DYNAMICS STATE
+    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    // while (QUARK::sbi::Counter::counter_ != 1)
+    //     ;
 
-    // Fuser
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    while (QUARK::sbi::Counter::counter_ != 2)
-        ;
+    //// Fuser
+    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    // while (QUARK::sbi::Counter::counter_ != 2)
+    //     ;
 
-    // RADAR
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    while (QUARK::sbi::Counter::counter_ != 3)
-        ;
+    //// RADAR
+    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    // while (QUARK::sbi::Counter::counter_ != 3)
+    //     ;
 
-    // LiDAR
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    while (QUARK::sbi::Counter::counter_ != 4)
-        ;
+    //// LiDAR
+    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    // while (QUARK::sbi::Counter::counter_ != 4)
+    //     ;
 
     // Camera
     new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
     while (QUARK::sbi::Counter::counter_ != 5)
         ;
 
-    QUARK::Delay(QUARK::Microsecond(5'000'000));
+    // QUARK::Delay(QUARK::Microsecond(5'000'000));
 
-    smartdata();
+    // smartdata();
 
     // new NetworkVampire<VirtualSwitch<Device>>();
 

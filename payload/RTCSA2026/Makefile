@@ -1,7 +1,7 @@
 include ../../Makedefs.mk
 
-ELF := $(BUILD)/$(PAYLOADLICATION).elf
-BUILD := $(BUILD)/$(PAYLOADLICATION)
+ELF := $(BUILD)/$(PAYLOAD).elf
+BUILD := $(BUILD)/$(PAYLOAD)
 
 SOURCES := $(shell find . \( -name '*.cpp' -o -name '*.cc' \) -not -path '*/EPOS/*' | sed 's|^\./||')
 OBJECTS := $(patsubst %.cc,$(BUILD)/%.o,$(filter %.cc,$(SOURCES)))
@@ -38,6 +38,6 @@ $(BUILD)/%.o: %.cc $(CONFIG)
 		  -Wno-unused-but-set-variable
 
 EPOS:
-#	./EPOS.sh
+	#./EPOS.sh
 
 -include $(DEPENDENCIES)
