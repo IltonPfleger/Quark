@@ -13,14 +13,15 @@ namespace QUARK {
 
 class Payload : Traits<Payload> {
   public:
-    Payload() {
+    static void alloc() {
         Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(Image);
-        assert(valid(header));
+        bool valid       = validate(header);
+        assert(valid);
         entry_ = header->e_entry;
         load(header);
     }
 
-    static bool valid(Elf_Ehdr *header) {
+    static bool validate(Elf_Ehdr *header) {
         if (!header->valid()) return false;
 
         Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(Image + header->e_phoff);
@@ -61,16 +62,14 @@ class Payload : Traits<Payload> {
         }
     }
 
-    void init() {
+    static void init() {
         auto main = reinterpret_cast<Thread::Return (*)(Thread::Argument)>(entry_);
         new Thread(main, 0, Thread::Criterion::NORMAL);
     };
 
   private:
     __attribute__((section(".payload"), used)) static inline uint8_t Image[Size];
-
-  private:
-    uintptr_t entry_;
+    static inline uintptr_t entry_;
 };
 
 } // namespace QUARK

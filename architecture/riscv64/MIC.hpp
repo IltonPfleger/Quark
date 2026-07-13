@@ -15,7 +15,7 @@ class MIC {
     static constexpr bool IsMachineMode                 = !Traits<RISCV>::Supervisor;
     static constexpr bool IsTimerEnable                 = Traits<QUARK::Timer>::Enable;
     static constexpr bool IsExternalInterruptionsEnable = Traits<PLIC>::Enable;
-    static constexpr bool ChangeStack = (IsMachineMode && Traits<Thread>::IsolatedKernelStack) || !IsMachineMode;
+    static constexpr bool ChangeStack = (IsMachineMode && Traits<Thread>::UserStack) || !IsMachineMode;
     using MachineContextHandler       = MachineContext<ChangeStack>;
 
   protected:

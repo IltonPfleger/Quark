@@ -4,6 +4,8 @@ namespace QUARK::collections {
 
 template <typename T, typename Lock = void> class OrderedList {
   public:
+    constexpr OrderedList() = default;
+
     void insert(T *node) {
         lock();
 
@@ -100,9 +102,9 @@ template <typename T, typename Lock = void> class OrderedList {
     }
 
   private:
-    T *head_;
-    T *tail_;
-    Meta::IF<!Meta::IsVoid<Lock>::Result, Lock, Meta::Empty>::Result lock_;
+    T *head_ = nullptr;
+    T *tail_ = nullptr;
+    Meta::IF<!Meta::IsVoid<Lock>::Result, Lock, Meta::Empty>::Result lock_{};
 };
 
 } // namespace QUARK::collections

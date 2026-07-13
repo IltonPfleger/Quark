@@ -9,7 +9,7 @@ class SIC {
 
   public:
     static void init() {
-        TrapHandler::init<SupervisorMode, Traits<Thread>::IsolatedKernelStack>();
+        TrapHandler::init<SupervisorMode, Traits<Thread>::UserStack>();
 
         if constexpr (Traits<PLIC>::Enable) {
             PLIC::init();

@@ -48,7 +48,7 @@ void *Memory::alloc(size_t size) {
 
     void *chunk = allocator_.remove(size);
 
-    assert(chunk, "Out of Memory.");
+    assert(chunk, "Out of Memory!");
 
     spin_.release();
 
@@ -60,7 +60,7 @@ void Memory::free(void *chunk, size_t size) {
 
     spin_.acquire();
 
-    assert(chunk != nullptr);
+    assert(chunk != nullptr, "Invalid Free!");
 
     allocator_.insert(chunk, size);
 

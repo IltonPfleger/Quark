@@ -10,12 +10,9 @@ void Console::print(char c) {
 
     Device *device = Device::instance();
 
-    if (column_ >= Traits<Console>::Columns || c == '\n') {
+    if (c == '\n') {
         device->putc('\r');
-        column_ = 0;
     }
-
-    column_++;
 
     device->putc(c);
 }

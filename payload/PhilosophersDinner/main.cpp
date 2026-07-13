@@ -4,6 +4,7 @@
 #include <memory/Heap.hpp>
 #include <utility/Console.hpp>
 #include <utility/Debug.hpp>
+#include <utility/Delay.hpp>
 
 using namespace QUARK;
 
@@ -27,9 +28,7 @@ void *philosopher(void *p) {
         Console::println("<", CPU::id(), ">", " Filósofo ", id, " está pensando! <", iterations, ">");
         console->v();
 
-        {
-            Alarm _(1);
-        }
+        Delay(1);
 
         if (id == Number - 1) {
             forks[right]->p();
@@ -43,9 +42,7 @@ void *philosopher(void *p) {
         Console::println("<", CPU::id(), ">", " Filósofo ", id, " está comendo! <", iterations, ">");
         console->v();
 
-        {
-            Alarm _(1);
-        }
+        Delay(1);
 
         forks[right]->v();
         forks[left]->v();

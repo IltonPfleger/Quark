@@ -43,18 +43,26 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
 
         request(filename);
 
+        int retry = 0;
         while (1) {
             uint16_t block = block_;
             Alarm timeout(TimeoutDelay, handler_);
-            if (state_ == State::WAITING) request(filename);
-            if (state_ == State::RECEIVING && block == block_) ack(block - 1);
+            if (state_ == State::WAITING) {
+                if (retry == MaxRetry) break;
+                retry++;
+                request(filename);
+            }
+            if (state_ == State::RECEIVING && block == block_) {
+                if (retry == MaxRetry) break;
+                retry++;
+                ack(block - 1);
+            }
             if (state_ == State::DONE || state_ == State::ERROR) break;
         }
 
-        if (state_ == State::ERROR) return -1;
-        if (received_ == 0) return -1;
+        if (state_ != State::DONE || received_ == 0) return -1;
 
-        Console::println("\n[OK]");
+        Trace("\n[OK]");
 
         return received_;
     }
@@ -151,9 +159,10 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
     }
 
   private:
-    static constexpr const char *BlockSizeString = "1468";
-    static constexpr unsigned int BlockSize      = 1468;
-    static constexpr Microsecond TimeoutDelay    = 1'000'000;
+    static constexpr const char BlockSizeString[] = "1468";
+    static constexpr unsigned int BlockSize       = 1468;
+    static constexpr unsigned int MaxRetry        = 5;
+    static constexpr Microsecond TimeoutDelay     = 1'000'000;
 
   private:
     UDP &udp_;

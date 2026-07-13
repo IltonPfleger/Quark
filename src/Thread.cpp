@@ -14,9 +14,14 @@ void Thread::entry(Function f, Argument a) {
 
     if (s_previous[CPU::id()]) epilogue();
 
-    new (&current->context_) Context(UserContext{}, current->stack_, current->kstack_, f, exit, a);
-
-    Context::load(current->context_);
+    if constexpr (Traits<Thread>::UserStack) {
+        new (&current->context_) Context(UserContext{}, current->stack_, current->kstack_, f, exit, a);
+        Context::load(current->context_);
+    } else {
+        CPU::IRQ::enable();
+        f(a);
+        exit();
+    }
 }
 
 Thread::Return Thread::idle(Argument) {

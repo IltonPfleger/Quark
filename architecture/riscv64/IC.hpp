@@ -20,7 +20,7 @@ class IC : Traits<PLIC> {
     }
 
     static void install(ID id, ExternalHandler handler) {
-        ERROR(id >= NumberOfInterruptions);
+        assert(id < NumberOfInterruptions);
         handlers_[id] = handler;
         PLIC::priority(id, 1);
         PLIC::enable(id);

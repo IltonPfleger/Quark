@@ -38,7 +38,7 @@ class TrapHandler {
   public:
     static void install(ID id, Handler handler, Type type = Interrupt) {
         Index index = irq2index(id, type);
-        ERROR(index >= NumberOfHandlers, index);
+        assert(index < NumberOfHandlers, index);
         s_handlers[index] = handler;
     };
 

@@ -84,7 +84,7 @@ template <> struct Traits<CacheController0> {
     static constexpr size_t CacheSize     = 2 * 1024 * 1024;
     static constexpr size_t NumberOfWays  = 16;
     static constexpr size_t CacheLineSize = 64;
-    static constexpr bool CoreIsolation   = true;
+    static constexpr bool CoreIsolation   = false;
 };
 
 template <> struct Traits<CacheController> {

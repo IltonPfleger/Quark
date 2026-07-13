@@ -144,7 +144,6 @@ class Console {
 
   private:
     static volatile inline void *panic_ = 0;
-    static inline unsigned column_      = 0;
 };
 
 } // namespace QUARK

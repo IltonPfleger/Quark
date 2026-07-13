@@ -11,6 +11,7 @@
 #include <machine/Machine.hpp>
 #include <network/link/LinkIPv4ToEthernet.hpp>
 #include <network/protocols/TFTP.hpp>
+#include <utility/Debug.hpp>
 
 using namespace QUARK;
 
@@ -25,14 +26,16 @@ class Receiver {
         current_   = buffer_.data();
         remaining_ = buffer_.length();
 
-        size_t size;
+        int size;
 
         size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current_, remaining_);
+        assert(size > 0);
         new (&linux_) Span(current_, size);
         current_ += size;
         remaining_ -= size;
 
         size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current_, remaining_);
+        assert(size > 0);
         new (&initramfs_) Span(current_, size);
         current_ += size;
         remaining_ -= size;
@@ -104,10 +107,8 @@ class LinuxLauncher {
     size_t dtb(void *buffer, size_t capacity) {
         FDT_Builder fdt(buffer, capacity);
 
-        dtb_                  = static_cast<unsigned char *>(buffer);
-        uint64_t base         = reinterpret_cast<uint64_t>(start_);
-        uint64_t initrd_start = reinterpret_cast<uint64_t>(initramfs_.data());
-        uint64_t initrd_end   = initrd_start + initramfs_.length();
+        dtb_          = static_cast<unsigned char *>(buffer);
+        uint64_t base = reinterpret_cast<uint64_t>(start_);
 
         fdt.begin("");
         {
@@ -118,10 +119,12 @@ class LinuxLauncher {
 
             fdt.begin("chosen");
             {
+                uint64_t start   = reinterpret_cast<uint64_t>(initramfs_.data());
+                uint64_t end     = start + initramfs_.length();
+                uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
+                uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
                 fdt.add("bootargs", "console=hvc0 loglevel=8");
-                uint32_t regs0[] = {CPU::hi32(initrd_start), CPU::lo32(initrd_start)};
                 fdt.add("linux,initrd-start", regs0, 2);
-                uint32_t regs1[] = {CPU::hi32(initrd_end), CPU::lo32(initrd_end)};
                 fdt.add("linux,initrd-end", regs1, 2);
             }
             fdt.end();

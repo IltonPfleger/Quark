@@ -87,7 +87,7 @@ template <typename T, typename Lock = void> class UnorderedList {
 
   private:
     T *head_;
-    Meta::IF<!Meta::IsVoid<Lock>::Result, Lock, Meta::Empty>::Result lock_;
+    Meta::IF<!Meta::IsVoid<Lock>::Result, Lock, Meta::Empty>::Result lock_{};
 };
 
 } // namespace QUARK::collections
