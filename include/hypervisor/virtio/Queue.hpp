@@ -3,9 +3,7 @@
 #include <types.hpp>
 #include <utility/Debug.hpp>
 
-namespace QUARK {
-
-namespace virtio {
+namespace QUARK::virtio {
 
 struct RingDescriptor {
     uint64_t address;
@@ -35,72 +33,72 @@ class Queue {
   public:
     Queue() = default;
 
-    Queue(uintptr_t address, uint32_t size, uint32_t align)
-        : m_address(address),
-          m_size(size),
-          m_last_available_index(0) {
+    Queue(uintptr_t address, uint32_t size, uint32_t alignament)
+        : address_(address),
+          size_(size),
+          last_(0) {
 
-        m_descriptors = reinterpret_cast<RingDescriptor *>(address);
+        descriptors_ = reinterpret_cast<RingDescriptor *>(address);
 
         address += sizeof(RingDescriptor) * size;
 
-        m_available = reinterpret_cast<RingAvailable *>(address);
+        available_ = reinterpret_cast<RingAvailable *>(address);
 
-        address += sizeof(uint16_t);
-        address += sizeof(uint16_t);
+        address += sizeof(uint16_t) * 2;
         address += sizeof(uint16_t) * size;
         address += sizeof(uint16_t);
 
-        address = (address + align - 1) & ~(align - 1);
+        address = align(address, alignament);
 
-        m_used = reinterpret_cast<RingUsed *>(address);
+        used_ = reinterpret_cast<RingUsed *>(address);
     }
 
     bool available() {
-        if (!m_available) return false;
-        return m_last_available_index != m_available->index;
+        if (!available_) return false;
+        return last_ != available_->index;
     }
 
-    int alloc() { return m_available->ring()[CPU::Atomic::finc(m_last_available_index) % m_size]; }
+    int alloc() {
+        assert(available_);
+        return available_->ring()[last_++ % size_];
+    }
 
     RingDescriptor *get(uint32_t id) {
-        assert(id < m_size);
-        return &m_descriptors[id];
+        assert(id < size_);
+        return &descriptors_[id];
     }
 
     void free(unsigned int id, unsigned int length = 0) {
-        assert(id < m_size);
-        uint16_t index               = m_used->index % m_size;
-        m_used->ring()[index].id     = id;
-        m_used->ring()[index].length = length;
-        m_used->index++;
+        assert(id < size_);
+        uint16_t index              = used_->index % size_;
+        used_->ring()[index].id     = id;
+        used_->ring()[index].length = length;
+        used_->index++;
     }
 
-    static constexpr uintptr_t size(uint32_t size, uint32_t align) {
+    uintptr_t address() const { return address_; }
+
+    static constexpr uintptr_t align(uintptr_t address, uint32_t align) { return (address + align - 1) & ~(align - 1); }
+
+    static constexpr uintptr_t size(uint32_t size, uint32_t alignament) {
         uintptr_t address = 0;
-
         address += size * sizeof(RingDescriptor);
-
-        address += 2 + 2 + (2 * size) + 2;
-
-        address = (address + align - 1) & ~(align - 1);
-
+        address += sizeof(uint16_t) * 2;
+        address += sizeof(uint16_t) * size;
         address += sizeof(uint16_t);
-        address += sizeof(uint16_t);
+        address = align(address, alignament);
+        address += sizeof(uint16_t) * 2;
         address += sizeof(RingUsedElement) * size;
-
         return address;
     }
 
-  public:
-    uintptr_t m_address;
-    uint32_t m_size;
-    uint16_t m_last_available_index;
-    RingDescriptor *m_descriptors;
-    RingAvailable *m_available;
-    RingUsed *m_used;
+  private:
+    uintptr_t address_           = 0;
+    uint32_t size_               = 0;
+    uint16_t last_               = 0;
+    RingDescriptor *descriptors_ = nullptr;
+    RingAvailable *available_    = nullptr;
+    RingUsed *used_              = nullptr;
 };
 
-} // namespace virtio
-
-} // namespace QUARK
+} // namespace QUARK::virtio

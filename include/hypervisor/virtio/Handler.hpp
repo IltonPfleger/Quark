@@ -35,12 +35,12 @@ class Handler {
 
   public:
     Handler(uint32_t id, uint32_t features, uint32_t descriptors) {
-        m_header.magic                     = ('t' << 24) | ('r' << 16) | ('i' << 8) | 'v';
-        m_header.version                   = 1;
-        m_header.id                        = id;
-        m_header.vendor                    = 0x554d4551;
-        m_header.host_features             = features;
-        m_header.max_number_of_descriptors = descriptors;
+        header_.magic_value   = ('t' << 24) | ('r' << 16) | ('i' << 8) | 'v';
+        header_.version       = 1;
+        header_.device_id     = id;
+        header_.vendor_id     = 0x554d4551;
+        header_.host_features = features;
+        header_.queue_num_max = descriptors;
     };
 
     template <typename Self> bool read(this Self &&self, uintptr_t address, uint32_t *destination) {
@@ -79,36 +79,36 @@ class Handler {
 
   protected:
     uint32_t &header(this auto &self, uint32_t offset) {
-        return reinterpret_cast<uint32_t *>(&self.m_header)[offset / 4];
+        return reinterpret_cast<uint32_t *>(&self.header_)[offset / 4];
     }
 
     uint32_t pfn(this auto &self) {
-        if (self.m_header.guest_page_size == 0) return 0;
-        return self.m_queues[self.m_header.queue_selector].m_address / self.m_header.guest_page_size;
+        if (self.header_.guest_page_size == 0) return 0;
+        return self.queues_[self.header_.queue_sel].address() / self.header_.guest_page_size;
     }
 
     void pfn(this auto &self, uint32_t source) {
-        uint32_t i       = self.m_header.queue_selector;
-        uint32_t address = source * self.m_header.guest_page_size;
-        uint32_t length  = self.m_header.queue_length;
-        uint32_t align   = self.m_header.queue_align;
+        uint32_t i       = self.header_.queue_sel;
+        uint32_t address = source * self.header_.guest_page_size;
+        uint32_t length  = self.header_.queue_num;
+        uint32_t align   = self.header_.queue_align;
 
         assert(i < MaxNumberOfQueues);
         assert(self.owner_.memory().validate(Chunk(address, Queue::size(length, align))));
 
-        new (&self.m_queues[i]) Queue(address, length, align);
+        new (&self.queues_[i]) Queue(address, length, align);
 
-        self.m_header.queue_page_frame_number = source;
+        self.header_.queue_pfn = source;
     }
 
-    auto &interrupt(this auto &self) { return self.m_header.interrupt_status; }
+    auto &interrupt(this auto &self) { return self.header_.interrupt_status; }
 
   private:
     static constexpr size_t MaxNumberOfQueues = 2;
 
   protected:
-    LegacyHeader m_header;
-    Meta::Array<MaxNumberOfQueues, Queue> m_queues;
+    LegacyHeader header_;
+    Meta::Array<MaxNumberOfQueues, Queue> queues_;
 };
 
 } // namespace virtio

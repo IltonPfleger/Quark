@@ -39,7 +39,7 @@ void Alarm::handler() {
 
     Alarms &alarms = alarms_[core];
 
-    while (1) {
+    while (true) {
         Node *head = alarms.remove();
 
         if (!head) break;

@@ -26,7 +26,7 @@ class Console : public Handler, public Observer<const unsigned char *, size_t> {
     void notify(unsigned int source) {
         if (source != TX) return;
 
-        auto &queue = this->m_queues[TX];
+        auto &queue = this->queues_[TX];
 
         while (queue.available()) {
             int head      = queue.alloc();
@@ -36,7 +36,7 @@ class Console : public Handler, public Observer<const unsigned char *, size_t> {
     }
 
     void update(const unsigned char *buffer, size_t size) override {
-        Queue &queue = this->m_queues[RX];
+        Queue &queue = this->queues_[RX];
 
         if (!queue.available()) return;
 
