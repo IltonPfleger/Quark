@@ -8,7 +8,7 @@ namespace QUARK {
 
 class Alarm {
     using Node   = collections::Node<Alarm *, Microsecond, true>;
-    using Alarms = collections::OrderedList<Node>;
+    using Alarms = collections::OrderedList<Node, Spin>;
 
   public:
     Alarm(Microsecond);
@@ -22,7 +22,6 @@ class Alarm {
 
   private:
     static constinit inline Alarms alarms_[Traits<CPU>::Active];
-    static constinit inline Spin locks_[Traits<CPU>::Active];
 
   private:
     Node node_;
