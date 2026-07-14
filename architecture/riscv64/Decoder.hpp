@@ -1,5 +1,6 @@
-#ifndef __QUARK_RISCV64_SBI_DECODER__
-#define __QUARK_RISCV64_SBI_DECODER__
+#pragma once
+
+#include <libraries/libc/string.h>
 
 namespace QUARK {
 
@@ -41,14 +42,18 @@ class Decoder {
     static uint8_t rs2(uint16_t instruction) { return 8 + ((instruction >> 2) & 0x7); }
     static uint8_t rs2(uint32_t instruction) { return (instruction >> 20) & 0x1f; }
 
-    static uint32_t uncompressed(uintptr_t pc) { return *reinterpret_cast<uint32_t *>(pc); }
+    static uint32_t uncompressed(uintptr_t pc) {
+        uint32_t result;
+        memcpy(&result, reinterpret_cast<uint32_t *>(pc), sizeof(uint32_t));
+        return result;
+    }
+
     static uint16_t compressed(uintptr_t pc) {
-        const uint16_t instruction16 = *reinterpret_cast<const uint16_t *>(pc);
-        if ((instruction16 & 0x3) != 0x3) return instruction16;
+        uint16_t result;
+        memcpy(&result, reinterpret_cast<uint16_t *>(pc), sizeof(uint16_t));
+        if ((result & 0x3) != 0x3) return result;
         return 0;
     }
 };
 
 } // namespace QUARK
-
-#endif
