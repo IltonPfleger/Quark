@@ -13,11 +13,14 @@ class Timer : public ArchitectureCommon::Timer {
   public:
     static Microsecond now() { return us(CLINT::mtime()); }
 
-    static void delay(Microsecond delta) {
-        Microsecond elapsed = now() + delta;
-        while (now() < elapsed)
-            ;
-    }
+    class Delay {
+      public:
+        template <typename T> Delay(T delta) {
+            Microsecond elapsed = now() + delta;
+            while (now() < elapsed)
+                ;
+        }
+    };
 
     static void init() {
         if constexpr (!Traits<RISCV>::Supervisor) {

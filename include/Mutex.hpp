@@ -1,7 +1,7 @@
-#ifndef __QUARK_MUTEX__
-#define __QUARK_MUTEX__
+#pragma once
 
 #include <Semaphore.hpp>
+#include <utility/Guard.hpp>
 
 namespace QUARK {
 
@@ -12,8 +12,8 @@ class Mutex : Semaphore {
 
     void acquire() { p(); }
     void release() { v(); }
+
+    using Guard = QUARK::Guard<Mutex, &Mutex::acquire, &Mutex::release>;
 };
 
 } // namespace QUARK
-
-#endif

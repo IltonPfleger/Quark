@@ -39,7 +39,6 @@ class VirtualCPU {
         csrs<MachineMode::STATUS>(MachineMode::TW | MachineMode::PP_S | MachineMode::PIRQE);
         csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE);
         csrw<MachineMode::EPC>(vm_->memory().start());
-        CPU::tp(core);
         dispatch(core, args...);
     }
 

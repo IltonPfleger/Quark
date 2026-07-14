@@ -41,6 +41,7 @@ class FDT_Builder {
     void add(const char *name) { add_property(name, nullptr, 0); }
     void add(const char *name, const char *value) { add_property(name, value, strlen(value) + 1); }
     void add(const char *name, uint32_t value) { add_property(name, &((value = CPU::htobe32(value))), sizeof(value)); }
+
     void add(const char *name, uint32_t *values, size_t length) {
         for (size_t i = 0; i < length; i++)
             values[i] = CPU::htobe32(values[i]);

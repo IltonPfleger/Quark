@@ -10,7 +10,6 @@
 #include <memory/Heap.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
-#include <utility/Delay.hpp>
 #include <utility/collections/FIFO.hpp>
 
 namespace QUARK {
@@ -105,11 +104,11 @@ template <uintptr_t Base> class DWC_Ether_QoS_PHY {
         while (MDIO::read(Phy, BASIC_CONTROL) & SOFTWARE_RESET)
             ;
 
-        Delay(Microsecond(1));
+        Timer::Delay(Microsecond(1));
 
         negotiate();
 
-        Delay(Microsecond(1));
+        Timer::Delay(Microsecond(1));
 
         // rgmii_sw_dr_2 = <0x0>;
         MDIO::clear45(Phy, PAD_DRIVE_STRENGTH_CFG, 1 << 12);
@@ -147,7 +146,7 @@ template <uintptr_t Base> class DWC_Ether_QoS_PHY {
         while (!(MDIO::read(Phy, STATUS) & STATUS_LINK_STATUS))
             ;
 
-        Delay(Microsecond(1));
+        Timer::Delay(Microsecond(1));
     }
 
     static bool duplex() { return MDIO::read(Phy, STATUS) & (1 << 13); }
@@ -349,7 +348,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
     static void reset() {
         Reg32(Address, DMA_MODE) |= MODE_SOFTWARE_RESET;
-        Delay(Microsecond(1));
+        Timer::Delay(Microsecond(1));
         while (Reg32(Address, DMA_MODE) & MODE_SOFTWARE_RESET)
             ;
     }

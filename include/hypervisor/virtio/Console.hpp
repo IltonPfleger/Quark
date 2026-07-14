@@ -23,6 +23,8 @@ class Console : public Handler, public Observer<const unsigned char *, size_t> {
         device_->attach(this);
     }
 
+    uint32_t config(uint32_t) { return 0; }
+
     void notify(unsigned int source) {
         if (source != TX) return;
 

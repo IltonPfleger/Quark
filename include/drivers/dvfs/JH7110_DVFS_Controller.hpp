@@ -13,7 +13,7 @@ namespace QUARK {
 class JH7110_DVFS_Controller : public DVFS_Controller {
     typedef JH7110_Clock_Controller<void> Clock_Controller;
 
-    static constexpr PState States[] = {
+    static inline const constinit PState States[] = {
         {1500000000, 1040000},
         {750000000, 900000},
         {500000000, 900000},

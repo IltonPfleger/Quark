@@ -17,9 +17,9 @@ class IllegalInstruction {
     static void dispatch(ContextFrame *context) {
         uint32_t instruction = context->value & 0xFFFFFFFF;
         if (Decoder::rdtime(instruction)) {
-            uint8_t rd     = Decoder::rd(instruction);
-            (*context)[rd] = CLINT::mtime();
+            uint8_t rd = Decoder::rd(instruction);
             context->pc += 4;
+            (*context)[rd] = CLINT::mtime();
         } else if (Decoder::wfi(instruction)) {
             Alarm(0);
             context->pc += 4;

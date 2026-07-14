@@ -38,7 +38,7 @@ template <> struct Traits<Alarm> {
 
 template <> struct Traits<Debug> {
     static constexpr bool Enable = true;
-    static constexpr bool Error  = Enable && true;
+    static constexpr bool Error  = Enable && false;
     static constexpr bool Trace  = Enable && true;
 };
 

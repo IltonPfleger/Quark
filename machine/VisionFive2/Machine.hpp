@@ -17,15 +17,13 @@ class Machine : Driver {
         riscv64::init();
 
         if (CPU::id() == Traits<CPU>::BSP) {
-            Microsecond delay = 100;
-
             JH7110_DVFS_Controller dvfs;
             dvfs.set(dvfs.available()[0]);
             Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, 2);
             Clock_Controller::multiplex(Clock_Controller::SYSCRG_CLK_CPU_ROOT, 0);
-            Timer::delay(delay);
+            Timer::Delay(100);
             PLL0::rate(1500000000);
-            Timer::delay(delay);
+            Timer::Delay(100);
             Clock_Controller::multiplex(Clock_Controller::SYSCRG_CLK_CPU_ROOT, 1);
             dvfs.set(dvfs.available()[dvfs.available().length() - 1]);
         }

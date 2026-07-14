@@ -123,7 +123,7 @@ class LinuxLauncher {
                 uint64_t end     = start + initramfs_.length();
                 uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
                 uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
-                fdt.add("bootargs", "console=hvc0 loglevel=8");
+                fdt.add("bootargs", "console=hvc0 loglevel=8 rdinit=/init root=/dev/ram");
                 fdt.add("linux,initrd-start", regs0, 2);
                 fdt.add("linux,initrd-end", regs1, 2);
             }
@@ -133,7 +133,7 @@ class LinuxLauncher {
             {
                 fdt.add("#address-cells", 1);
                 fdt.add("#size-cells", 0u);
-                fdt.add("timebase-frequency", 0x989680);
+                fdt.add("timebase-frequency", 4'000'000);
                 fdt.begin("cpu@0");
                 {
                     fdt.add("device_type", "cpu");
@@ -229,8 +229,6 @@ class LinuxLauncher {
 };
 
 int main() {
-    using namespace QUARK;
-
     typedef Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result Device;
 
     auto *link = new QUARK::LinkIPv4ToEthernet(*Device::instance());
@@ -240,7 +238,7 @@ int main() {
 
     Receiver receiver(*tftp);
 
-    const size_t MemorySize = 1024 * 1024 * 128;
+    const size_t MemorySize = 1024 * 1024 * 512;
 
     const auto &linux     = receiver.linux();
     const auto &initramfs = receiver.initramfs();

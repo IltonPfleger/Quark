@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Mutex.hpp>
 #include <Semaphore.hpp>
 #include <network/protocols/UDP.hpp>
 
@@ -34,6 +35,8 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
     ~TFTP() { udp_.detach(this); }
 
     int request(const NetworkAddress &&address, const char *filename, void *buffer, size_t size) {
+        TraceIn(filename);
+
         buffer_   = static_cast<uint8_t *>(buffer);
         size_     = size;
         received_ = 0;
@@ -43,26 +46,11 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
 
         request(filename);
 
-        int retry = 0;
-        while (1) {
-            uint16_t block = block_;
-            Alarm timeout(TimeoutDelay, handler_);
-            if (state_ == State::WAITING) {
-                if (retry == MaxRetry) break;
-                retry++;
-                request(filename);
-            }
-            if (state_ == State::RECEIVING && block == block_) {
-                if (retry == MaxRetry) break;
-                retry++;
-                ack(block - 1);
-            }
-            if (state_ == State::DONE || state_ == State::ERROR) break;
-        }
+        handler_.p();
+
+        TraceOut(received_);
 
         if (state_ != State::DONE || received_ == 0) return -1;
-
-        Trace("\n[OK]");
 
         return received_;
     }
@@ -70,6 +58,8 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
     void update(NetworkBuffer packet, uint16_t, uint16_t source) override {
         uint16_t *header   = packet.data<uint16_t *>();
         uint16_t operation = CPU::be16toh(*header);
+
+        Mutex::Guard _(lock_);
 
         if (state_ == State::WAITING) {
             state_ = State::RECEIVING;
@@ -160,13 +150,14 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
 
   private:
     static constexpr const char BlockSizeString[] = "1468";
-    static constexpr unsigned int BlockSize       = 1468;
-    static constexpr unsigned int MaxRetry        = 5;
+    static constexpr uint32_t BlockSize           = 1468;
+    static constexpr uint32_t MaxRetry            = 5;
     static constexpr Microsecond TimeoutDelay     = 1'000'000;
 
   private:
     UDP &udp_;
     NetworkAddress server_;
+    Mutex lock_;
     Semaphore handler_;
     State state_;
     uint8_t *buffer_;
