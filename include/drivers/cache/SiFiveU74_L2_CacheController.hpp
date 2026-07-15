@@ -45,7 +45,9 @@ template <typename Tag> class SiFiveU74_L2_CacheController {
     static void barrier() { asm volatile("fence iorw, iorw" ::: "memory"); }
 
     static void init() {
-        *WayEnable |= 0xFF;
+        if constexpr (Traits<Tag>::Enable) {
+            *WayEnable |= 0xFF;
+        }
 
         if constexpr (Traits<Tag>::Isolation) {
             size_t core        = CPU::id();

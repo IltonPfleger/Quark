@@ -6,6 +6,8 @@
 namespace QUARK {
 
 class PLL0 : Driver {
+    static inline constinit size_t Rates[][3] = {{1500000000UL, 2, 125}};
+
   public:
     static void pd(uint32_t value) {
         Reg32(k_sys_syscon_base, 0x20) &= ~(1 << 27);
@@ -42,17 +44,18 @@ class PLL0 : Driver {
         Reg32(k_sys_syscon_base, 0x18) |= (value & 0x1) << 25;
     }
 
-    static void rate(uintptr_t) {
-        pd(1);
-
+    static void rate(uintptr_t rate) {
         dacpd(1);
         dsmpd(1);
 
-        prediv(2);
-        fbdiv(125);
-        postdiv1(0);
+        for (const auto &i : Rates) {
+            if (i[0] == rate) {
+                prediv(i[1]);
+                fbdiv(i[2]);
+            }
+        }
 
-        pd(0);
+        postdiv1(0);
     }
 
     static uint64_t rate() {
@@ -149,7 +152,7 @@ template <typename> class JH7110_Clock_Controller : Driver {
         } else {
             address = k_sys_crg_base;
         }
-        return Reg32(address, id) & ~0xFFFFFF;
+        return Reg32(address, id) & 0xFFFFFF;
     }
 
     static void divide(uint64_t id, uint32_t value) {

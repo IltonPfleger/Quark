@@ -1,6 +1,4 @@
-#ifndef __QUARK_AXP10060__
-#define __QUARK_AXP10060__
-
+#pragma once
 #include <drivers/i2c/I2C_Controller.hpp>
 #include <drivers/pmic/PMIC_Controller.hpp>
 
@@ -16,14 +14,21 @@ template <typename Tag> class AXP15060_Controller : public PMIC_Controller {
         : i2c_(i2c) {}
 
     virtual bool voltage(unsigned int rail, uint32_t microvolts) {
-        const unsigned int *range = nullptr;
-        for (auto i : Traits::Voltages) {
-            if (i[0] == rail) range = i + 1;
+        bool found = false;
+
+        for (auto &i : Traits::Voltages) {
+            if (i[0] == rail) {
+                found = true;
+                if (microvolts < i[1] || microvolts > i[2]) {
+                    return false;
+                }
+                break;
+            }
         }
 
-        if (microvolts < range[0] || microvolts > range[1]) return false;
+        if (!found) return false;
 
-        unsigned char data = 0;
+        uint8_t data = 0;
 
         if (microvolts <= 1210) {
             data = (microvolts - 500) / 10;
@@ -31,7 +36,7 @@ template <typename Tag> class AXP15060_Controller : public PMIC_Controller {
             data = 71 + ((microvolts - 1220) / 20);
         }
 
-        char payload[2];
+        uint8_t payload[2];
 
         payload[0] = DCDC1_VOLTAGE_CONTROL + rail;
         payload[1] = data;
@@ -42,8 +47,8 @@ template <typename Tag> class AXP15060_Controller : public PMIC_Controller {
     }
 
     virtual uint32_t voltage(unsigned int rail) {
-        char target = DCDC1_VOLTAGE_CONTROL + rail;
-        char data   = 0;
+        uint8_t target = DCDC1_VOLTAGE_CONTROL + rail;
+        uint8_t data   = 0;
 
         if (!i2c_.write(Traits::Address, &target, 1, false)) return 0;
 
@@ -63,5 +68,3 @@ template <typename Tag> class AXP15060_Controller : public PMIC_Controller {
 };
 
 } // namespace QUARK
-
-#endif

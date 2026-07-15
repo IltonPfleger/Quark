@@ -87,6 +87,7 @@ template <> struct Traits<CacheController0> {
     static constexpr size_t CacheLineSize            = 64;
     static constexpr bool Isolation                  = false;
     static constexpr bool Prefetcher                 = true;
+    static constexpr bool Enable                     = true;
     static constexpr uintptr_t PrefetcherAddresses[] = {0x2032000, 0x2034000, 0x2036000, 0x2038000};
 };
 
@@ -162,7 +163,7 @@ template <> struct Traits<I2C> {
 /* ********** PMIC ********** */
 template <> struct Traits<PMIC0> {
     static constexpr unsigned long Address      = 0x36;
-    static constexpr unsigned int Voltages[][3] = {{2, 800, 1040}};
+    static constexpr unsigned int Voltages[][3] = {{1, 800000, 1040000}};
 };
 
 template <> struct Traits<PMIC> {

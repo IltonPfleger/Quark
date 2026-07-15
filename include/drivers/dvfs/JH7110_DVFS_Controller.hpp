@@ -14,10 +14,10 @@ class JH7110_DVFS_Controller : public DVFS_Controller {
     typedef JH7110_Clock_Controller<void> Clock_Controller;
 
     static inline const constinit PState States[] = {
+        {375000000, 800000},
+        {500000000, 800000},
+        {750000000, 800000},
         {1500000000, 1040000},
-        {750000000, 900000},
-        {500000000, 900000},
-        {375000000, 900000},
     };
 
   public:
@@ -26,34 +26,36 @@ class JH7110_DVFS_Controller : public DVFS_Controller {
           pmic_(i2c_) {}
 
     virtual bool set(const PState &pstate) override {
-        PState selected;
-        bool found = false;
+        bool valid = false;
 
         for (auto &i : States) {
             if (i.frequency == pstate.frequency && i.voltage == pstate.voltage) {
-                selected = i;
-                found    = true;
+                valid = true;
             }
         }
 
-        if (!found) return false;
+        if (!valid) return false;
 
-        uint32_t divisor = 1500000000 / selected.frequency;
+        uint32_t divisor = 1500000000 / pstate.frequency;
 
-        if (!pmic_.voltage(2, pstate.voltage)) return false;
-
-        Delay(Microsecond(1));
-
-        Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, divisor);
+        if (pstate.frequency > frequency()) {
+            if (!pmic_.voltage(1, pstate.voltage)) return false;
+            Timer::Delay(1'000);
+            Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, divisor);
+        } else {
+            Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, divisor);
+            Timer::Delay(1'000);
+            if (!pmic_.voltage(1, pstate.voltage)) return false;
+        }
 
         return true;
     }
 
     virtual Span<const PState> available() override { return Span(States, sizeof(States) / sizeof(PState)); }
 
-    uintmax_t voltage() { return pmic_.voltage(2); }
+    uintmax_t voltage() { return pmic_.voltage(1); }
 
-    uintmax_t clock() { return 1500000000 / Clock_Controller::divisor(Clock_Controller::SYSCRG_CLK_CPU_CORE); }
+    uintmax_t frequency() { return 1500000000 / Clock_Controller::divisor(Clock_Controller::SYSCRG_CLK_CPU_CORE); }
 
   private:
     DesignWare_I2C_Controller<I2C5> i2c_;

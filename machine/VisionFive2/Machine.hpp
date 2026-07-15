@@ -18,13 +18,17 @@ class Machine : Driver {
 
         if (CPU::id() == Traits<CPU>::BSP) {
             JH7110_DVFS_Controller dvfs;
-            dvfs.set(dvfs.available()[0]);
+
             Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, 2);
             Clock_Controller::multiplex(Clock_Controller::SYSCRG_CLK_CPU_ROOT, 0);
-            Timer::Delay(100);
+            Timer::Delay(1'000);
+
             PLL0::rate(1500000000);
-            Timer::Delay(100);
+            Timer::Delay(1'000);
+
             Clock_Controller::multiplex(Clock_Controller::SYSCRG_CLK_CPU_ROOT, 1);
+            Timer::Delay(1'000);
+
             dvfs.set(dvfs.available()[dvfs.available().length() - 1]);
         }
 
