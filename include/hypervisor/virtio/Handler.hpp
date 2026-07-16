@@ -64,12 +64,12 @@ class Handler {
                 *destination = self.pfn();
                 valid        = true;
                 break;
-            default: break;
-        }
-
-        if (offset >= 0x100 && offset < 0x140) {
-            valid        = true;
-            *destination = self.config(offset);
+            default:
+                if (offset >= 0x100 && offset < 0x140) {
+                    valid        = true;
+                    *destination = self.config(offset);
+                }
+                break;
         }
 
         return valid;
@@ -94,9 +94,7 @@ class Handler {
     }
 
   protected:
-    uint32_t &header(this auto &self, uint32_t offset) {
-        return reinterpret_cast<uint32_t *>(&self.header_)[offset / 4];
-    }
+    uint32_t &header(this auto &self, uint32_t offset) { return reinterpret_cast<uint32_t *>(&self.header_)[offset / 4]; }
 
     uint32_t pfn(this auto &self) {
         if (self.header_.guest_page_size == 0) return 0;

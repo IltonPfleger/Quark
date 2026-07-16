@@ -22,7 +22,6 @@ class Counter {
             }
             case 1: {
                 int request = CPU::Atomic::fdec(end_);
-                // Console::println(request, CPU::id());
                 if (request == 1) {
                     lock_.v();
                 }
@@ -45,7 +44,7 @@ class Counter {
 
   public:
     static constinit volatile inline size_t counter_ = 0;
-    static constinit volatile inline size_t end_     = 1;
+    static constinit volatile inline size_t end_     = 5;
     static constinit inline Semaphore lock_          = 0;
 };
 

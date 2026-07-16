@@ -4,6 +4,7 @@
 #include <Thread.hpp>
 #include <Traits.hpp>
 #include <hypervisor/VirtualMachine.hpp>
+#include <hypervisor/virtio/Flags.hpp>
 #include <hypervisor/virtio/Handler.hpp>
 #include <memory/Heap.hpp>
 #include <network/NetworkDevice.hpp>
@@ -19,7 +20,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
   public:
     Network(VirtualMachine &owner)
-        : Handler(1, 0, 32),
+        : Handler(1, 0, N),
           device_(DEVICE::instance()),
           owner_(owner),
           running_(true),
@@ -28,12 +29,15 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     }
 
     ~Network() {
-        device_->detach(this);
         running_ = false;
         semaphore_.v();
+        thread_.join();
+        device_->detach(this);
     }
 
-    void notify(unsigned int source) {
+    uint32_t config(uint32_t offset) { return 0; }
+
+    void notify(uint32_t source) {
         if (source != TX) return;
         semaphore_.v();
     }
@@ -48,9 +52,11 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
         int id = queue.alloc();
 
-        auto descriptor   = queue.get(id);
+        auto *descriptor = queue.get(id);
+
         auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
 
+        assert(descriptor->length >= size + sizeof(NetworkHeader));
         memset(destination, 0, sizeof(NetworkHeader));
         memcpy(destination + sizeof(NetworkHeader), data, size);
 
@@ -72,7 +78,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
             auto &queue = this->queues_[TX];
 
-            while (queue.available()) {
+            if (queue.available()) {
                 int head      = queue.alloc();
                 size_t length = process(queue, head);
                 queue.free(head, length);
@@ -86,6 +92,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     size_t process(Queue &queue, int head) {
         size_t total = 0;
         int current  = head;
+        size_t count = 0;
 
         RingDescriptor *descriptor = queue.get(current);
         total += descriptor->length;
@@ -96,12 +103,14 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
             send(data, length);
         }
 
-        while (descriptor->flags & 0x1) {
+        while (descriptor->flags & VRING_DESC_F_NEXT) {
+            assert(count < N);
             current    = descriptor->next;
             descriptor = queue.get(current);
             total += descriptor->length;
             auto *data = reinterpret_cast<uint8_t *>(descriptor->address);
             send(data, descriptor->length);
+            count++;
         }
 
         return total;
@@ -121,11 +130,9 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
   public:
     static constexpr uintptr_t Address = ADDRESS;
     static constexpr size_t Size       = sizeof(LegacyHeader);
+    static constexpr size_t N          = 32;
     static constexpr uint32_t TX       = 1;
     static constexpr uint32_t RX       = 0;
-
-  private:
-    static constexpr uintptr_t Number = 128;
 
   private:
     DEVICE *device_;

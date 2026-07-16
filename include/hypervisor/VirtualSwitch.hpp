@@ -27,11 +27,7 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
         return length;
     }
 
-    void update(const NetworkBuffer *buffer) override {
-        lock_.acquire();
-        this->notify(buffer);
-        lock_.release();
-    }
+    void update(const NetworkBuffer *buffer) override { this->notify(buffer); }
 
     static auto instance() {
         static VirtualSwitch instance;

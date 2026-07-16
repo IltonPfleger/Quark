@@ -28,13 +28,9 @@ template <uintptr_t Base> class DWC_Ether_QoS_MDIO : Driver {
             ;
     }
 
-    static void set(unsigned char phy, unsigned char dev, unsigned short data) {
-        write(phy, dev, read(phy, dev) | data);
-    }
+    static void set(unsigned char phy, unsigned char dev, unsigned short data) { write(phy, dev, read(phy, dev) | data); }
 
-    static void clear(unsigned char phy, unsigned char dev, unsigned short data) {
-        write(phy, dev, read(phy, dev) & ~data);
-    }
+    static void clear(unsigned char phy, unsigned char dev, unsigned short data) { write(phy, dev, read(phy, dev) & ~data); }
 
     static void write(unsigned char phy, unsigned char dev, unsigned short data) {
         Reg32(Base, DATA) = data;
@@ -52,17 +48,11 @@ template <uintptr_t Base> class DWC_Ether_QoS_MDIO : Driver {
         write(phy, 0x1F, data);
     }
 
-    static void set45(unsigned char phy, unsigned short reg, unsigned short data) {
-        write45(phy, reg, read45(phy, reg) | data);
-    }
+    static void set45(unsigned char phy, unsigned short reg, unsigned short data) { write45(phy, reg, read45(phy, reg) | data); }
 
-    static void clear45(unsigned char phy, unsigned short reg, unsigned short data) {
-        write45(phy, reg, read45(phy, reg) & ~data);
-    }
+    static void clear45(unsigned char phy, unsigned short reg, unsigned short data) { write45(phy, reg, read45(phy, reg) & ~data); }
 
-    static unsigned short read45(unsigned char phy, unsigned short reg) {
-        return write(phy, 0x1E, reg), read(phy, 0x1F);
-    }
+    static unsigned short read45(unsigned char phy, unsigned short reg) { return write(phy, 0x1E, reg), read(phy, 0x1F); }
 };
 
 template <uintptr_t Base> class DWC_Ether_QoS_PHY {
@@ -355,6 +345,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
     DWC_Ether_QoS_Buffer *alloc(size_t length) {
         NetworkBuffer::Node *node = nullptr;
+
         while (!(node = sx_list_.remove())) {
             Thread::yield();
         }
@@ -366,48 +357,45 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         return buffer;
     }
 
-    void free(DWC_Ether_QoS_Buffer *buffer) {
-        sx_list_.insert(buffer->node());
-        sx_tail_.finc();
-    }
+    void free(DWC_Ether_QoS_Buffer *buffer) { sx_list_.insert(buffer->node()); }
 
     int send(const void *data, size_t length) {
         Cache::flush(data, length);
 
-        size_t i = sx_head_.finc();
+        sx_lock_.acquire();
+
+        size_t &i = sx_head_;
 
         Descriptor &descriptor = sx_descriptors_[i % MyTraits::SendBufferCount];
 
-        while (1) {
-            if (i - sx_tail_.load() >= MyTraits::SendBufferCount) Thread::yield();
-            Cache::invalidate(&descriptor, sizeof(Descriptor));
-            if (!(descriptor.des3 & Descriptor::OWN)) break;
-            Thread::yield();
+        Cache::invalidate(&descriptor, sizeof(Descriptor));
+        if (descriptor.des3 & Descriptor::OWN) {
+            sx_lock_.release();
+            return -1;
         }
 
         descriptor.buffer(data);
         descriptor.des2 = length & 0x3FFF;
         descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
-
         Cache::flush(&descriptor, sizeof(Descriptor));
 
-        i                                   = sx_head_ % MyTraits::SendBufferCount;
-        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + i);
+        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + ++i);
+
+        sx_lock_.release();
 
         return length;
     }
 
     DWC_Ether_QoS_Buffer *receive() {
-        size_t i = rx_head_.finc();
+        size_t &i = rx_head_;
 
         Descriptor &descriptor = rx_descriptors_[i % MyTraits::ReceiveBufferCount];
 
-        while (1) {
-            if (i - rx_tail_.load() >= MyTraits::ReceiveBufferCount) Thread::yield();
-            Cache::invalidate(&descriptor, sizeof(Descriptor));
-            if (!(descriptor.des3 & Descriptor::OWN)) break;
-            Thread::yield();
-        }
+        Cache::invalidate(&descriptor, sizeof(Descriptor));
+
+        if (descriptor.des3 & Descriptor::OWN) return nullptr;
+
+        i++;
 
         DWC_Ether_QoS_Buffer *buffer = descriptor.template buffer<DWC_Ether_QoS_Buffer *>();
 
@@ -421,7 +409,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     }
 
     void release(DWC_Ether_QoS_Buffer *buffer) {
-        size_t i = rx_tail_.finc() % MyTraits::ReceiveBufferCount;
+        size_t i = rx_tail_++ % MyTraits::ReceiveBufferCount;
 
         Descriptor &descriptor = rx_descriptors_[i];
 
@@ -433,7 +421,6 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         Cache::flush(&descriptor, sizeof(Descriptor));
 
-        i                                   = rx_tail_ % MyTraits::ReceiveBufferCount;
         Reg32(Address, CH0_RX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(rx_descriptors_ + i);
     }
 
@@ -448,10 +435,10 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
     DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
 
-    Atomic<size_t> sx_head_;
-    Atomic<size_t> sx_tail_;
-    Atomic<size_t> rx_head_;
-    Atomic<size_t> rx_tail_;
+    Mutex sx_lock_;
+    size_t sx_head_;
+    size_t rx_head_;
+    size_t rx_tail_;
 };
 
 template <unsigned long Base> class DWC_Ether_QoS_MTL : Driver {
@@ -571,9 +558,7 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
         return &instance;
     }
 
-    static volatile uint32_t &reg32(size_t offset) {
-        return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset);
-    }
+    static volatile uint32_t &reg32(size_t offset) { return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset); }
 
   private:
     Address address_;

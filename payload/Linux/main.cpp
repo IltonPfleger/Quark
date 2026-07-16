@@ -179,6 +179,8 @@ int main() {
     Span<const uint8_t> initramfs(INITRD, sizeof(INITRD));
 
     LinuxLauncher vm0(128 * 1024 * 1024, kernel, initramfs);
+    LinuxLauncher vm1(128 * 1024 * 1024, kernel, initramfs);
+    LinuxLauncher vm2(128 * 1024 * 1024, kernel, initramfs);
 
     while (1)
         Delay(Second(1));

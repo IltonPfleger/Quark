@@ -1,5 +1,4 @@
-// #include <SDs.hpp>
-#include <NetworkVampire.hpp>
+// #include <NetworkVampire.hpp>
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
 #include <architecture/VirtualCPU.hpp>
@@ -15,23 +14,23 @@
 #include <network/protocols/TFTP.hpp>
 #include <utility/Span.hpp>
 
-// #define ARTERY_PROJECT
-// #define NO_DATA_SOURCE
-//
-// #include <boolean_filters.h>
-// #include <main_traits.h>
-// #include <seu.h>
-// #include <smartdata.h>
-// #include <transducer.h>
-// #include <transformer.h>
-//
-// using DS                = Dynamics_State;
-// using DS_Proxy          = Interested_SmartData<DS::Unit::Wrap<DS::UNIT>>;
-// using OBRT_Fuser        = Object_Recognition_And_Tracking_Fuser;
-// using OBRT_Fuser_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 10)>>;
-// using OBRT_Camera_Proxy = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 11)>>;
-// using OBRT_LiDAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 12)>>;
-// using OBRT_RADAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 13)>>;
+#define ARTERY_PROJECT
+#define NO_DATA_SOURCE
+
+#include <boolean_filters.h>
+#include <main_traits.h>
+#include <seu.h>
+#include <smartdata.h>
+#include <transducer.h>
+#include <transformer.h>
+
+using DS                = Dynamics_State;
+using DS_Proxy          = Interested_SmartData<DS::Unit::Wrap<DS::UNIT>>;
+using OBRT_Fuser        = Object_Recognition_And_Tracking_Fuser;
+using OBRT_Fuser_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 10)>>;
+using OBRT_Camera_Proxy = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 11)>>;
+using OBRT_LiDAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 12)>>;
+using OBRT_RADAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 13)>>;
 
 namespace QUARK {
 
@@ -71,7 +70,7 @@ class Receiver {
     const auto &epos() const { return epos_; }
 
   private:
-    static constexpr size_t BufferSize = 128 * 1024 * 1024;
+    static constexpr size_t BufferSize = 64 * 1024 * 1024;
 
   private:
     TFTP &tftp_;
@@ -306,43 +305,43 @@ class EPOS_Launcher {
 //   private:
 //     Value _value;
 // };
-//
-// void smartdata() {
-//     TSTP::init();
-//
-//     // SEU_SmartData *seu = new SEU_SmartData();
-//
-//     // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
-//     // rp->set_default();
-//
-//     // Unit_Dev_Expiry::List *ud_list;
-//
-//     // ud_list = new Unit_Dev_Expiry::List();
-//     // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
-//
-//     // ud_list = new Unit_Dev_Expiry::List();
-//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
-//
-//     // ud_list = new Unit_Dev_Expiry::List();
-//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
-//
-//     // ud_list = new Unit_Dev_Expiry::List();
-//     // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
-//
-//     // ud_list = new Unit_Dev_Expiry::List();
-//     // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-//     // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
-//     // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
-//     // seu->add_boolean_filter(rss);
-//
-//     new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000);
-//     new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), 40'000);
-//     new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), 150'000);
-//     new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), 100'000);
-//     new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), 40'000);
-//     new Antigravity_Proxy(Antigravity_Proxy::Region(0, 0, 0, 100, Antigravity_Proxy::now(), INFINITE), 10'000);
-// }
+
+void smartdata() {
+    TSTP::init();
+
+    // SEU_SmartData *seu = new SEU_SmartData();
+
+    // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
+    // rp->set_default();
+
+    // Unit_Dev_Expiry::List *ud_list;
+
+    // ud_list = new Unit_Dev_Expiry::List();
+    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
+    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
+
+    // ud_list = new Unit_Dev_Expiry::List();
+    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
+
+    // ud_list = new Unit_Dev_Expiry::List();
+    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
+
+    // ud_list = new Unit_Dev_Expiry::List();
+    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
+
+    // ud_list = new Unit_Dev_Expiry::List();
+    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
+    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
+    // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
+    // seu->add_boolean_filter(rss);
+    // new Antigravity_Proxy(Antigravity_Proxy::Region(0, 0, 0, 100, Antigravity_Proxy::now(), INFINITE), 10'000);
+
+    new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000);
+    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), 40'000);
+    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), 150'000);
+    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), 100'000);
+    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), 40'000);
+}
 
 int main() {
     using namespace QUARK;
@@ -360,37 +359,44 @@ int main() {
     const auto &initramfs   = receiver->initramfs();
     const auto &epos        = receiver->epos();
 
+    (void)linux;
+    (void)initramfs;
+    (void)epos;
+
     new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
-    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
 
-    //// DYNAMICS STATE
-    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    // while (QUARK::sbi::Counter::counter_ != 1)
-    //     ;
+    // DYNAMICS STATE
+    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    while (QUARK::sbi::Counter::counter_ != 1)
+        ;
 
-    //// Fuser
-    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    // while (QUARK::sbi::Counter::counter_ != 2)
-    //     ;
+    // Fuser
+    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    while (QUARK::sbi::Counter::counter_ != 2)
+        ;
 
-    //// RADAR
-    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    // while (QUARK::sbi::Counter::counter_ != 3)
-    //     ;
+    // RADAR
+    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    while (QUARK::sbi::Counter::counter_ != 3)
+        ;
 
-    //// LiDAR
-    // new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    // while (QUARK::sbi::Counter::counter_ != 4)
-    //     ;
+    // LiDAR
+    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    while (QUARK::sbi::Counter::counter_ != 4)
+        ;
 
     // Camera
     new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    // while (QUARK::sbi::Counter::counter_ != 5)
-    //     ;
+    while (QUARK::sbi::Counter::counter_ != 5)
+        ;
 
-    // QUARK::Delay(QUARK::Microsecond(5'000'000));
+    QUARK::Delay(QUARK::Microsecond(5'000'000));
 
-    // smartdata();
+    smartdata();
+
+    // while (1) {
+    //     QUARK::Delay(QUARK::Microsecond(100'000'000));
+    // }
 
     // new NetworkVampire<VirtualSwitch<Device>>();
 

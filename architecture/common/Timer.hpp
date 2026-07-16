@@ -14,8 +14,9 @@ class Timer {
     static constexpr uintmax_t AlarmFrequency  = TimerFrequency / Traits<Alarm>::Frequency;
     static constexpr uintmax_t ThreadFrequency = TimerFrequency / Traits<Thread>::Frequency;
     static constexpr uintmax_t Active          = Traits<QUARK::CPU>::Active;
-    using ThreadTicker                         = Ticker<ThreadFrequency, Thread::reschedule, Active>;
-    using AlarmTicker                          = Ticker<AlarmFrequency, Alarm::handler, Active>;
+
+    using ThreadTicker = Ticker<ThreadFrequency, Thread::reschedule, Active>;
+    using AlarmTicker  = Ticker<AlarmFrequency, Alarm::handler, Active>;
 
   protected:
     static void handler(size_t channel) {

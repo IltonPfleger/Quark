@@ -45,7 +45,10 @@ class PLL0 : Driver {
     }
 
     static void rate(uintptr_t rate) {
+        pd(1);
+
         dacpd(1);
+
         dsmpd(1);
 
         for (const auto &i : Rates) {
@@ -56,6 +59,8 @@ class PLL0 : Driver {
         }
 
         postdiv1(0);
+
+        pd(0);
     }
 
     static uint64_t rate() {

@@ -1,7 +1,6 @@
 #ifndef __QUARK_NETWORK_PROTOCOLS_ARP__
 #define __QUARK_NETWORK_PROTOCOLS_ARP__
 
-#include <ConditionalVariable.hpp>
 #include <Mutex.hpp>
 #include <Thread.hpp>
 #include <utility/collections/Hash.hpp>

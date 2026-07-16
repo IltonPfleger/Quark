@@ -34,7 +34,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
             sx_free_.insert(&sx_buffers_[i]);
         }
 
-        new QUARK::Thread(worker, this);
+        // new QUARK::Thread(worker, this);
 
         m_network->attach(this);
     }
@@ -45,8 +45,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
     }
 
     int send(const Address &dst, const Protocol &prot, const void *data, UInt32 size) override {
-        db<NIC>(ERR) << "UDPNIC::send(dst=" << dst << ", prot=" << prot << ", data=" << data << ", size=" << size << ")"
-                     << endl;
+        db<NIC>(ERR) << "UDPNIC::send(dst=" << dst << ", prot=" << prot << ", data=" << data << ", size=" << size << ")" << endl;
         QUARK::CPU::halt();
         return 0;
     }
@@ -58,8 +57,8 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
     }
 
     Buffer *alloc(const Address &dst, const Protocol &prot, UInt32 once, UInt32 always, UInt32 payload) override {
-        db<UDPNIC>(TRC) << "UDPNIC::alloc(s=" << address() << ",d=" << dst << ",p=" << hex << prot << dec
-                        << ",on=" << once << ",al=" << always << ",ld=" << payload << ")" << endl;
+        db<UDPNIC>(TRC) << "UDPNIC::alloc(s=" << address() << ",d=" << dst << ",p=" << hex << prot << dec << ",on=" << once
+                        << ",al=" << always << ",ld=" << payload << ")" << endl;
 
         auto *node = sx_free_.remove();
         assert(node);
@@ -133,27 +132,31 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
     void update(const NetworkBuffer *buffer) {
         db<NIC>(TRC) << "UDPNIC::update " << buffer->length() << endl;
 
-        Buffer b(this, 0);
-        b.size(buffer->length());
-        b.sfdts = TSC::time_stamp();
-        b.fill(buffer->length(), address(), address(), PROTO_TSTP, buffer->start(), buffer->length());
-
-        if (!rx_.insert(b)) QUARK::Console::println("LOST");
-    }
-
-    static void *worker(void *pointer) {
-        auto *self = reinterpret_cast<UDPNIC *>(pointer);
-
-        while (1) {
-            while (true) {
-                Buffer b(self, 0);
-                if (!self->rx_.remove(b)) break;
-                self->notify(PROTO_TSTP, &b);
-            }
-            QUARK::Delay(QUARK::Microsecond(100'000));
+        auto *header = buffer->start<QUARK::Ethernet::Header *>();
+        if (header->protocol() == PROTO_TSTP) {
+            Buffer b(this, 0);
+            b.size(buffer->length());
+            b.sfdts = TSC::time_stamp();
+            b.fill(buffer->length(), address(), address(), PROTO_TSTP, buffer->start(), buffer->length());
+            notify(PROTO_TSTP, &b);
         }
-        return nullptr;
+
+        // if (!rx_.insert(b)) QUARK::Console::println("LOST");
     }
+
+    // static void *worker(void *pointer) {
+    //     auto *self = reinterpret_cast<UDPNIC *>(pointer);
+
+    //    while (1) {
+    //        while (true) {
+    //            Buffer b(self, 0);
+    //            if (!self->rx_.remove(b)) break;
+    //            self->notify(PROTO_TSTP, &b);
+    //        }
+    //        QUARK::Delay(QUARK::Microsecond(100'000));
+    //    }
+    //    return nullptr;
+    //}
 
   private:
     static unsigned char GRP_KEY[16];

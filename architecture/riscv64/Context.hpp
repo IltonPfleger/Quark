@@ -226,11 +226,9 @@ template <typename T, bool ChangeStack> class ContextTemplate {
     FPU fpu_;
 };
 
-template <bool ChangeStack = Traits<Thread>::UserStack>
-using MachineContext = ContextTemplate<MachineMode, ChangeStack>;
+template <bool ChangeStack = Traits<Thread>::UserStack> using MachineContext = ContextTemplate<MachineMode, ChangeStack>;
 
-template <bool ChangeStack = Traits<Thread>::UserStack>
-using SupervisorContext = ContextTemplate<SupervisorMode, ChangeStack>;
+template <bool ChangeStack = Traits<Thread>::UserStack> using SupervisorContext = ContextTemplate<SupervisorMode, ChangeStack>;
 
 class VirtualCPU;
 class HypervisorContext : public MachineContext<true> {
