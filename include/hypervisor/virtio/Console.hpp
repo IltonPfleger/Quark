@@ -18,7 +18,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
 
   public:
     Console(VirtualMachine &owner)
-        : Handler(3, 1 << 27, 32),
+        : Handler(3, 1 << 27, N),
           device_(DEVICE::instance()),
           owner_(owner) {
         device_->attach(this);
@@ -55,6 +55,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
 
     size_t process(int head) {
         size_t total = 0;
+        size_t count = 0;
         int current  = head;
 
         RingDescriptor *descriptor = tx_.get(current);
@@ -62,9 +63,11 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         total += print(descriptor);
 
         while (descriptor->flags & VRING_DESC_F_NEXT) {
+            assert(count < N);
             current    = descriptor->next;
             descriptor = tx_.get(current);
             total += print(descriptor);
+            count++;
         }
 
         return total;
@@ -80,6 +83,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
 
   public:
     static constexpr uintptr_t Address = ADDRESS;
+    static constexpr size_t N          = 32;
 
   private:
     DEVICE *device_;
