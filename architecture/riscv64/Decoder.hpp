@@ -6,6 +6,20 @@ namespace QUARK {
 
 class Decoder {
   public:
+    enum {
+        SYSTEM = 0x73,
+    };
+
+    enum {
+        CSRRS = 0x2,
+    };
+
+    enum {
+        CYCLE   = 0xC00,
+        TIME    = 0xC01,
+        INSTRET = 0xC02,
+    };
+
     [[nodiscard]] static constexpr bool fp(uint32_t instruction) {
         static constexpr uint8_t LD     = 0x07;
         static constexpr uint8_t SD     = 0x27;
@@ -15,8 +29,8 @@ class Decoder {
         static constexpr uint8_t FNMSUB = 0x4B;
         static constexpr uint8_t FNMADD = 0x4F;
         uint8_t opcode                  = Decoder::opcode(instruction);
-        return (opcode == LD) || (opcode == SD) || (opcode == OP) || (opcode == FMADD) || (opcode == FMSUB) ||
-               (opcode == FNMSUB) || (opcode == FNMADD);
+        return (opcode == LD) || (opcode == SD) || (opcode == OP) || (opcode == FMADD) || (opcode == FMSUB) || (opcode == FNMSUB) ||
+               (opcode == FNMADD);
     }
 
     [[nodiscard]] static constexpr bool wfi(uint32_t instruction) {
@@ -24,23 +38,17 @@ class Decoder {
         return instruction == encoding;
     }
 
-    [[nodiscard]]
-    static bool rdtime(uint32_t instruction) {
-        static constexpr uint32_t value = 0xC0102073;
-        static constexpr uint32_t mask  = 0xFFF0707F;
-        return (instruction & mask) == value;
-    }
-
-    [[nodiscard]]
-    static uint8_t opcode(uintptr_t instruction) {
-        if ((instruction & 0x3) != 0x3) return instruction & 0x3;
-        return instruction & 0x7F;
-    }
-
+    static uint8_t opcode(uint16_t instruction16) { return instruction16 & 0x3; }
+    static uint8_t opcode(uint32_t instruction) { return instruction & 0x7F; }
     static uint8_t rd(uint16_t instruction16) { return 8 + ((instruction16 >> 2) & 0x7); }
     static uint8_t rd(uint32_t instruction) { return (instruction >> 7) & 0x1F; }
-    static uint8_t rs2(uint16_t instruction) { return 8 + ((instruction >> 2) & 0x7); }
+    static uint8_t rs2(uint16_t instruction16) { return 8 + ((instruction16 >> 2) & 0x7); }
     static uint8_t rs2(uint32_t instruction) { return (instruction >> 20) & 0x1f; }
+    static uint8_t funct3(uint32_t instruction) { return (instruction >> 12) & 0x7; }
+    static uint8_t funct3(uint16_t instruction16) { return (instruction16 >> 13) & 0x7; }
+    static uint8_t rs1(uint32_t instruction) { return (instruction >> 15) & 0x1F; }
+    static uint8_t rs1(uint16_t instruction16) { return 8 + ((instruction16 >> 7) & 0x7); }
+    static uint16_t csr(uint32_t instruction) { return (instruction >> 20) & 0xFFF; }
 
     static uint32_t uncompressed(uintptr_t pc) {
         uint32_t result;

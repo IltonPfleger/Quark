@@ -6,7 +6,7 @@ UseTab: Never
 PackConstructorInitializers: Never
 BinPackParameters: OnePerLine
 AlignConsecutiveAssignments: true
-ColumnLimit: 120
+ColumnLimit: 140
 AllowShortIfStatementsOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: true
 IndentCaseLabels: true

@@ -86,7 +86,7 @@ template <> struct Traits<CacheController0> {
     static constexpr size_t NumberOfWays             = 16;
     static constexpr size_t CacheLineSize            = 64;
     static constexpr bool Isolation                  = false;
-    static constexpr bool Prefetcher                 = true;
+    static constexpr bool Prefetcher                 = false;
     static constexpr bool Enable                     = true;
     static constexpr uintptr_t PrefetcherAddresses[] = {0x2032000, 0x2034000, 0x2036000, 0x2038000};
 };

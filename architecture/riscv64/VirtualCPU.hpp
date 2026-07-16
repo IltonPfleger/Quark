@@ -170,9 +170,8 @@ class VirtualCPU {
     static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};
 
     static constexpr uintmax_t MIDELEG = SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
-    static constexpr uintmax_t MEDELEG = 1 << 3     // Breakpoint
-                                         | 1 << 4   // Load Address Misaligned
-                                         | 1 << 6   // Store Address Misaligned
+    static constexpr uintmax_t MEDELEG = 0          //
+                                         | 1 << 3   // Breakpoint
                                          | 1 << 8   // Environment Call From U-Mode
                                          | 1 << 12  // Instruction Page Fault
                                          | 1 << 13  // Load Page Fault

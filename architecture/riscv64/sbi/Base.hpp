@@ -38,7 +38,7 @@ class Base {
             }
             case GET_SPEC_VERSION: {
                 c->a0 = 0;
-                c->a1 = 0x00000003;
+                c->a1 = (1 << 24) | 0;
                 break;
             }
             case GET_IMPLEMENTATION_ID: {
@@ -48,7 +48,7 @@ class Base {
             }
             case GET_IMPLEMENTATION_VERSION: {
                 c->a0 = 0;
-                c->a1 = 0x10007;
+                c->a1 = 0;
                 break;
             }
             case PROBE_EXTENSION: {

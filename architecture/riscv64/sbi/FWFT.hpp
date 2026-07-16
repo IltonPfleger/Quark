@@ -10,12 +10,7 @@ class FWFT {
 
     static void handler(ContextFrame *c) {
         switch (c->a6) {
-            default:
-                break;
-                // Console::println("FWFT: ", Console::Hex(c->a6));
-                // Console::println(Console::Hex(c->a0));
-                // Console::println(Console::Hex(c->a1));
-                // Console::println(Console::Hex(c->a2));
+            default: break;
         }
         c->a0 = 0;
     }
