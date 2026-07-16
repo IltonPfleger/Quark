@@ -6,6 +6,7 @@
 #include <hypervisor/VirtualMachine.hpp>
 #include <hypervisor/virtio/Flags.hpp>
 #include <hypervisor/virtio/Handler.hpp>
+#include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <network/NetworkDevice.hpp>
 
@@ -38,7 +39,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     uint32_t config(uint32_t offset) { return 0; }
 
     void notify(uint32_t source) {
-        if (source != TX) return;
+        if (source != 1) return;
         semaphore_.v();
     }
 
@@ -46,13 +47,11 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         auto data = buffer->start();
         auto size = buffer->length();
 
-        auto &queue = this->queues_[RX];
+        if (!rx_.available()) return;
 
-        if (!queue.available()) return;
+        int id = rx_.alloc();
 
-        int id = queue.alloc();
-
-        auto *descriptor = queue.get(id);
+        auto *descriptor = rx_.get(id);
 
         auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
 
@@ -62,7 +61,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
         descriptor->length = size + sizeof(NetworkHeader);
 
-        queue.free(id, descriptor->length);
+        rx_.free(id, descriptor->length);
         this->interrupt() |= 0x1;
         owner_.interrupt(IRQ);
     }
@@ -76,12 +75,10 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
             if (!running_) break;
 
-            auto &queue = this->queues_[TX];
-
-            if (queue.available()) {
-                int head      = queue.alloc();
-                size_t length = process(queue, head);
-                queue.free(head, length);
+            while (tx_.available()) {
+                uint32_t head = tx_.alloc();
+                size_t length = process(head);
+                tx_.free(head, length);
                 this->interrupt() |= 0x1;
                 owner_.interrupt(IRQ);
             }
@@ -89,12 +86,12 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         return nullptr;
     }
 
-    size_t process(Queue &queue, int head) {
+    size_t process(int head) {
         size_t total = 0;
         int current  = head;
         size_t count = 0;
 
-        RingDescriptor *descriptor = queue.get(current);
+        RingDescriptor *descriptor = tx_.get(current);
         total += descriptor->length;
 
         if (descriptor->length >= sizeof(NetworkHeader)) {
@@ -106,7 +103,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         while (descriptor->flags & VRING_DESC_F_NEXT) {
             assert(count < N);
             current    = descriptor->next;
-            descriptor = queue.get(current);
+            descriptor = tx_.get(current);
             total += descriptor->length;
             auto *data = reinterpret_cast<uint8_t *>(descriptor->address);
             send(data, descriptor->length);
@@ -131,15 +128,19 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     static constexpr uintptr_t Address = ADDRESS;
     static constexpr size_t Size       = sizeof(LegacyHeader);
     static constexpr size_t N          = 32;
-    static constexpr uint32_t TX       = 1;
-    static constexpr uint32_t RX       = 0;
 
   private:
     DEVICE *device_;
     VirtualMachine &owner_;
-    volatile bool running_;
+
     Semaphore semaphore_;
+
+    volatile bool running_;
     Thread thread_;
+
+    Queue tx_;
+    Queue rx_;
+    Queue *queues_[2] = {&rx_, &tx_};
 };
 
 } // namespace virtio

@@ -98,7 +98,7 @@ class Handler {
 
     uint32_t pfn(this auto &self) {
         if (self.header_.guest_page_size == 0) return 0;
-        return self.queues_[self.header_.queue_sel].address() / self.header_.guest_page_size;
+        return self.queues_[self.header_.queue_sel]->address() / self.header_.guest_page_size;
     }
 
     void pfn(this auto &self, uint32_t source) {
@@ -107,22 +107,17 @@ class Handler {
         uint32_t length  = self.header_.queue_num;
         uint32_t align   = self.header_.queue_align;
 
-        assert(i < MaxNumberOfQueues);
         assert(self.owner_.memory().validate(Chunk(address, Queue::size(length, align))));
 
-        new (&self.queues_[i]) Queue(address, length, align);
+        new (self.queues_[i]) Queue(address, length, align);
 
         self.header_.queue_pfn = source;
     }
 
     auto &interrupt(this auto &self) { return self.header_.interrupt_status; }
 
-  private:
-    static constexpr size_t MaxNumberOfQueues = 2;
-
   protected:
     LegacyHeader header_;
-    Meta::Array<MaxNumberOfQueues, Queue> queues_;
 };
 
 } // namespace virtio

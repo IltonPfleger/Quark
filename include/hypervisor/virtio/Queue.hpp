@@ -62,7 +62,7 @@ class Queue {
         return last_ != index;
     }
 
-    int alloc() {
+    uint32_t alloc() {
         assert(available());
         assert(available_);
         return available_->ring()[last_++ % size_];

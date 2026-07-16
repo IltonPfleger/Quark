@@ -309,31 +309,32 @@ class EPOS_Launcher {
 void smartdata() {
     TSTP::init();
 
-    // SEU_SmartData *seu = new SEU_SmartData();
+    SEU_SmartData *seu = new SEU_SmartData();
 
-    // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
-    // rp->set_default();
+    Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
+    rp->set_default();
 
-    // Unit_Dev_Expiry::List *ud_list;
+    Unit_Dev_Expiry::List *ud_list;
 
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
+    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
 
-    // ud_list = new Unit_Dev_Expiry::List();
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
+    ud_list = new Unit_Dev_Expiry::List();
+    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
 
-    // ud_list = new Unit_Dev_Expiry::List();
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
+    ud_list = new Unit_Dev_Expiry::List();
+    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
 
-    // ud_list = new Unit_Dev_Expiry::List();
-    // seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
+    ud_list = new Unit_Dev_Expiry::List();
+    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
 
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
-    // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
-    // seu->add_boolean_filter(rss);
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
+    RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
+    seu->add_boolean_filter(rss);
+
     // new Antigravity_Proxy(Antigravity_Proxy::Region(0, 0, 0, 100, Antigravity_Proxy::now(), INFINITE), 10'000);
 
     new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000);

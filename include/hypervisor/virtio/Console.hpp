@@ -2,7 +2,9 @@
 
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
+#include <hypervisor/virtio/Flags.hpp>
 #include <hypervisor/virtio/Handler.hpp>
+#include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <utility/Console.hpp>
 #include <utility/Observer.hpp>
@@ -11,8 +13,7 @@ namespace QUARK {
 
 namespace virtio {
 
-template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ>
-class Console : public Handler, public Observer<const unsigned char *, size_t> {
+template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : public Handler, public Observer<const unsigned char *, size_t> {
     friend Handler;
 
   public:
@@ -26,24 +27,20 @@ class Console : public Handler, public Observer<const unsigned char *, size_t> {
     uint32_t config(uint32_t) { return 0; }
 
     void notify(unsigned int source) {
-        if (source != TX) return;
+        if (source != 1) return;
 
-        auto &queue = this->queues_[TX];
-
-        while (queue.available()) {
-            int head      = queue.alloc();
-            size_t length = process(queue, head);
-            queue.free(head, length);
+        while (tx_.available()) {
+            int head      = tx_.alloc();
+            size_t length = process(head);
+            tx_.free(head, length);
         }
     }
 
     void update(const unsigned char *buffer, size_t size) override {
-        Queue &queue = this->queues_[RX];
+        if (!rx_.available()) return;
 
-        if (!queue.available()) return;
-
-        int id            = queue.alloc();
-        auto *descriptor  = queue.get(id);
+        int id            = rx_.alloc();
+        auto *descriptor  = rx_.get(id);
         auto *destination = reinterpret_cast<unsigned char *>(descriptor->address);
 
         descriptor->length = size;
@@ -51,22 +48,22 @@ class Console : public Handler, public Observer<const unsigned char *, size_t> {
 
         memcpy(destination, buffer, size);
 
-        queue.free(id, size);
+        rx_.free(id, size);
         this->interrupt() |= 1;
         owner_.interrupt(IRQ);
     }
 
-    size_t process(Queue &queue, int head) {
+    size_t process(int head) {
         size_t total = 0;
         int current  = head;
 
-        RingDescriptor *descriptor = queue.get(current);
+        RingDescriptor *descriptor = tx_.get(current);
 
         total += print(descriptor);
 
-        while (descriptor->flags & 0x1) {
+        while (descriptor->flags & VRING_DESC_F_NEXT) {
             current    = descriptor->next;
-            descriptor = queue.get(current);
+            descriptor = tx_.get(current);
             total += print(descriptor);
         }
 
@@ -83,12 +80,14 @@ class Console : public Handler, public Observer<const unsigned char *, size_t> {
 
   public:
     static constexpr uintptr_t Address = ADDRESS;
-    static constexpr uint32_t TX       = 1;
-    static constexpr uint32_t RX       = 0;
 
   private:
     DEVICE *device_;
     VirtualMachine &owner_;
+
+    Queue tx_;
+    Queue rx_;
+    Queue *queues_[2] = {&rx_, &tx_};
 };
 
 } // namespace virtio
