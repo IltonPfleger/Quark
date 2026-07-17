@@ -6,7 +6,8 @@
 namespace QUARK {
 
 class PLL0 : Driver {
-    static inline constinit size_t Rates[][3] = {{1500000000UL, 2, 125}};
+    // Clock, Prediv, Fbdiv,  Postdiv1
+    static inline constinit size_t Rates[][4] = {{1500000000UL, 2, 125, 0}};
 
   public:
     static void pd(uint32_t value) {
@@ -55,10 +56,9 @@ class PLL0 : Driver {
             if (i[0] == rate) {
                 prediv(i[1]);
                 fbdiv(i[2]);
+                postdiv1(i[3]);
             }
         }
-
-        postdiv1(0);
 
         pd(0);
     }

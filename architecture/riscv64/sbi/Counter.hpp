@@ -33,6 +33,9 @@ class Counter {
                     Console::println(ts[i] - ts[i - 1]);
                 }
                 lock_.v();
+                while (1) {
+                    Thread::yield();
+                }
                 break;
             }
             case 2: {

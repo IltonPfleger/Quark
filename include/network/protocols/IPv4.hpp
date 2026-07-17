@@ -28,14 +28,7 @@ class IPv4 : public Observer<const NetworkBuffer *>,
         Address source;
         Address destination;
 
-        Header(Address d,
-               Address s,
-               uint8_t p,
-               uint16_t l,
-               uint8_t t    = 0,
-               uint16_t id  = 0,
-               uint16_t n   = 0,
-               uint8_t time = DefaultTTL) {
+        Header(Address d, Address s, uint8_t p, uint16_t l, uint8_t t = 0, uint16_t id = 0, uint16_t n = 0, uint8_t time = DefaultTTL) {
             version        = VersionIHL;
             tos            = t;
             tlength        = CPU::htobe16(sizeof(Header) + l);

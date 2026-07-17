@@ -26,8 +26,9 @@ inline void *operator new(QUARK::size_t s, QUARK::Heap::Location) {
 }
 
 inline void operator delete(void *p) {
-    using Header = QUARK::Heap::Header;
-    assert(p);
+    if (!p) return;
+
+    using Header   = QUARK::Heap::Header;
     Header *header = reinterpret_cast<Header *>(p) - 1;
     QUARK::Memory::free(header, header->size);
 }

@@ -25,14 +25,18 @@ class LoadAccessFault {
             uint8_t i;
             if (compressed) {
                 i = Decoder::rd(compressed);
-                c->pc += 2;
             } else {
                 uint32_t instruction = Decoder::uncompressed(pc);
                 i                    = Decoder::rd(instruction);
-                c->pc += 4;
             }
 
-            if (VirtualCPU::read(address, reinterpret_cast<uint32_t *>(&(*c)[i]))) return;
+            if (VirtualCPU::read(address, reinterpret_cast<uint32_t *>(&(*c)[i]))) {
+                if (compressed)
+                    c->pc += 2;
+                else
+                    c->pc += 4;
+                return;
+            };
         }
         ExceptionHandler::onTrap(c);
     };

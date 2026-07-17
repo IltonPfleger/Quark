@@ -26,15 +26,23 @@ template <typename DEVICE> class NetworkVampire : DEVICE::Observer {
     }
 
     void update(const NetworkBuffer *buffer) override {
-        if (random() >= 80) {
-            lock_.acquire();
+        lock_.acquire();
 
-            memcpy(buffer_, buffer->start(), buffer->length());
-            length_ = buffer->length();
-
+        if (counter_ != 0) {
             lock_.release();
-            p_.v();
+            return;
         }
+
+        if (me_) {
+            me_ = false;
+            return;
+        }
+
+        memcpy(buffer_, buffer->start(), buffer->length());
+        length_ = buffer->length();
+        lock_.release();
+
+        p_.v();
     }
 
     static void *worker(void *pointer) {
@@ -42,11 +50,18 @@ template <typename DEVICE> class NetworkVampire : DEVICE::Observer {
         while (1) {
             self->p_.p();
 
-            int k = self->random() % 5;
+            int k = 8;
+
+            self->lock_.acquire();
+            self->counter_ = k;
+            self->lock_.release();
+
             for (int i = 0; i < k; i++) {
                 self->lock_.acquire();
                 NetworkBuffer *clone = self->device_->alloc(self->length_);
                 memcpy(clone->start(), self->buffer_, self->length_);
+                self->counter_--;
+                if (self->counter_ == 0) self->me_ = true;
                 self->lock_.release();
                 self->device_->send(clone);
             }
@@ -60,6 +75,8 @@ template <typename DEVICE> class NetworkVampire : DEVICE::Observer {
     Semaphore p_;
     unsigned char buffer_[1522];
     size_t length_;
+    size_t counter_;
+    size_t me_;
 };
 
 } // namespace QUARK

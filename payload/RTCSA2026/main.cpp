@@ -1,4 +1,4 @@
-// #include <NetworkVampire.hpp>
+#include <NetworkVampire.hpp>
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
 #include <architecture/VirtualCPU.hpp>
@@ -47,15 +47,15 @@ class Receiver {
 
         size_t size;
 
-        size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current_, remaining_);
-        new (&linux_) Span(current_, size);
-        current_ += size;
-        remaining_ -= size;
+        // size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current_, remaining_);
+        // new (&linux_) Span(current_, size);
+        // current_ += size;
+        // remaining_ -= size;
 
-        size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current_, remaining_);
-        new (&initramfs_) Span(current_, size);
-        current_ += size;
-        remaining_ -= size;
+        // size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current_, remaining_);
+        // new (&initramfs_) Span(current_, size);
+        // current_ += size;
+        // remaining_ -= size;
 
         size = tftp_.request(server, "RemoteBootVisionFive2EPOS", current_, remaining_);
         new (&epos_) Span(current_, size);
@@ -311,37 +311,61 @@ void smartdata() {
 
     SEU_SmartData *seu = new SEU_SmartData();
 
+    Unit_Dev_Expiry::List *ud_list;
+    ud_list  = new Unit_Dev_Expiry::List();
+    auto *mu = new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
+    seu->add_boolean_filter(mu);
+
+    // MONITOR
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 150000))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, 150000))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, 150000))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, 150000))->link());
+    auto *monitor = new Monitoring(ud_list);
+    seu->add_boolean_filter(monitor);
+
+    // CAMERA
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 150000))->link());
+    auto *obrtc = new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 150000, 100000);
+    seu->add_boolean_filter(obrtc);
+
+    // LIDAR
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 150000))->link());
+    auto *obrtl = new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 150000, 100000);
+    seu->add_boolean_filter(obrtl);
+
+    // FUSER
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, 150000))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, 150000))->link());
+    auto *obrtf = new MU_Arrival_Dep(ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, 150000, 100000);
+    seu->add_boolean_filter(obrtf);
+
+    // RSS
     Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
     rp->set_default();
-
-    Unit_Dev_Expiry::List *ud_list;
-
     ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, 100000, 100000));
-
-    ud_list = new Unit_Dev_Expiry::List();
-    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, 100000, 100000));
-
-    ud_list = new Unit_Dev_Expiry::List();
-    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_RADAR_Proxy::UNIT, 22, 100000, 100000));
-
-    ud_list = new Unit_Dev_Expiry::List();
-    seu->add_boolean_filter(new MU_Arrival_Dep(ud_list, OBRT_Fuser_Proxy::UNIT, 23, 100000, 100000));
-
-    ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 100000))->link());
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 100000))->link());
-    RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 100000);
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, 150000))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, 150000))->link());
+    RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, 150000);
     seu->add_boolean_filter(rss);
 
-    // new Antigravity_Proxy(Antigravity_Proxy::Region(0, 0, 0, 100, Antigravity_Proxy::now(), INFINITE), 10'000);
+    new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000, 5'000, SmartData::SINGLE, SmartData::ANY, 16);
 
-    new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), 5'000);
-    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), 40'000);
-    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), 150'000);
-    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), 100'000);
-    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), 40'000);
+    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), 40'000, 40'000, SmartData::SINGLE,
+                         SmartData::ANY, 23);
+
+    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), 150'000, 150'000, SmartData::SINGLE,
+                          SmartData::ANY, 20);
+
+    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), 100'000, 100'000, SmartData::SINGLE,
+                         SmartData::ANY, 21);
+
+    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), 40'000, 40'000, SmartData::SINGLE,
+                         SmartData::ANY, 22);
 }
 
 int main() {
@@ -356,44 +380,53 @@ int main() {
     auto *receiver = new Receiver(*tftp);
 
     const size_t MemorySize = 1024 * 1024 * 128;
-    const auto &linux       = receiver->linux();
-    const auto &initramfs   = receiver->initramfs();
-    const auto &epos        = receiver->epos();
+    // const auto &linux       = receiver->linux();
+    // const auto &initramfs   = receiver->initramfs();
 
-    (void)linux;
-    (void)initramfs;
-    (void)epos;
+    //(void)linux;
+    //(void)initramfs;
+    //(void)epos;
 
-    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
+    // new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL,
+    // 3));
 
     // DYNAMICS STATE
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
     while (QUARK::sbi::Counter::counter_ != 1)
         ;
 
     // Fuser
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
     while (QUARK::sbi::Counter::counter_ != 2)
         ;
 
     // RADAR
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
     while (QUARK::sbi::Counter::counter_ != 3)
         ;
 
     // LiDAR
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
     while (QUARK::sbi::Counter::counter_ != 4)
         ;
 
     // Camera
-    new EPOS_Launcher(MemorySize / 2, epos, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
     while (QUARK::sbi::Counter::counter_ != 5)
         ;
 
     QUARK::Delay(QUARK::Microsecond(5'000'000));
 
+    delete receiver;
+    delete tftp;
+    delete udp;
+    delete ipv4;
+    delete link;
+
     smartdata();
+
+    while (1)
+        QUARK::Delay(QUARK::Microsecond(5'000'000));
 
     // while (1) {
     //     QUARK::Delay(QUARK::Microsecond(100'000'000));

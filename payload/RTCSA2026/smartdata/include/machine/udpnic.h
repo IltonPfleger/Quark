@@ -132,14 +132,28 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
     void update(const NetworkBuffer *buffer) {
         db<NIC>(TRC) << "UDPNIC::update " << buffer->length() << endl;
 
-        auto *header = buffer->start<QUARK::Ethernet::Header *>();
-        if (header->protocol() == PROTO_TSTP) {
-            Buffer b(this, 0);
-            b.size(buffer->length());
-            b.sfdts = TSC::time_stamp();
-            b.fill(buffer->length(), address(), address(), PROTO_TSTP, buffer->start(), buffer->length());
-            notify(PROTO_TSTP, &b);
-        }
+        // auto *header = buffer->start<QUARK::Ethernet::Header *>();
+        auto *data    = buffer->start() + buffer->offset();
+        size_t length = buffer->length() - buffer->offset();
+
+        Buffer b(this, 0);
+        b.size(length);
+        b.sfdts = TSC::time_stamp();
+
+        // QUARK::Console::println(buffer->start(), " ", buffer->data(), " ", buffer->offset());
+        // for (size_t i = 0; i < buffer->length(); ++i) {
+        //     if ((i % 16) == 0) {
+        //         QUARK::Console::print((void *)i);
+        //         QUARK::Console::print(": ");
+        //     }
+        //     QUARK::Console::print((void *)(QUARK::uintptr_t)data[i]);
+        //     QUARK::Console::print(' ');
+        //     if ((i % 16) == 15 || i + 1 == buffer->length()) QUARK::Console::print('\n');
+        // }
+        // QUARK::Console::print('\n');
+
+        b.fill(length, address(), address(), PROTO_TSTP, data, length);
+        notify(PROTO_TSTP, &b);
 
         // if (!rx_.insert(b)) QUARK::Console::println("LOST");
     }
@@ -163,10 +177,9 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
 
   private:
     static constexpr int NumberOfBuffers = 32;
-
     QUARK::collections::Node<Buffer> sx_buffers_[NumberOfBuffers];
     QUARK::collections::FIFO<QUARK::collections::Node<Buffer>, QUARK::Mutex> sx_free_;
-    QUARK::collections::CircularBuffer<Buffer, NumberOfBuffers, QUARK::Mutex> rx_{};
+    //  QUARK::collections::CircularBuffer<Buffer, NumberOfBuffers, QUARK::Mutex> rx_{};
 
     LocalNetwork *m_network;
     Configuration m_configuration;

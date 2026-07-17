@@ -20,6 +20,7 @@ class Ethernet {
         const Address &source() const { return _destination; }
         const Address &destination() const { return _source; }
         Protocol protocol() const { return CPU::be16toh(_protocol); }
+        template <typename T = uint8_t *> T data() { return reinterpret_cast<T>(this + 1); }
 
       private:
         Address _destination;

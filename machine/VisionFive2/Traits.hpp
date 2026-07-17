@@ -47,7 +47,7 @@ template <> struct Traits<CPU> {
 template <> struct Traits<Memory> {
     static constexpr unsigned long Order    = 30;
     static constexpr unsigned long Size     = (1 << Order);
-    static constexpr unsigned int PageSize  = 4096;
+    static constexpr unsigned int PageSize  = 4096 * 4;
     static constexpr unsigned int StackSize = PageSize;
 };
 

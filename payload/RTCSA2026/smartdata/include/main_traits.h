@@ -229,11 +229,11 @@ template <> struct Traits<SmartData> : public Traits<Build> {
 
 // Utilities
 template <> struct Traits<Debug> : public Traits<Build> {
-    static const bool error   = true;
+    static const bool error   = false;
     static const bool warning = false;
     static const bool info    = false;
     static const bool trace   = false;
-    static const bool logger  = false;
+    static const bool logger  = true;
 };
 
 template <> struct Traits<Network> : public Traits<Build> {

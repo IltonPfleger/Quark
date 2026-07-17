@@ -21,13 +21,13 @@ class Machine : Driver {
 
             Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, 2);
             Clock_Controller::multiplex(Clock_Controller::SYSCRG_CLK_CPU_ROOT, 0);
-            Timer::Delay(1'000);
+            Timer::Delay(5'000);
 
-            // PLL0::rate(1500000000);
-            Timer::Delay(1'000);
+            PLL0::rate(1500000000);
+            Timer::Delay(5'000);
 
             Clock_Controller::multiplex(Clock_Controller::SYSCRG_CLK_CPU_ROOT, 1);
-            Timer::Delay(1'000);
+            Timer::Delay(5'000);
 
             dvfs.set(dvfs.available()[dvfs.available().length() - 1]);
         }

@@ -1,12 +1,10 @@
-#ifndef __QUARK_JH7110_DVFS_CONTROLLER__
-#define __QUARK_JH7110_DVFS_CONTROLLER__
+#pragma once
 
 #include <architecture/Timer.hpp>
 #include <drivers/clock/JH7110_Clock_Controller.hpp>
 #include <drivers/dvfs/DVFS_Controller.hpp>
 #include <drivers/i2c/DesignWare_I2C_Controller.hpp>
 #include <drivers/pmic/AXP15060_Controller.hpp>
-#include <utility/Delay.hpp>
 
 namespace QUARK {
 
@@ -28,26 +26,25 @@ class JH7110_DVFS_Controller : public DVFS_Controller {
     virtual bool set(const PState &pstate) override {
         bool valid = false;
 
-        for (auto &i : States) {
+        for (const auto &i : States) {
             if (i.frequency == pstate.frequency && i.voltage == pstate.voltage) {
                 valid = true;
+                break;
             }
         }
 
         if (!valid) return false;
 
-        uint32_t divisor = 1500000000 / pstate.frequency;
-
         if (pstate.frequency > frequency()) {
-            if (!pmic_.voltage(1, pstate.voltage)) return false;
-            Timer::Delay(1'000);
-            Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, divisor);
-            Timer::Delay(1'000);
+            if (!voltage(pstate.voltage)) return false;
+            stabilize();
+            frequency(pstate.frequency);
+            stabilize();
         } else {
-            Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, divisor);
-            Timer::Delay(1'000);
-            if (!pmic_.voltage(1, pstate.voltage)) return false;
-            Timer::Delay(1'000);
+            frequency(pstate.frequency);
+            stabilize();
+            if (!voltage(pstate.voltage)) return false;
+            stabilize();
         }
 
         return true;
@@ -57,7 +54,19 @@ class JH7110_DVFS_Controller : public DVFS_Controller {
 
     uintmax_t voltage() { return pmic_.voltage(1); }
 
-    uintmax_t frequency() { return 1500000000 / Clock_Controller::divisor(Clock_Controller::SYSCRG_CLK_CPU_CORE); }
+    uintmax_t frequency() { return PLL0::rate() / Clock_Controller::divisor(Clock_Controller::SYSCRG_CLK_CPU_CORE); }
+
+  private:
+    void frequency(uintmax_t frequency) {
+        assert(frequency);
+        assert(PLL0::rate() % frequency == 0);
+        uint32_t divisor = PLL0::rate() / frequency;
+        Clock_Controller::divide(Clock_Controller::SYSCRG_CLK_CPU_CORE, divisor);
+    }
+
+    bool voltage(uintmax_t microvolts) { return pmic_.voltage(1, microvolts); }
+
+    void stabilize() { Timer::Delay(10'000); }
 
   private:
     DesignWare_I2C_Controller<I2C5> i2c_;
@@ -65,5 +74,3 @@ class JH7110_DVFS_Controller : public DVFS_Controller {
 };
 
 } // namespace QUARK
-
-#endif

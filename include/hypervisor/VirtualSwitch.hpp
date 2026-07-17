@@ -20,14 +20,25 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
 
     int send(NetworkBuffer *buffer) {
         size_t length = buffer->length();
+
         lock_.acquire();
+
+        buffer->advance(sizeof(typename DEVICE::Header));
         this->notify(buffer);
+        buffer->rewind(sizeof(typename DEVICE::Header));
+
         lock_.release();
+
         device_->send(buffer);
+
         return length;
     }
 
-    void update(const NetworkBuffer *buffer) override { this->notify(buffer); }
+    void update(const NetworkBuffer *buffer) override {
+        lock_.acquire();
+        this->notify(buffer);
+        lock_.release();
+    }
 
     static auto instance() {
         static VirtualSwitch instance;

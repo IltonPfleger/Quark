@@ -1,6 +1,7 @@
 #include <Semaphore.hpp>
 #include <Thread.hpp>
 #include <libraries/libc/string.h>
+#include <memory/Heap.hpp>
 #include <utility/Console.hpp>
 #include <utility/Debug.hpp>
 
@@ -47,7 +48,7 @@ size_t size(int &seed) {
     return 0;
 }
 
-void *allocators(void *) {
+void *allocator(void *) {
     int iterations = Iterations;
     int seed       = 0;
 
@@ -56,7 +57,7 @@ void *allocators(void *) {
 
         volatile unsigned char *buffer = new unsigned char[s];
 
-        memset(const_cast<unsigned char *>(buffer), 0, s);
+        memset(const_cast<unsigned char *>(buffer), 0xAB, s);
 
         if (s > 0) {
             buffer[0]     = ~0;
@@ -73,7 +74,7 @@ int main(int, char *[]) {
     Thread *threads[Number];
 
     for (long i = 0; i < Number; i++) {
-        threads[i] = new Thread(allocators);
+        threads[i] = new Thread(allocator, nullptr, Thread::Criterion(Thread::Criterion::NORMAL, i % Traits<CPU>::Active));
     }
 
     for (long i = 0; i < Number; i++) {

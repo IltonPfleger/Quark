@@ -95,8 +95,7 @@ class Verifiable_SmartData : public SmartData, public TSTP::Observer {
           _region(r),
           _in_use(0),
           _link(this, _ude) {
-        db<SmartData>(TRC) << "Verifiable_SmartData[SEU](u=" << u << ",d=" << d << ",e=" << e << ",r=" << r << ")"
-                           << endl;
+        db<SmartData>(TRC) << "Verifiable_SmartData[SEU](u=" << u << ",d=" << d << ",e=" << e << ",r=" << r << ")" << endl;
         Network::attach(this);
         _value = new Data[_ude.unit().value_size()];
         if (_ude.unit().value_size() > 8) *reinterpret_cast<UInt32 *>(_value) = 0x0;
@@ -208,44 +207,42 @@ class Verifiable_SmartData : public SmartData, public TSTP::Observer {
             } else if (_ude.unit() == SmartData::Unit(SmartData::Unit::WHEEL_TELEMETRY)) {
                 Wheel_Telemetry_Value *wt = reinterpret_cast<Wheel_Telemetry_Value *>(_value);
                 db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Speed | SmartData::Unit::F32) << "=>"
-                                      << (UInt32)SmartData::Unit(SmartData::Unit::Speed | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_speed << "}\n";
+                                      << (UInt32)SmartData::Unit(SmartData::Unit::Speed | SmartData::Unit::F32) << ",d=" << _ude.dev()
+                                      << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={" << wt->_wheel_speed << "}\n";
+                db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Force | SmartData::Unit::F32) << "=>"
+                                      << (UInt32)SmartData::Unit(SmartData::Unit::Force | SmartData::Unit::F32) << ",d=" << _ude.dev() + 4
+                                      << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={" << wt->_wheel_lat_force
+                                      << "}\n";
                 db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Force | SmartData::Unit::F32) << "=>"
                                       << (UInt32)SmartData::Unit(SmartData::Unit::Force | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_lat_force << "}\n";
-                db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Force | SmartData::Unit::F32) << "=>"
-                                      << (UInt32)SmartData::Unit(SmartData::Unit::Force | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 * 2 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_lat_force << "}\n";
+                                      << ",d=" << _ude.dev() + 4 * 2 << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={"
+                                      << wt->_wheel_lat_force << "}\n";
                 db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Mass | SmartData::Unit::F32) << "=>"
                                       << (UInt32)SmartData::Unit(SmartData::Unit::Mass | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 * 3 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_torque << "}\n";
-                db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Torque | SmartData::Unit::F32)
-                                      << "=>" << (UInt32)SmartData::Unit(SmartData::Unit::Torque | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 * 4 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_torque << "}\n";
+                                      << ",d=" << _ude.dev() + 4 * 3 << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={"
+                                      << wt->_wheel_torque << "}\n";
+                db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Torque | SmartData::Unit::F32) << "=>"
+                                      << (UInt32)SmartData::Unit(SmartData::Unit::Torque | SmartData::Unit::F32)
+                                      << ",d=" << _ude.dev() + 4 * 4 << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={"
+                                      << wt->_wheel_torque << "}\n";
                 db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Angle | SmartData::Unit::F32) << "=>"
                                       << (UInt32)SmartData::Unit(SmartData::Unit::Angle | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 * 5 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_lat_slip << "}\n";
+                                      << ",d=" << _ude.dev() + 4 * 5 << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={"
+                                      << wt->_wheel_lat_slip << "}\n";
                 db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Angle | SmartData::Unit::F32) << "=>"
                                       << (UInt32)SmartData::Unit(SmartData::Unit::Angle | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 * 6 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_long_slip << "}\n";
+                                      << ",d=" << _ude.dev() + 4 * 6 << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={"
+                                      << wt->_wheel_long_slip << "}\n";
                 db<SmartData>(LOGGER) << "(u=" << SmartData::Unit(SmartData::Unit::Ratio | SmartData::Unit::F32) << "=>"
                                       << (UInt32)SmartData::Unit(SmartData::Unit::Ratio | SmartData::Unit::F32)
-                                      << ",d=" << _ude.dev() + 4 * 7 << ",t=" << origin_time()
-                                      << ",sig=" << _response.signature() << ")={" << wt->_wheel_tire_friction;
+                                      << ",d=" << _ude.dev() + 4 * 7 << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={"
+                                      << wt->_wheel_tire_friction;
             } else {
                 db<SmartData>(LOGGER) << "(u=" << _ude.unit() << "=>" << (UInt32)_ude.unit() << ",d=" << _ude.dev()
                                       << ",t=" << origin_time() << ",sig=" << _response.signature() << ")={";
                 switch (_ude.unit() >> 16) {
-                    case SmartData::Unit::PCD_MONOCROMATIC >>
-                        16: // for this implementaiton unit is the same as CLOUD_POINTS_RADAR
-                    case SmartData::Unit::RAW_BGR >> 16: // camera
+                    case SmartData::Unit::PCD_MONOCROMATIC >> 16: // for this implementaiton unit is the same as CLOUD_POINTS_RADAR
+                    case SmartData::Unit::RAW_BGR >> 16:          // camera
                         db<SmartData>(LOGGER) << "size=" << _ude.unit().value_size();
                         // if (*reinterpret_cast<UInt32 *>(_value) < 0xFFFFFFFF)
                         //     for (unsigned i = 0; i < _ude.unit().value_size(); i++)
@@ -254,9 +251,7 @@ class Verifiable_SmartData : public SmartData, public TSTP::Observer {
                     case SmartData::Unit::Switch >> 16: // hand_brake, reverse
                         db<SmartData>(LOGGER) << (*reinterpret_cast<bool *>(_value) ? "True" : "False");
                         break;
-                    default:
-                        db<SmartData>(LOGGER) << "Unknown how to parse unit: " << (UInt32)_ude.unit() << endl;
-                        break;
+                    default: db<SmartData>(LOGGER) << "Unknown how to parse unit: " << (UInt32)_ude.unit() << endl; break;
                 }
             }
             db<SmartData>(LOGGER) << "}" << endl;
@@ -277,10 +272,14 @@ class Verifiable_SmartData : public SmartData, public TSTP::Observer {
         switch (header->type()) {
             case RESPONSE: {
                 Response *response = buffer->frame()->template data<Response>();
-                db<SmartData>(INF) << "SmartData[SEU]::update:msg=" << response->origin() << "d=" << response->device()
-                                   << ", I=" << _region << ",d=" << _ude.dev() << endl;
-                if ((response->unit() == _ude.unit()) && _region.contains(response->origin()) &&
-                    response->device() == _ude.dev()) {
+                db<SmartData>(INF) << "SmartData[SEU]::update:msg=" << response->origin() << "d=" << response->device() << ", I=" << _region
+                                   << ",d=" << _ude.dev() << endl;
+
+                db<SmartData>(LOGGER) << response->unit() << " " << _ude.unit() << endl;
+                db<SmartData>(LOGGER) << response->device() << " " << _ude.dev() << endl;
+                db<SmartData>(LOGGER) << response->origin() << " " << _region << endl;
+
+                if ((response->unit() == _ude.unit()) && _region.contains(response->origin()) && response->device() == _ude.dev()) {
                     if ((response->operation()) != ADVERTISE) {
                         Time start = nanos();
                         db<SmartData>(INF) << "SmartData[SEU]::update:msg=" << *response << endl;
@@ -288,17 +287,15 @@ class Verifiable_SmartData : public SmartData, public TSTP::Observer {
                         if ((_ude.unit() >> 16) != (SmartData::Unit::RAW_BGR >> 16) &&
                             (_ude.unit() >> 16) != (SmartData::Unit::PCD_MONOCROMATIC >> 16))
                             memcpy(reinterpret_cast<unsigned char *>(_value),
-                                   reinterpret_cast<const unsigned char *>(&(response->template value<Data>())),
-                                   _ude.unit().value_size());
+                                   reinterpret_cast<const unsigned char *>(&(response->template value<Data>())), _ude.unit().value_size());
                         db<SmartData>(INF) << "SmartData[SEU]::Calling notify()" << endl;
                         if (!Traits<Build>::verified) log_state();
                         notify(this); // notify boolean filters
                         db<SmartData>(INF) << "SmartData[SEU]::notified()" << endl;
                         _sum = _sum + (nanos() - start);
                         if (_count == ITERATIONS_MEASURE) {
-                            db<SmartData>(LOGGER)
-                                << _ude.dev() << " ==> SUM of " << ITERATIONS_MEASURE << "=" << ((double)_sum) / 1000.
-                                << ",avg=" << (((double)_sum) / 1000.) / ITERATIONS_MEASURE << endl;
+                            db<SmartData>(LOGGER) << _ude.dev() << " ==> SUM of " << ITERATIONS_MEASURE << "=" << ((double)_sum) / 1000.
+                                                  << ",avg=" << (((double)_sum) / 1000.) / ITERATIONS_MEASURE << endl;
                         }
                         _count++;
                     }
@@ -311,8 +308,7 @@ class Verifiable_SmartData : public SmartData, public TSTP::Observer {
     }
 
     void log_value_to_mvs() {
-        UInt32 mv_size =
-            _ude.unit().value_size() / (_ude.unit() & SmartData::Unit::LEN); // total len / amount of data inside
+        UInt32 mv_size = _ude.unit().value_size() / (_ude.unit() & SmartData::Unit::LEN); // total len / amount of data inside
         for (UInt32 index = 0; index < _ude.unit().value_size(); index += mv_size) {
             if (!*reinterpret_cast<bool *>(&_value[index])) // if empty
                 break;
@@ -392,10 +388,9 @@ class Boolean_Filter {
         _inputs    = new Verifiable_SmartData::List();
         _SmartData = 0;
 
-        for (Unit_Dev_Expiry::List::Iterator it = _supported_SmartData->begin(); it != _supported_SmartData->end();
-             it++) {
-            db<SmartData>(TRC) << "Boolean_Filter::supported_input(ud=" << it->object()->unit()
-                               << ",d=" << it->object()->dev() << ")" << endl;
+        for (Unit_Dev_Expiry::List::Iterator it = _supported_SmartData->begin(); it != _supported_SmartData->end(); it++) {
+            db<SmartData>(TRC) << "Boolean_Filter::supported_input(ud=" << it->object()->unit() << ",d=" << it->object()->dev() << ")"
+                               << endl;
         }
     }
 
@@ -426,24 +421,21 @@ class Boolean_Filter {
         if (sd->unit_dev() == unit_dev() && _SmartData == 0) {
             _SmartData = sd;
             sd->attach(this);
-            db<SmartData>(TRC) << "Boolean_Filter::register_smartdata: registered " << sd->unit_dev() << " in bf for "
-                               << unit_dev() << ",equal?" << (sd->unit_dev() == unit_dev())
-                               << ",_SmartData=" << _SmartData << endl;
+            db<SmartData>(TRC) << "Boolean_Filter::register_smartdata: registered " << sd->unit_dev() << " in bf for " << unit_dev()
+                               << ",equal?" << (sd->unit_dev() == unit_dev()) << ",_SmartData=" << _SmartData << endl;
             return true;
         }
-        db<SmartData>(TRC) << "Boolean_Filter::register_smartdata: attemped to register " << sd->unit_dev()
-                           << " in bf for " << unit_dev() << ",equal?" << (sd->unit_dev() == unit_dev())
-                           << ",_SmartData=" << _SmartData << endl;
+        db<SmartData>(TRC) << "Boolean_Filter::register_smartdata: attemped to register " << sd->unit_dev() << " in bf for " << unit_dev()
+                           << ",equal?" << (sd->unit_dev() == unit_dev()) << ",_SmartData=" << _SmartData << endl;
         return false;
     }
 
     virtual bool add_input(Verifiable_SmartData *sd) {
         Unit_Dev_Expiry ud = sd->unit_dev();
-        db<SmartData>(TRC) << "Boolean_Filter()::add_input(ud=" << sd->unit() << ",d=" << sd->dev()
-                           << ",e=" << sd->expiry() << "),this=" << unit_dev() << endl;
+        db<SmartData>(LOGGER) << "Boolean_Filter()::add_input(ud=" << sd->unit() << ",d=" << sd->dev() << ",e=" << sd->expiry()
+                           << "),this=" << unit_dev() << endl;
         Unit_Dev_Expiry *ude = 0;
-        for (Unit_Dev_Expiry::List::Iterator it = _supported_SmartData->begin(); it != _supported_SmartData->end();
-             it++) {
+        for (Unit_Dev_Expiry::List::Iterator it = _supported_SmartData->begin(); it != _supported_SmartData->end(); it++) {
             if (*it->object() == ud) {
                 ude = it->object();
                 break;
@@ -451,16 +443,14 @@ class Boolean_Filter {
         }
 
         if (ude != 0) {
-            db<SmartData>(INF) << "Boolean_Filter::add_input: interested! Attached SD=" << sd << endl;
+            db<SmartData>(LOGGER) << "Boolean_Filter::add_input: interested! Attached SD=" << sd << endl;
             sd->attach(this);
             _inputs->insert(sd->new_link());
             sd->use(); // for registering only
             _supported_SmartData->remove(ude->link());
-            db<SmartData>(INF) << "Boolean_Filter::add_input: _supported_SmartData->size()="
-                               << _supported_SmartData->size() << endl;
+            db<SmartData>(INF) << "Boolean_Filter::add_input: _supported_SmartData->size()=" << _supported_SmartData->size() << endl;
             db<SmartData>(INF) << "Boolean_Filter::add_input: _inputs->size()=" << _inputs->size() << endl;
-            db<SmartData>(INF) << "Boolean_Filter::add_input: _inputs->head()->next()=" << _inputs->head()->next()
-                               << endl;
+            db<SmartData>(INF) << "Boolean_Filter::add_input: _inputs->head()->next()=" << _inputs->head()->next() << endl;
             delete ude; // need to fix on main
             return true;
         } else {
@@ -500,8 +490,8 @@ class Boolean_Filter {
   public:
     virtual void update(Verifiable_SmartData *vsd) {
         // Verifiable_SmartData * vsd = reinterpret_cast<Verifiable_SmartData *>(obs);
-        db<SmartData>(TRC) << "Boolean_Filter[SEU]::notified():bf=" << this << "=>" << unit_dev()
-                           << ",by=" << vsd->unit_dev() << ",addr=" << vsd << endl;
+        db<SmartData>(TRC) << "Boolean_Filter[SEU]::notified():bf=" << this << "=>" << unit_dev() << ",by=" << vsd->unit_dev()
+                           << ",addr=" << vsd << endl;
         SmartData::Time t = TSC::time_stamp();
         if (evaluate()) { // if not enough data is found to evaluate, return false
             notify(this);
@@ -575,11 +565,7 @@ class MU_Arrival_Dep : public Boolean_Filter,
                        SmartData // basic boolean filter
 {
   public:
-    MU_Arrival_Dep(Unit_Dev_Expiry::List *supported_SmartData,
-                   SmartData::Unit unit,
-                   UInt32 dev,
-                   Time expiry,
-                   Microsecond period = 0)
+    MU_Arrival_Dep(Unit_Dev_Expiry::List *supported_SmartData, SmartData::Unit unit, UInt32 dev, Time expiry, Microsecond period = 0)
         : Boolean_Filter(supported_SmartData, Unit_Dev_Expiry(unit, dev, expiry), period),
           _last_update(0) {
         db<SmartData>(TRC) << "SmartData[SEU]::MU_Arrival_Dep::this=" << this << endl;
@@ -619,11 +605,7 @@ class MU_Expired : public Boolean_Filter,
                    SmartData // basic boolean filter
 {
   public:
-    MU_Expired(Unit_Dev_Expiry::List *supported_SmartData,
-               SmartData::Unit unit,
-               UInt32 dev,
-               Time expiry,
-               Microsecond period = 0)
+    MU_Expired(Unit_Dev_Expiry::List *supported_SmartData, SmartData::Unit unit, UInt32 dev, Time expiry, Microsecond period = 0)
         : Boolean_Filter(supported_SmartData, Unit_Dev_Expiry(unit, dev, expiry), period) {
         db<SmartData>(TRC) << "SmartData[SEU]::Environment_Min_Max_Temperature_Boolean_Filter::this=" << this << endl;
     }
@@ -684,11 +666,9 @@ class STL_Verifier_Interest : public Observed {
         _count    = 0;
         _sizes    = 0;
         if (expiry > period && period > 0)
-            _verifier_thread =
-                new Periodic_Thread(QUARK::Microsecond(expiry), &evaluate, reinterpret_cast<void *>(this));
+            _verifier_thread = new Periodic_Thread(QUARK::Microsecond(expiry), &evaluate, reinterpret_cast<void *>(this));
         else if (period > 0)
-            _verifier_thread =
-                new Periodic_Thread(QUARK::Microsecond(period), &evaluate, reinterpret_cast<void *>(this));
+            _verifier_thread = new Periodic_Thread(QUARK::Microsecond(period), &evaluate, reinterpret_cast<void *>(this));
     }
 
     virtual ~STL_Verifier_Interest() {
@@ -699,9 +679,8 @@ class STL_Verifier_Interest : public Observed {
     }
 
     void update(Boolean_Filter *bf) {
-        db<SmartData>(TRC) << "STL_Verifier_Interest[SEU]::notified()(bf=" << bf << "=" << bf->unit_dev()
-                           << ",interested=" << _interested << "=" << _interested->unit_dev()
-                           << ",interest=" << _interest->unit_dev() << ",this=" << this << ")" << endl;
+        db<SmartData>(TRC) << "STL_Verifier_Interest[SEU]::notified()(bf=" << bf << "=" << bf->unit_dev() << ",interested=" << _interested
+                           << "=" << _interested->unit_dev() << ",interest=" << _interest->unit_dev() << ",this=" << this << ")" << endl;
         _start        = true;
         bool s        = bf->result();
         Microsecond t = bf->when();
@@ -711,8 +690,7 @@ class STL_Verifier_Interest : public Observed {
             _extended_stl_rule->add_sample(t, s, false);
             if (_period == 0) {
                 _extended_stl_rule->evaluate(t);
-                db<SmartData>(INF) << "STL_Verifier_Interest[SEU]::Event_Driven::result=" << result() << ",t=" << t
-                                   << "}" << endl;
+                db<SmartData>(INF) << "STL_Verifier_Interest[SEU]::Event_Driven::result=" << result() << ",t=" << t << "}" << endl;
                 notify(); // if period == 0, event driven, otherwise periodic and verified by thread
             }
         } else {
@@ -885,11 +863,10 @@ class SEU_SmartData : public SmartData, private TSTP::Observer, private STL_Veri
                 //     return;
                 // }
                 // db<SmartData>(INF) << "SmartData[SEU]::not Revoke!" << endl;
-                const Unit_Dev_Expiry i   = Unit_Dev_Expiry(interest->unit(), interest->device(), interest->expiry());
-                Verifiable_SmartData *vsd = new Verifiable_SmartData(interest->unit(), interest->device(),
-                                                                     interest->expiry(), interest->region());
-                Boolean_Filter *bf_left =
-                    new MU_Arrival(interest->unit(), interest->device(), interest->expiry(), interest->period());
+                const Unit_Dev_Expiry i = Unit_Dev_Expiry(interest->unit(), interest->device(), interest->expiry());
+                Verifiable_SmartData *vsd =
+                    new Verifiable_SmartData(interest->unit(), interest->device(), interest->expiry(), interest->region());
+                Boolean_Filter *bf_left = new MU_Arrival(interest->unit(), interest->device(), interest->expiry(), interest->period());
                 bf_left->register_smartdata(vsd);
                 vsd->use();
                 db<SmartData>(INF) << "SmartData[SEU]::MU_Arrival created for ude=" << i << bf_left << endl;
@@ -897,8 +874,7 @@ class SEU_SmartData : public SmartData, private TSTP::Observer, private STL_Veri
                 bool used                   = false;
                 STL_Verifier_Interest *rule = 0;
                 // STL_Verifier_Interest::List *stl_verifiers_mising_source = new STL_Verifier_Interest::List();
-                for (Boolean_Filter::List::Iterator it = _boolean_filters->begin(); it != _boolean_filters->end();
-                     it++) {
+                for (Boolean_Filter::List::Iterator it = _boolean_filters->begin(); it != _boolean_filters->end(); it++) {
                     rule = 0;
                     used = false;
                     if (it->object()->unit_dev() == i) { // is the bf main SD, so, it will not use it for sure
@@ -906,27 +882,23 @@ class SEU_SmartData : public SmartData, private TSTP::Observer, private STL_Veri
                             vsd->use();
                             db<SmartData>(INF) << "SmartData[SEU]::own value! ude=" << it->object()->unit_dev() << endl;
                         } else {
-                            db<SmartData>(INF)
-                                << "SmartData[SEU]::already registered! ude=" << it->object()->unit_dev() << endl;
+                            db<SmartData>(INF) << "SmartData[SEU]::already registered! ude=" << it->object()->unit_dev() << endl;
                         }
                         continue;
                     }
                     used = it->object()->add_input(vsd);
                     if (used) {
-                        if (it->object()->unit_dev() ==
-                            Unit_Dev_Expiry(SmartData::Unit::MONITOR, 0, 100000)) { // ignore monitoring
+                        if (it->object()->unit_dev() == Unit_Dev_Expiry(SmartData::Unit::MONITOR, 0, 100000)) { // ignore monitoring
                             db<SmartData>(INF) << "SmartData[SEU]::added to monitor! dev=" << vsd->dev() << endl;
                             continue;
                         } else {
-                            db<SmartData>(INF)
-                                << "SmartData[SEU]::used! who=" << it->object()->unit_dev() << ",bf_r=" << it->object()
-                                << ",interested in=" << vsd->unit_dev() << bf_left << endl;
+                            db<SmartData>(LOGGER) << "SmartData[SEU]::used! who=" << it->object()->unit_dev() << ",bf_r=" << it->object()
+                                                  << ",interested in=" << vsd->unit_dev() << bf_left << endl;
                             rule = new STL_Verifier_Interest(Microsecond(interest->expiry()), it->object()->period(),
                                                              it->object()); // it->object()->period()
-                            db<SmartData>(INF)
-                                << "SmartData[SEU]::STL verifier created for ude=" << it->object()->unit_dev() << endl;
+                            db<SmartData>(LOGGER) << "SmartData[SEU]::STL verifier created for ude=" << it->object()->unit_dev() << endl;
                             rule->register_boolean_filter_data_source(bf_left);
-                            db<SmartData>(INF) << "SmartData[SEU]::inserting into _stl_verifiers!" << endl;
+                            db<SmartData>(LOGGER) << "SmartData[SEU]::inserting into _stl_verifiers!" << endl;
                             _stl_verifiers->insert(rule->link());
                             rule->attach(this);
                         }
@@ -937,12 +909,11 @@ class SEU_SmartData : public SmartData, private TSTP::Observer, private STL_Veri
                 vsd->remove();
                 db<SmartData>(INF) << "SmartData[SEU]::after remove!" << endl;
                 if (!vsd->in_use()) {
-                    db<SmartData>(INF) << "SmartData[SEU]::before ignoring this one -- for some reason it was not used!"
-                                       << endl;
-                    vsd->detach(bf_left);
-                    delete bf_left;
-                    db<SmartData>(INF) << "SmartData[SEU]::deleting unused SD!" << endl;
-                    delete vsd;
+                    //db<SmartData>(LOGGER) << "SmartData[SEU]::before ignoring this one -- for some reason it was not used!" << endl;
+                    //vsd->detach(bf_left);
+                    //delete bf_left;
+                    //db<SmartData>(LOGGER) << "SmartData[SEU]::deleting unused SD!" << endl;
+                    //delete vsd;
                 } else {
                     if (Traits<Build>::cloud) {
 #ifdef CLOUD_INTEGRATION
@@ -958,8 +929,7 @@ class SEU_SmartData : public SmartData, private TSTP::Observer, private STL_Veri
             case RESPONSE: {
                 Response *response = buffer->frame()->template data<Response>();
                 _start             = true;
-                db<SmartData>(INF) << "SmartData[SEU]::update:msg=" << response->origin() << "d=" << response->device()
-                                   << endl;
+                db<SmartData>(INF) << "SmartData[SEU]::update:msg=" << response->origin() << "d=" << response->device() << endl;
                 if (Traits<Build>::cloud) {
 #ifdef CLOUD_INTEGRATION
                     if (response->device() == 16) {
@@ -990,19 +960,16 @@ class SEU_SmartData : public SmartData, private TSTP::Observer, private STL_Veri
 
     void update(STL_Verifier_Interest::Observed *obs) {
         STL_Verifier_Interest *i = reinterpret_cast<STL_Verifier_Interest *>(obs);
-        db<SmartData>(TRC) << "SmartData[SEU]::update(from=" << i->_interested->unit_dev() << ",to"
-                           << i->_interest->unit_dev() << ")" << endl;
+        db<SmartData>(TRC) << "SmartData[SEU]::update(from=" << i->_interested->unit_dev() << ",to" << i->_interest->unit_dev() << ")"
+                           << endl;
 
         if (i->result() == false) {
             db<SmartData>(ERR) << "SYSTEM IS UNSAFE! Description:" << endl;
             i->_interested->description();
-            db<SmartData>(ERR) << "\tInterest:" << i->_interest->unit_dev()
-                               << ",last sample: time=" << i->_interest->_time << ",mu=" << i->_interest->_truth_value
-                               << ",elapsed=" << i->_interest->_elapsed << endl;
-            db<SmartData>(ERR) << "\tInterested:" << i->_interested->unit_dev()
-                               << ",last sample: time=" << i->_interested->_time
-                               << ",mu=" << i->_interested->_truth_value << ",elapsed=" << i->_interested->_elapsed
-                               << endl;
+            db<SmartData>(ERR) << "\tInterest:" << i->_interest->unit_dev() << ",last sample: time=" << i->_interest->_time
+                               << ",mu=" << i->_interest->_truth_value << ",elapsed=" << i->_interest->_elapsed << endl;
+            db<SmartData>(ERR) << "\tInterested:" << i->_interested->unit_dev() << ",last sample: time=" << i->_interested->_time
+                               << ",mu=" << i->_interested->_truth_value << ",elapsed=" << i->_interested->_elapsed << endl;
             db<SmartData>(ERR) << "\tNow:" << SEU_SmartData::now() << ",period=" << i->_period << endl;
         }
     }
