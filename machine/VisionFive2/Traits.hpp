@@ -133,8 +133,8 @@ template <> struct Traits<UART> {
 /* ********** Ethernet ********** */
 template <> struct Traits<GMAC0> {
     static constexpr uintptr_t Address         = Traits<MemoryMap>::GMAC0;
-    static constexpr size_t SendBufferCount    = 128;
-    static constexpr size_t ReceiveBufferCount = 128;
+    static constexpr size_t SendBufferCount    = 256;
+    static constexpr size_t ReceiveBufferCount = 256;
     static constexpr unsigned char MAC[]       = {12, 34, 56, 78, 12, 34};
     static constexpr unsigned int IRQs[]       = {9};
 };

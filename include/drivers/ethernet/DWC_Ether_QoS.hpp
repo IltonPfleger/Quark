@@ -376,6 +376,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         Descriptor &descriptor = sx_descriptors_[i++ % MyTraits::SendBufferCount];
 
         Cache::invalidate(&descriptor, sizeof(Descriptor));
+
         if (descriptor.des3 & Descriptor::OWN) {
             sx_lock_.release();
             return -1;
@@ -396,7 +397,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     DWC_Ether_QoS_Buffer *receive() {
         size_t &i = rx_head_;
 
-        Descriptor &descriptor = rx_descriptors_[i++ % MyTraits::ReceiveBufferCount];
+        Descriptor &descriptor = rx_descriptors_[i % MyTraits::ReceiveBufferCount];
 
         Cache::invalidate(&descriptor, sizeof(Descriptor));
 
@@ -407,6 +408,8 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         Cache::invalidate(buffer, descriptor.length());
 
         new (buffer) DWC_Ether_QoS_Buffer(0, descriptor.length());
+
+        i++;
 
         return buffer;
     }

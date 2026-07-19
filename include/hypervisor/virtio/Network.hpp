@@ -40,10 +40,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         device_->detach(this);
     }
 
-    uint32_t configuration(uint32_t offset) {
-        QUARK::Console::println("OFFSET: ", offset);
-        return 0;
-    }
+    uint32_t configuration(uint32_t) { return 0; }
 
     void notify(uint32_t source) {
         if (source != 1) return;
@@ -67,7 +64,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         memcpy(destination + sizeof(NetworkHeader), data, size);
 
         descriptor->length = size + sizeof(NetworkHeader);
-
         rx_.free(id, descriptor->length);
 
         if (rx_.notifiable()) {
@@ -90,13 +86,15 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
             if (!running_) break;
 
+            bool interrupt = false;
             while (tx_.available()) {
                 uint32_t head = tx_.alloc();
                 size_t length = process(head);
                 tx_.free(head, length);
+                interrupt = true;
             }
 
-            if (tx_.notifiable()) {
+            if (tx_.notifiable() && interrupt) {
                 this->interrupt();
                 owner_.interrupt(IRQ);
             }

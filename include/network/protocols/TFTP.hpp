@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Mutex.hpp>
 #include <Semaphore.hpp>
 #include <network/protocols/UDP.hpp>
 
@@ -58,8 +57,6 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
     void update(NetworkBuffer packet, uint16_t, uint16_t source) override {
         uint16_t *header   = packet.data<uint16_t *>();
         uint16_t operation = CPU::be16toh(*header);
-
-        Mutex::Guard _(lock_);
 
         if (state_ == State::WAITING) {
             state_ = State::RECEIVING;
@@ -157,7 +154,6 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
   private:
     UDP &udp_;
     NetworkAddress server_;
-    Mutex lock_;
     Semaphore handler_;
     State state_;
     uint8_t *buffer_;

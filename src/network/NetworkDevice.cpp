@@ -10,13 +10,12 @@ void *NetworkDevice::worker(void *argument) {
 
         if (!self->running_) break;
 
-        NetworkBuffer *buffer = self->receive();
+        NetworkBuffer *buffer = nullptr;
 
-        if (!buffer) continue;
-
-        self->notify(buffer);
-
-        self->release(buffer);
+        while ((buffer = self->receive()) != nullptr) {
+            self->notify(buffer);
+            self->release(buffer);
+        }
     }
     return nullptr;
 }
