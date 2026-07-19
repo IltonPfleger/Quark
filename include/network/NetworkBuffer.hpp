@@ -13,7 +13,7 @@ class NetworkBuffer {
   public:
     using Node = collections::Node<NetworkBuffer *>;
 
-    NetworkBuffer(void *start, size_t head, size_t tail, Atomic<uint32_t> *references)
+    NetworkBuffer(void *start, size_t head, size_t tail, Atomic<uint32_t> *references = nullptr)
         : start_(static_cast<uint8_t *>(start)),
           head_(start_ + head),
           tail_(start_ + tail),

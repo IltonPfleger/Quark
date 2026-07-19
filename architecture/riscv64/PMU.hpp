@@ -1,8 +1,10 @@
+#pragma once
+
 namespace QUARK {
 
 class PMU {
   public:
-    static inline uint64_t cycle() {
+    static inline uint64_t cycles() {
         uint64_t value;
         asm volatile("rdcycle %0" : "=r"(value));
         return value;

@@ -4,28 +4,32 @@
 #include <Thread.hpp>
 #include <Traits.hpp>
 #include <hypervisor/VirtualMachine.hpp>
-#include <hypervisor/virtio/Flags.hpp>
 #include <hypervisor/virtio/Handler.hpp>
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <network/NetworkDevice.hpp>
 
-namespace QUARK {
-
-namespace virtio {
+namespace QUARK::virtio {
 
 template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : public Handler, public DEVICE::Observer {
     typedef unsigned char NetworkHeader[10];
+
+    struct Configuration {
+        uint8_t mac[6];
+        uint16_t status;
+        uint16_t pairs;
+        uint16_t mtu;
+    };
 
     friend Handler;
 
   public:
     Network(VirtualMachine &owner)
-        : Handler(1, 0, N),
+        : Handler(1, 0, MaximumNumberOfDescriptors),
           device_(DEVICE::instance()),
           owner_(owner),
           running_(true),
-          thread_(entry, this, {Thread::Criterion::NORMAL, CPU::id()}) {
+          thread_(entry, this) {
         device_->attach(this);
     }
 
@@ -36,7 +40,10 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         device_->detach(this);
     }
 
-    uint32_t config(uint32_t offset) { return 0; }
+    uint32_t configuration(uint32_t offset) {
+        QUARK::Console::println("OFFSET: ", offset);
+        return 0;
+    }
 
     void notify(uint32_t source) {
         if (source != 1) return;
@@ -51,7 +58,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
         int id = rx_.alloc();
 
-        auto *descriptor = rx_.get(id);
+        auto *descriptor = rx_.descriptor(id);
 
         auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
 
@@ -62,16 +69,24 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         descriptor->length = size + sizeof(NetworkHeader);
 
         rx_.free(id, descriptor->length);
-        this->interrupt() |= 0x1;
-        owner_.interrupt(IRQ);
+
+        if (rx_.notifiable()) {
+            this->interrupt();
+            owner_.interrupt(IRQ);
+        }
     }
 
   private:
     static void *entry(void *self) { return reinterpret_cast<Network *>(self)->worker(); }
 
     void *worker() {
+
         while (true) {
+            tx_.notifiable(true);
+
             semaphore_.p();
+
+            tx_.notifiable(false);
 
             if (!running_) break;
 
@@ -79,7 +94,10 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
                 uint32_t head = tx_.alloc();
                 size_t length = process(head);
                 tx_.free(head, length);
-                this->interrupt() |= 0x1;
+            }
+
+            if (tx_.notifiable()) {
+                this->interrupt();
                 owner_.interrupt(IRQ);
             }
         }
@@ -91,7 +109,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         int current  = head;
         size_t count = 0;
 
-        RingDescriptor *descriptor = tx_.get(current);
+        RingDescriptor *descriptor = tx_.descriptor(current);
         total += descriptor->length;
 
         if (descriptor->length >= sizeof(NetworkHeader)) {
@@ -101,9 +119,9 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         while (descriptor->flags & VRING_DESC_F_NEXT) {
-            assert(count < N);
+            assert(count < MaximumNumberOfDescriptors);
             current    = descriptor->next;
-            descriptor = tx_.get(current);
+            descriptor = tx_.descriptor(current);
             total += descriptor->length;
             auto *data = reinterpret_cast<uint8_t *>(descriptor->address);
             send(data, descriptor->length);
@@ -125,9 +143,9 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     }
 
   public:
-    static constexpr uintptr_t Address = ADDRESS;
-    static constexpr size_t Size       = sizeof(LegacyHeader);
-    static constexpr size_t N          = 32;
+    static constexpr uintptr_t Address                 = ADDRESS;
+    static constexpr size_t Size                       = sizeof(LegacyHeader);
+    static constexpr size_t MaximumNumberOfDescriptors = 512;
 
   private:
     DEVICE *device_;
@@ -138,11 +156,10 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     volatile bool running_;
     Thread thread_;
 
+    Configuration configuration_;
     Queue tx_;
     Queue rx_;
     Queue *queues_[2] = {&rx_, &tx_};
 };
 
-} // namespace virtio
-
-} // namespace QUARK
+} // namespace QUARK::virtio

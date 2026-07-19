@@ -21,7 +21,7 @@ class IllegalInstruction {
             uint8_t rd = Decoder::rd(instruction);
             switch (Decoder::csr(instruction)) {
                 case Decoder::TIME: (*context)[rd] = CLINT::mtime(); break;
-                case Decoder::CYCLE: (*context)[rd] = PMU::cycle(); break;
+                case Decoder::CYCLE: (*context)[rd] = PMU::cycles(); break;
                 case Decoder::INSTRET: (*context)[rd] = PMU::instret(); break;
                 default: ExceptionHandler::onTrap(context);
             }

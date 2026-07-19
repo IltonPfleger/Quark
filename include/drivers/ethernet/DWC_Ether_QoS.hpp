@@ -229,11 +229,7 @@ class DWC_Ether_QoS_Payload {
 class DWC_Ether_QoS_Buffer : DWC_Ether_QoS_Payload, public NetworkBuffer {
   public:
     DWC_Ether_QoS_Buffer(size_t head = 0, size_t tail = 0)
-        : NetworkBuffer(this, head, tail, &references_),
-          references_(0) {}
-
-  public:
-    Atomic<uint32_t> references_;
+        : NetworkBuffer(this, head, tail) {}
 };
 
 template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
@@ -288,9 +284,16 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
     enum Bits {
         MODE_SOFTWARE_RESET   = 1 << 0,
+        SYSBUS_MODE_MB        = 1 << 14,
         SYSBUS_MODE_EAME      = 1 << 11,
-        SYSBUS_MODE_FB        = 1 << 0,
+        SYSBUS_MODE_BLEN256   = 1 << 7,
+        SYSBUS_MODE_BLEN128   = 1 << 6,
+        SYSBUS_MODE_BLEN64    = 1 << 5,
+        SYSBUS_MODE_BLEN32    = 1 << 4,
+        SYSBUS_MODE_BLEN16    = 1 << 3,
+        SYSBUS_MODE_BLEN8     = 1 << 2,
         SYSBUS_MODE_BLEN4     = 1 << 1,
+        SYSBUS_MODE_FB        = 1 << 0,
         INTERRUPT_ENABLE_NIE  = 1 << 15,
         INTERRUPT_ENABLE_AIE  = 1 << 14,
         INTERRUPT_ENABLE_RIE  = 1 << 6,
@@ -310,22 +313,25 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
             memset(&sx_descriptors_[i], 0, sizeof(Descriptor));
             Cache::flush(&sx_descriptors_[i], sizeof(Descriptor));
             sx_list_.insert(sx_buffers_[i].node());
+            sx_semaphore_.v();
         }
 
         for (size_t i = 0; i < MyTraits::ReceiveBufferCount - 1; i++) {
             release(&rx_buffers_[i]);
         }
 
-        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_EAME;
+        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_EAME | SYSBUS_MODE_MB;
+        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_BLEN256 | SYSBUS_MODE_BLEN128 | SYSBUS_MODE_BLEN64 | SYSBUS_MODE_BLEN32;
+        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_BLEN16 | SYSBUS_MODE_BLEN8 | SYSBUS_MODE_BLEN4;
 
-        uintptr_t rx_addr                      = reinterpret_cast<uintptr_t>(rx_descriptors_);
-        Reg32(Address, CH0_RXDESC_LIST_ADDR)   = static_cast<uint32_t>(rx_addr);
-        Reg32(Address, CH0_RXDESC_LIST_HADDR)  = static_cast<uint32_t>(rx_addr >> 32);
+        uintptr_t rx                           = reinterpret_cast<uintptr_t>(rx_descriptors_);
+        Reg32(Address, CH0_RXDESC_LIST_ADDR)   = static_cast<uint32_t>(rx);
+        Reg32(Address, CH0_RXDESC_LIST_HADDR)  = static_cast<uint32_t>(rx >> 32);
         Reg32(Address, CH0_RXDESC_RING_LENGTH) = MyTraits::ReceiveBufferCount - 1;
 
-        uintptr_t tx_addr                      = reinterpret_cast<uintptr_t>(sx_descriptors_);
-        Reg32(Address, CH0_TXDESC_LIST_ADDR)   = static_cast<uint32_t>(tx_addr);
-        Reg32(Address, CH0_TXDESC_LIST_HADDR)  = static_cast<uint32_t>(tx_addr >> 32);
+        uintptr_t tx                           = reinterpret_cast<uintptr_t>(sx_descriptors_);
+        Reg32(Address, CH0_TXDESC_LIST_ADDR)   = static_cast<uint32_t>(tx);
+        Reg32(Address, CH0_TXDESC_LIST_HADDR)  = static_cast<uint32_t>(tx >> 32);
         Reg32(Address, CH0_TXDESC_RING_LENGTH) = MyTraits::SendBufferCount - 1;
 
         Reg32(Address, CH0_TX_CONTROL) |= 1;
@@ -344,11 +350,9 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     }
 
     DWC_Ether_QoS_Buffer *alloc(size_t length) {
-        NetworkBuffer::Node *node = nullptr;
+        sx_semaphore_.p();
 
-        while (!(node = sx_list_.remove())) {
-            Thread::yield();
-        }
+        NetworkBuffer::Node *node = sx_list_.remove();
 
         DWC_Ether_QoS_Buffer *buffer = static_cast<DWC_Ether_QoS_Buffer *>(node->value);
 
@@ -357,7 +361,10 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         return buffer;
     }
 
-    void free(DWC_Ether_QoS_Buffer *buffer) { sx_list_.insert(buffer->node()); }
+    void free(DWC_Ether_QoS_Buffer *buffer) {
+        sx_list_.insert(buffer->node());
+        sx_semaphore_.v();
+    }
 
     int send(const void *data, size_t length) {
         Cache::flush(data, length);
@@ -366,7 +373,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         size_t &i = sx_head_;
 
-        Descriptor &descriptor = sx_descriptors_[i % MyTraits::SendBufferCount];
+        Descriptor &descriptor = sx_descriptors_[i++ % MyTraits::SendBufferCount];
 
         Cache::invalidate(&descriptor, sizeof(Descriptor));
         if (descriptor.des3 & Descriptor::OWN) {
@@ -379,7 +386,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
         Cache::flush(&descriptor, sizeof(Descriptor));
 
-        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + ++i);
+        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (i % MyTraits::SendBufferCount));
 
         sx_lock_.release();
 
@@ -389,13 +396,11 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     DWC_Ether_QoS_Buffer *receive() {
         size_t &i = rx_head_;
 
-        Descriptor &descriptor = rx_descriptors_[i % MyTraits::ReceiveBufferCount];
+        Descriptor &descriptor = rx_descriptors_[i++ % MyTraits::ReceiveBufferCount];
 
         Cache::invalidate(&descriptor, sizeof(Descriptor));
 
         if (descriptor.des3 & Descriptor::OWN) return nullptr;
-
-        i++;
 
         DWC_Ether_QoS_Buffer *buffer = descriptor.template buffer<DWC_Ether_QoS_Buffer *>();
 
@@ -403,25 +408,22 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         new (buffer) DWC_Ether_QoS_Buffer(0, descriptor.length());
 
-        buffer->references_ = 1;
-
         return buffer;
     }
 
     void release(DWC_Ether_QoS_Buffer *buffer) {
-        size_t i = rx_tail_++ % MyTraits::ReceiveBufferCount;
+        size_t &i = rx_tail_;
 
-        Descriptor &descriptor = rx_descriptors_[i];
+        Descriptor &descriptor = rx_descriptors_[i % MyTraits::ReceiveBufferCount];
 
         descriptor.buffer(buffer);
-
         descriptor.des2 = 0;
-
         descriptor.des3 = Descriptor::OWN | Descriptor::IOC | Descriptor::BUF1V;
 
         Cache::flush(&descriptor, sizeof(Descriptor));
 
-        Reg32(Address, CH0_RX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(rx_descriptors_ + i);
+        i++;
+        Reg32(Address, CH0_RX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(rx_descriptors_ + (i % MyTraits::ReceiveBufferCount));
     }
 
   private:
@@ -435,6 +437,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
     DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
 
+    Semaphore sx_semaphore_;
     Mutex sx_lock_;
     size_t sx_head_;
     size_t rx_head_;

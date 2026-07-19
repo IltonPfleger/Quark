@@ -1,5 +1,6 @@
 #pragma once
 
+#include <hypervisor/virtio/flags.hpp>
 #include <types.hpp>
 #include <utility/Debug.hpp>
 
@@ -68,9 +69,22 @@ class Queue {
         return available_->ring()[last_++ % size_];
     }
 
-    RingDescriptor *get(uint32_t id) {
+    RingDescriptor *descriptor(uint32_t id) {
         assert(id < size_);
         return &descriptors_[id];
+    }
+
+    bool notifiable() const {
+        if (!available_) return false;
+        return !(*static_cast<volatile uint16_t *>(&available_->flags) & VRING_AVAIL_F_NO_INTERRUPT);
+    }
+
+    void notifiable(bool value) {
+        if (!used_) return;
+        if (value)
+            *static_cast<volatile uint16_t *>(&used_->flags) &= ~VRING_USED_F_NO_NOTIFY;
+        else
+            *static_cast<volatile uint16_t *>(&used_->flags) |= VRING_USED_F_NO_NOTIFY;
     }
 
     void free(unsigned int id, unsigned int length = 0) {

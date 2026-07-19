@@ -16,6 +16,8 @@ SmartData::Time nanos() {
     return us;
 }
 
+extern OStream kout, kerr;
+
 class Unit_Dev_Expiry {
   public:
     typedef Simple_List<Unit_Dev_Expiry> List;
@@ -1027,7 +1029,12 @@ void *STL_Verifier_Interest::evaluate(void *p) {
         if (i->_count < Verifiable_SmartData::ITERATIONS_MEASURE) {
             i->_sum = i->_sum + (nanos() - start);
             i->_sizes += i->_extended_stl_rule->size();
-        }
+        } else {
+			//static QUARK::Mutex lock;
+			//lock.acquire();
+			//kout << "STL_Verifier_Interest[SEU](from=" << i->_interested->unit_dev() << ",to" << i->_interest->unit_dev() << ")"" ==> SUM of #Iterations(" << Verifiable_SmartData::ITERATIONS_MEASURE << ")=" << ((double)i->_sum)/1000. << ",avg=" << (((double)i->_sum)/1000.)/Verifiable_SmartData::ITERATIONS_MEASURE << ",avg_trace_len=" << (((double)i->_sizes))/Verifiable_SmartData::ITERATIONS_MEASURE << endl;
+			//lock.release();
+		}
         i->_count++;
         Periodic_Thread::wait();
     }

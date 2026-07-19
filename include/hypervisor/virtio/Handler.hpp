@@ -67,7 +67,7 @@ class Handler {
             default:
                 if (offset >= 0x100 && offset < 0x140) {
                     valid        = true;
-                    *destination = self.config(offset);
+                    *destination = self.configuration(offset - 0x100);
                 }
                 break;
         }
@@ -87,7 +87,7 @@ class Handler {
             case Register::QueueSize:
             case Register::QueueAlignment: self.header(offset) = value; return true;
             case Register::QueuePFN: self.pfn(value); return true;
-            case Register::InterruptAck: self.interrupt() &= ~value; return true;
+            case Register::InterruptAck: self.header(offset) &= ~value; return true;
             case Register::QueueNotify: self.notify(value); return true;
             default: return false;
         }
@@ -114,7 +114,7 @@ class Handler {
         self.header_.queue_pfn = source;
     }
 
-    auto &interrupt(this auto &self) { return self.header_.interrupt_status; }
+    void interrupt(this auto &self) { self.header_.interrupt_status |= 0x1; }
 
   protected:
     LegacyHeader header_;

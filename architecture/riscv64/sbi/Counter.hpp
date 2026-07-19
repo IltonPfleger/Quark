@@ -30,6 +30,8 @@ class Counter {
                 uintptr_t address = PageTable::virt2phys(c->a1);
                 uintptr_t *ts     = reinterpret_cast<uintptr_t *>(address);
                 for (uintmax_t i = 1; i < c->a0; i += 2) {
+                    (void)ts;
+                    (void)i;
                     Console::println(ts[i] - ts[i - 1]);
                 }
                 lock_.v();

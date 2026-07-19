@@ -1048,16 +1048,16 @@ class SmartData {
         const Percent &location_confidence() const { return _location_confidence; }
         void location_confidence(const Percent &c) { _location_confidence = c; }
 
-        const Unit &unit() const { return _unit; }
+        const Unit unit() const { return _unit; }
         void unit(const Unit &u) { _unit = u; }
         const Device_Id device() const { return _device; }
         void device(const Device_Id &u) { _device = u; }
-        const Signature &signature() const { return const_cast<const Signature &>(_signature); }
+        const Signature signature() const { return _signature; }
         void signature(const Signature &s) { _signature = s; }
 
         const Spacetime &origin() const { return _origin; }
         const Space &space() const { return reinterpret_cast<const Space &>(_origin); }
-        const Time &time() const { return reinterpret_cast<const Time &>(_origin); }
+        const Time time() const { return reinterpret_cast<const Time &>(_origin); }
         void origin(const Spacetime &o) { _origin = o; }
         void origin(const Space &s) { _origin = s; }
         void origin(const Time &t) { _origin = t; }

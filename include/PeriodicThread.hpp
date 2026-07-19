@@ -7,7 +7,7 @@
 
 namespace QUARK {
 
-class PeriodicThread : Semaphore, Thread {
+class PeriodicThread : private Semaphore, public Thread {
     using Thread::Argument;
     using Thread::Criterion;
     using Thread::Function;
@@ -30,8 +30,7 @@ class PeriodicThread : Semaphore, Thread {
         : Semaphore(0),
           Thread(dispatch, this, c),
           arguments_(f, a),
-          period_(t),
-          next_(Timer::now() + period_) {
+          period_(t) {
         this->v();
     }
 
@@ -42,6 +41,7 @@ class PeriodicThread : Semaphore, Thread {
     }
 
     Microsecond period() { return period_; }
+
     void period(Microsecond period) { period_ = period; }
 
   private:

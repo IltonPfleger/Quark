@@ -60,12 +60,12 @@ class Receiver {
 
 class LinuxLauncher {
   public:
-    using SerialDevice  = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-    using NetworkDevice = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
-    using Serial        = virtio::Console<SerialDevice, 0x30000000, 32>;
-    // using Network             = virtio::Network<NetworkDevice, 0x40000000, 50>;
+    using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+    using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
+    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
+    using Network             = virtio::Network<NetworkDevice, 0x40000000, 50>;
     using InterruptController = VirtualPLIC<0xc000000>;
-    using LinuxMachine        = GenericVirtualMachine<InterruptController, Serial>;
+    using LinuxMachine        = GenericVirtualMachine<InterruptController, Serial, Network>;
 
     LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs, Thread::Criterion criterion)
         : size_(size),
@@ -198,17 +198,17 @@ class LinuxLauncher {
                     fdt.add("interrupt-parent", 0x02);
                 }
                 fdt.end();
-                // fdt.begin("virtio_mmio@40000000");
-                //{
-                //     uint64_t address = 0x40000000;
-                //     uint32_t irq     = 50;
-                //     uint32_t regs[]  = {CPU::hi32(address), CPU::lo32(address), 0x00, 0x1000};
-                //     fdt.add("compatible", "virtio,mmio");
-                //     fdt.add("reg", regs, 4);
-                //     fdt.add("interrupts", irq);
-                //     fdt.add("interrupt-parent", 0x02);
-                // }
-                // fdt.end();
+                fdt.begin("virtio_mmio@40000000");
+                {
+                    uint64_t address = 0x40000000;
+                    uint32_t irq     = 50;
+                    uint32_t regs[]  = {CPU::hi32(address), CPU::lo32(address), 0x00, 0x1000};
+                    fdt.add("compatible", "virtio,mmio");
+                    fdt.add("reg", regs, 4);
+                    fdt.add("interrupts", irq);
+                    fdt.add("interrupt-parent", 0x02);
+                }
+                fdt.end();
             }
             fdt.end();
         }
@@ -243,5 +243,5 @@ int main() {
     const auto &linux     = receiver.linux();
     const auto &initramfs = receiver.initramfs();
 
-    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
+    new LinuxLauncher(MemorySize, linux, initramfs, QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
 }

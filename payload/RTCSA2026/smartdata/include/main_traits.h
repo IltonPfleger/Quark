@@ -233,7 +233,7 @@ template <> struct Traits<Debug> : public Traits<Build> {
     static const bool warning = false;
     static const bool info    = false;
     static const bool trace   = false;
-    static const bool logger  = true;
+    static const bool logger  = false;
 };
 
 template <> struct Traits<Network> : public Traits<Build> {

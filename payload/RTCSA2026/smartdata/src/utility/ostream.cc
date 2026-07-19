@@ -20,9 +20,14 @@ int OStream::itoa(int v, char * s)
     return utoa(static_cast<UInt32>(v), s, i);
 }
 
-
 int OStream::utoa(unsigned int v, char * s, unsigned int i)
 {
+    // FIX: Guard against division-by-zero (_base == 0) or infinite loops (_base == 1)
+    // Also ensures _base doesn't exceed the maximum standard digits array size (16)
+    if (_base < 2 || _base > 16) {
+        _base = 10;
+    }
+
     UInt32 j;
 
     if(!v) {
@@ -37,6 +42,7 @@ int OStream::utoa(unsigned int v, char * s, unsigned int i)
             s[i++] = 'x';
     }
 
+    // This loop is now safe because _base is guaranteed to be >= 2
     for(j = v; j != 0; i++, j /= _base);
     for(j = 0; v != 0; j++, v /= _base)
         s[i - 1 - j] = _digits[v % _base];

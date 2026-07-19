@@ -2,7 +2,6 @@
 
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
-#include <hypervisor/virtio/Flags.hpp>
 #include <hypervisor/virtio/Handler.hpp>
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
@@ -24,7 +23,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         device_->attach(this);
     }
 
-    uint32_t config(uint32_t) { return 0; }
+    uint32_t configuration(uint32_t) { return 0; }
 
     void notify(unsigned int source) {
         if (source != 1) return;
@@ -40,7 +39,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         if (!rx_.available()) return;
 
         int id            = rx_.alloc();
-        auto *descriptor  = rx_.get(id);
+        auto *descriptor  = rx_.descriptor(id);
         auto *destination = reinterpret_cast<unsigned char *>(descriptor->address);
 
         descriptor->length = size;
@@ -49,8 +48,11 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         memcpy(destination, buffer, size);
 
         rx_.free(id, size);
-        this->interrupt() |= 1;
-        owner_.interrupt(IRQ);
+
+        if (rx_.notifiable()) {
+            this->interrupt();
+            owner_.interrupt(IRQ);
+        }
     }
 
     size_t process(int head) {
@@ -58,14 +60,14 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         size_t count = 0;
         int current  = head;
 
-        RingDescriptor *descriptor = tx_.get(current);
+        RingDescriptor *descriptor = tx_.descriptor(current);
 
         total += print(descriptor);
 
         while (descriptor->flags & VRING_DESC_F_NEXT) {
             assert(count < N);
             current    = descriptor->next;
-            descriptor = tx_.get(current);
+            descriptor = tx_.descriptor(current);
             total += print(descriptor);
             count++;
         }

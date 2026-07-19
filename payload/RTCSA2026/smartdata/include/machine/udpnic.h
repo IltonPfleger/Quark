@@ -125,7 +125,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
 
     const Statistics &statistics() override {
         db<NIC>(TRC) << "UDPNIC::statistics()" << endl;
-        m_statistics.time_stamp = TSC::time_stamp();
+        m_statistics.time_stamp = static_cast<QUARK::Microsecond>(QUARK::Timer::now());
         return m_statistics;
     }
 
@@ -153,7 +153,15 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
         // QUARK::Console::print('\n');
 
         b.fill(length, address(), address(), PROTO_TSTP, data, length);
-        notify(PROTO_TSTP, &b);
+
+        static int counter = 0;
+        if (counter++ > 30) {
+            for (int i = 0; i < 1; i++) {
+                notify(PROTO_TSTP, &b);
+            }
+        } else {
+            notify(PROTO_TSTP, &b);
+        }
 
         // if (!rx_.insert(b)) QUARK::Console::println("LOST");
     }

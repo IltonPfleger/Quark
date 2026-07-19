@@ -9,6 +9,8 @@ class StoreAddressMisaligned {
     static constexpr uint32_t CODE = 6;
 
     static void dispatch(ContextFrame *c) {
+        if (((c->status >> 11) & 0x3) != 1) ExceptionHandler::onTrap(c);
+
         uintptr_t pc        = PageTable::virt2phys(c->pc);
         uint16_t compressed = Decoder::compressed(pc);
 
