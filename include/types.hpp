@@ -32,13 +32,9 @@ template <size_t Factor> class Duration {
     constexpr Duration(const Duration<U> other)
         : value_((other.value_ * Factor) / U) {}
 
-    template <size_t U> constexpr Duration operator+(const Duration<U> &other) const {
-        return Duration(value_ + Duration(other).value_);
-    }
+    template <size_t U> constexpr Duration operator+(const Duration<U> &other) const { return Duration(value_ + Duration(other).value_); }
 
-    template <size_t U> constexpr Duration operator-(const Duration<U> &other) const {
-        return Duration(value_ - Duration(other).value_);
-    }
+    template <size_t U> constexpr Duration operator-(const Duration<U> &other) const { return Duration(value_ - Duration(other).value_); }
 
     constexpr operator uintmax_t() const { return value_; }
 

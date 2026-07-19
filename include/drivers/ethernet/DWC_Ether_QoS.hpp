@@ -300,6 +300,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         INTERRUPT_ENABLE_RBUE = 1 << 7,
         INTERRUPT_STATUS_RI   = 1 << 6,
         INTERRUPT_STATUS_RBU  = 1 << 7,
+        CH0_TX_CONTROL_PBL8   = 1 << 16,
     };
 
   public:
@@ -373,7 +374,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         size_t &i = sx_head_;
 
-        Descriptor &descriptor = sx_descriptors_[i++ % MyTraits::SendBufferCount];
+        Descriptor &descriptor = sx_descriptors_[i % MyTraits::SendBufferCount];
 
         Cache::invalidate(&descriptor, sizeof(Descriptor));
 
@@ -387,6 +388,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
         Cache::flush(&descriptor, sizeof(Descriptor));
 
+        i++;
         Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (i % MyTraits::SendBufferCount));
 
         sx_lock_.release();
@@ -434,14 +436,17 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
   private:
     collections::FIFO<NetworkBuffer::Node, Mutex> sx_list_;
-    Descriptor sx_descriptors_[MyTraits::SendBufferCount];
-    DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
 
+    Descriptor sx_descriptors_[MyTraits::SendBufferCount];
     Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
-    DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
+
+    alignas(MyTraits::BufferAlignment) DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
+    alignas(MyTraits::BufferAlignment) DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
 
     Semaphore sx_semaphore_;
+
     Mutex sx_lock_;
+
     size_t sx_head_;
     size_t rx_head_;
     size_t rx_tail_;

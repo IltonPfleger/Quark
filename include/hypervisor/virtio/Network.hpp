@@ -164,7 +164,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
   public:
     static constexpr uintptr_t Address                 = ADDRESS;
     static constexpr size_t Size                       = sizeof(LegacyHeader);
-    static constexpr size_t MaximumNumberOfDescriptors = 512;
+    static constexpr size_t MaximumNumberOfDescriptors = 1024;
 
   private:
     DEVICE *device_;

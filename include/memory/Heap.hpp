@@ -1,41 +1,77 @@
 #pragma once
 
 #include <Traits.hpp>
-#include <memory/Heap.hpp>
 #include <memory/Memory.hpp>
 #include <utility/Debug.hpp>
 
-namespace QUARK {
+enum class Heap { APPLICATION, SYSTEM };
 
-class Heap {
-  public:
-    struct Header {
-        size_t size;
-    };
-    enum Location { APPLICATION, SYSTEM };
+struct HeapHeader {
+    unsigned long size;
 };
 
-} // namespace QUARK
+inline void *operator new(unsigned long length, std::align_val_t align, Heap) {
+    unsigned long alignment = static_cast<unsigned long>(align);
 
-inline void *operator new(QUARK::size_t s, QUARK::Heap::Location) {
-    using Header   = QUARK::Heap::Header;
-    Header *header = reinterpret_cast<Header *>(QUARK::Memory::alloc(s + sizeof(Header)));
-    assert(header);
-    header->size = s + sizeof(Header);
-    return header + 1;
+    if (alignment < alignof(void *)) alignment = alignof(void *);
+
+    const unsigned long total = sizeof(HeapHeader) + sizeof(void *) + alignment - 1 + length;
+
+    auto *raw = static_cast<unsigned char *>(QUARK::Memory::alloc(total));
+
+    auto *header = reinterpret_cast<HeapHeader *>(raw);
+    header->size = total;
+
+    unsigned long long pointer = reinterpret_cast<unsigned long long>(raw + sizeof(HeapHeader) + sizeof(void *));
+
+    unsigned long long aligned = (pointer + alignment - 1) & ~(alignment - 1);
+
+    void *result = reinterpret_cast<void *>(aligned);
+
+    reinterpret_cast<HeapHeader **>(result)[-1] = header;
+
+    return result;
 }
 
-inline void operator delete(void *p) {
-    if (!p) return;
+inline void operator delete(void *pointer) noexcept {
+    if (!pointer) return;
 
-    using Header   = QUARK::Heap::Header;
-    Header *header = reinterpret_cast<Header *>(p) - 1;
+    auto *header = reinterpret_cast<HeapHeader **>(pointer)[-1];
+
     QUARK::Memory::free(header, header->size);
 }
 
-inline void *operator new(QUARK::size_t s) { return ::operator new(s, QUARK::Heap::APPLICATION); }
-inline void *operator new[](QUARK::size_t s) { return ::operator new(s, QUARK::Heap::APPLICATION); }
-inline void *operator new[](QUARK::size_t s, QUARK::Heap::Location l) { return ::operator new(s, l); }
-inline void operator delete(void *p, QUARK::size_t) { ::operator delete(p); }
-inline void operator delete[](void *p) { ::operator delete(p); }
-inline void operator delete[](void *p, QUARK::size_t) { ::operator delete(p); }
+inline void operator delete(void *pointer, unsigned long, Heap) noexcept { ::operator delete(pointer); }
+
+inline void operator delete(void *pointer, unsigned long, unsigned long, Heap) noexcept { ::operator delete(pointer); }
+
+// -----------------------------------------------------------------------------
+// Scalar New
+// -----------------------------------------------------------------------------
+inline void *operator new(unsigned long size, Heap selector) { return ::operator new(size, static_cast<std::align_val_t>(1), selector); }
+
+inline void *operator new(unsigned long size) { return ::operator new(size, Heap::APPLICATION); }
+
+inline void *operator new(unsigned long size, std::align_val_t alignment) { return ::operator new(size, alignment, Heap::APPLICATION); }
+
+// -----------------------------------------------------------------------------
+// Array New
+// -----------------------------------------------------------------------------
+inline void *operator new[](unsigned long size) { return ::operator new(size); }
+
+inline void *operator new[](unsigned long size, Heap selector) { return ::operator new(size, selector); }
+
+inline void *operator new[](unsigned long size, std::align_val_t alignment) { return ::operator new(size, alignment, Heap::APPLICATION); }
+
+inline void *operator new[](unsigned long size, std::align_val_t alignment, Heap selector) {
+    return ::operator new(size, alignment, selector);
+}
+
+// -----------------------------------------------------------------------------
+// Deletes
+// -----------------------------------------------------------------------------
+inline void operator delete[](void *pointer) noexcept { ::operator delete(pointer); }
+
+inline void operator delete[](void *pointer, unsigned long) noexcept { ::operator delete(pointer); }
+
+inline void operator delete(void *pointer, unsigned long) noexcept { ::operator delete(pointer); }

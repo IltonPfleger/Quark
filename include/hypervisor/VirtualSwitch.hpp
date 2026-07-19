@@ -40,12 +40,6 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
         lock_.release();
     }
 
-    void clone(const NetworkBuffer *buffer) {
-        lock_.acquire();
-        this->notify(buffer);
-        lock_.release();
-    }
-
     static auto instance() {
         static VirtualSwitch instance;
         return &instance;

@@ -7,6 +7,7 @@
 namespace QUARK::collections {
 
 template <typename T, typename Lock = void> class UnorderedList {
+
   public:
     constexpr UnorderedList()
         : head_(nullptr) {}
@@ -19,7 +20,15 @@ template <typename T, typename Lock = void> class UnorderedList {
         lock();
 
         node->next = head_;
-        head_      = node;
+
+        if constexpr (DoublyLinked) {
+            node->previous = nullptr;
+            if (head_) {
+                head_->previous = node;
+            }
+        }
+
+        head_ = node;
 
         unlock();
     }
@@ -32,8 +41,16 @@ template <typename T, typename Lock = void> class UnorderedList {
             return nullptr;
         }
 
-        T *node    = head_;
-        head_      = node->next;
+        T *node = head_;
+        head_   = node->next;
+
+        if constexpr (DoublyLinked) {
+            if (head_) {
+                head_->previous = nullptr;
+            }
+            node->previous = nullptr;
+        }
+
         node->next = nullptr;
 
         unlock();
@@ -41,35 +58,43 @@ template <typename T, typename Lock = void> class UnorderedList {
         return node;
     }
 
-    bool remove(T *target) {
-        assert(target);
+    bool remove(T *node) {
+        assert(node);
 
         lock();
 
-        T *previous = nullptr;
-        T *current  = head_;
-
-        while (current && current != target) {
-            previous = current;
-            current  = current->next;
-        }
-
-        if (!current) {
-            unlock();
-            return false;
-        }
-
-        if (previous) {
-            previous->next = current->next;
+        bool found = true;
+        if constexpr (DoublyLinked) {
+            if (node->previous) {
+                node->previous->next = node->next;
+            } else {
+                head_ = node->next;
+            }
+            if (node->next) {
+                node->next->previous = node->previous;
+            }
+            node->previous = nullptr;
         } else {
-            head_ = current->next;
+            if (head_ == node) {
+                head_ = node->next;
+            } else {
+                T *current = head_;
+                while (current && current->next != node) {
+                    current = current->next;
+                }
+                if (current) {
+                    current->next = node->next;
+                } else {
+                    found = false;
+                }
+            }
         }
 
-        current->next = nullptr;
+        if (found) node->next = nullptr;
 
         unlock();
 
-        return true;
+        return found;
     }
 
   protected:
@@ -84,6 +109,9 @@ template <typename T, typename Lock = void> class UnorderedList {
             lock_.release();
         }
     }
+
+  private:
+    static constexpr bool DoublyLinked = !Meta::Same<typename T::Previous, Meta::Empty>::Result;
 
   private:
     T *head_;
