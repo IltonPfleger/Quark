@@ -536,9 +536,8 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
     }
 
     int send(NetworkBuffer *buffer) override {
-        int response = dma_->send(buffer->start(), buffer->length());
-        free(buffer);
-        return response;
+        assert(buffer->start<uintptr_t>() + buffer->length() < ((1ULL << 40) - 1));
+        return dma_->send(buffer->start(), buffer->length());
     }
 
     void release(NetworkBuffer *buffer) override { dma_->release(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
@@ -547,7 +546,7 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
 
     void address(const NetworkAddress &address) override { new (&address_) Address(address); }
 
-    void free(NetworkBuffer *buffer) { dma_->free(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
+    void free(NetworkBuffer *buffer) override { dma_->free(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
 
     static void onTrap(size_t) {
         volatile uint32_t &status = reg32(CH0_INTERRUPT_STATUS);

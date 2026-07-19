@@ -34,10 +34,10 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     }
 
     ~Network() {
+        device_->detach(this);
         running_ = false;
         semaphore_.v();
         thread_.join();
-        device_->detach(this);
     }
 
     uint32_t configuration(uint32_t) { return 0; }
@@ -76,7 +76,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     static void *entry(void *self) { return reinterpret_cast<Network *>(self)->worker(); }
 
     void *worker() {
-
         while (true) {
             tx_.notifiable(true);
 
@@ -103,6 +102,28 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     }
 
     size_t process(int head) {
+        RingDescriptor *descriptor = tx_.descriptor(head);
+
+        if (descriptor->flags & VRING_DESC_F_NEXT) {
+            return fragmented(head);
+        }
+
+        size_t descriptors = descriptor->length;
+        if (descriptor->length <= sizeof(NetworkHeader)) {
+            return descriptors;
+        }
+
+        size_t payload = descriptor->length - sizeof(NetworkHeader);
+        descriptors += payload;
+
+        auto *data = reinterpret_cast<uint8_t *>(descriptor->address) + sizeof(NetworkHeader);
+        NetworkBuffer buffer(data, 0, payload, nullptr);
+        device_->send(&buffer);
+
+        return descriptors;
+    }
+
+    size_t fragmented(int head) {
         size_t payload     = 0;
         size_t descriptors = 0;
         size_t count       = 0;
@@ -112,7 +133,9 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         descriptors += descriptor->length;
 
         if (descriptor->length >= sizeof(NetworkHeader)) {
-            descriptors += (descriptor->length - sizeof(NetworkHeader));
+            size_t total = descriptor->length - sizeof(NetworkHeader);
+            descriptors += total;
+            payload += total;
         }
 
         RingDescriptor *first = descriptor;
@@ -132,7 +155,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         NetworkBuffer *buffer = device_->alloc(payload);
-
         assert(buffer);
 
         buffer->shrink(buffer->offset());
@@ -157,6 +179,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         device_->send(buffer);
+        device_->free(buffer);
 
         return descriptors;
     }
@@ -175,10 +198,11 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     volatile bool running_;
     Thread thread_;
 
-    Configuration configuration_;
     Queue tx_;
     Queue rx_;
     Queue *queues_[2] = {&rx_, &tx_};
+
+    Configuration configuration_;
 };
 
 } // namespace QUARK::virtio

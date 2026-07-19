@@ -106,6 +106,7 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
         header->dpa = pa;
 
         device_.send(solver, ProtocolValue, buffer);
+        device_.free(buffer);
     }
 
     void onReply(const Header &received) {
@@ -136,6 +137,7 @@ template <typename HardwareLayerType, typename ProtocolLayerType> class ARP : pu
             header->dpa = received.spa;
 
             device_.send(received.sha, ProtocolValue, buffer);
+            device_.free(buffer);
         }
     }
 

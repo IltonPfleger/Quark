@@ -124,6 +124,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         payload[0]            = CPU::htobe16(Operation::ACK);
         payload[1]            = CPU::htobe16(block);
         udp_.send(server_, port_, buffer);
+        udp_.free(buffer);
     }
 
     void request(const char *filename) {
@@ -143,6 +144,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         size_t total = 2 + length + 6 + 8 + sizeof(BlockSizeString) + 1;
         packet->shrink(packet->length() - packet->offset() - total);
         udp_.send(server_, 69, packet);
+        udp_.free(packet);
     }
 
   private:

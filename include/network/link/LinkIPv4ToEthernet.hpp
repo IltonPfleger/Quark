@@ -22,19 +22,21 @@ class LinkIPv4ToEthernet : public NetworkLinkLayer, public Observer<const Networ
         device_.attach(this);
     }
 
-    virtual ~LinkIPv4ToEthernet() { device_.detach(this); }
+    ~LinkIPv4ToEthernet() { device_.detach(this); }
 
-    virtual NetworkBuffer *alloc(size_t length) override { return device_.alloc(length); }
+    NetworkBuffer *alloc(size_t length) override { return device_.alloc(length); }
 
-    virtual void update(const NetworkBuffer *buffer) override {
+    void free(NetworkBuffer *buffer) override { device_.free(buffer); }
+
+    void update(const NetworkBuffer *buffer) override {
         auto *header = reinterpret_cast<Ethernet::Header *>(buffer->start());
         if (header->protocol() != IPv4::ProtocolValue) return;
         notify(buffer);
     }
 
-    virtual void bind(const NetworkAddress &address) override { router_.bind(address); }
+    void bind(const NetworkAddress &address) override { router_.bind(address); }
 
-    virtual int send(const NetworkAddress &address, NetworkBuffer *buffer) override {
+    int send(const NetworkAddress &address, NetworkBuffer *buffer) override {
         if (IP(address) == IPv4Broadcast) return device_.send(EthernetBroadcast, Ethertype, buffer);
 
         MAC solved;

@@ -12,6 +12,7 @@ class NetworkLinkLayer : public Observed<const NetworkBuffer *> {
     virtual ~NetworkLinkLayer()                               = default;
     virtual void bind(const NetworkAddress &)                 = 0;
     virtual NetworkBuffer *alloc(size_t)                      = 0;
+    virtual void free(NetworkBuffer *)                        = 0;
     virtual int send(const NetworkAddress &, NetworkBuffer *) = 0;
 };
 

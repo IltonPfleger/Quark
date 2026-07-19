@@ -12,24 +12,24 @@ namespace QUARK {
 template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public DEVICE::Observed {
   public:
     VirtualSwitch()
-        : device_(DEVICE::instance()) {
-        device_->attach(this);
+        : device_(*DEVICE::instance()) {
+        device_.attach(this);
     }
 
-    NetworkBuffer *alloc(size_t length) { return device_->alloc(length); }
+    NetworkBuffer *alloc(size_t length) { return device_.alloc(length); }
 
-    int send(NetworkBuffer *buffer) {
+    void free(NetworkBuffer *buffer) { device_.free(buffer); }
+
+    int send(NetworkBuffer *buffer, typename DEVICE::Observer *sender = nullptr) {
         size_t length = buffer->length();
 
         lock_.acquire();
 
-        buffer->advance(sizeof(typename DEVICE::Header));
-        this->notify(buffer);
-        buffer->rewind(sizeof(typename DEVICE::Header));
+        this->notify(buffer, sender);
 
         lock_.release();
 
-        device_->send(buffer);
+        device_.send(buffer);
 
         return length;
     }
@@ -38,6 +38,12 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
         lock_.acquire();
         this->notify(buffer);
         lock_.release();
+    }
+
+    void notify(NetworkBuffer *buffer, DEVICE::Observer *excludes) override {
+        for (auto *l = this->observers_.head(); l; l = l->next) {
+            if (l != excludes) l->value->update(buffer);
+        }
     }
 
     static auto instance() {

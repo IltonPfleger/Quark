@@ -8,18 +8,21 @@ namespace QUARK {
 template <typename... Args> class Observer;
 template <typename... Args> class Observed;
 
-template <typename... Args> class Observed : collections::UnorderedList<collections::Node<Observer<Args...> *, void, true>, Mutex> {
+template <typename... Args> class Observed {
   public:
     Observed() = default;
 
-    void attach(Observer<Args...> *o) { this->insert(&o->node_); }
-    void detach(Observer<Args...> *o) { this->remove(&o->node_); }
+    virtual void attach(Observer<Args...> *observer) { observers_.insert(&observer->node_); }
+    virtual void detach(Observer<Args...> *observer) { observers_.remove(&observer->node_); }
 
-    void notify(Args... args) {
-        for (auto *l = this->head(); l; l = l->next) {
+    virtual void notify(Args... args) {
+        for (auto *l = observers_.head(); l; l = l->next) {
             l->value->update(args...);
         }
     }
+
+  private:
+    collections::UnorderedList<collections::Node<Observer<Args...> *, void, true>, Mutex> observers_;
 };
 
 template <typename... Args> class Observer {
