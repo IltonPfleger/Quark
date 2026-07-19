@@ -105,41 +105,62 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     }
 
     size_t process(int head) {
-        size_t total = 0;
-        int current  = head;
-        size_t count = 0;
+        size_t payload     = 0;
+        size_t descriptors = 0;
+        size_t count       = 0;
+        int current        = head;
 
         RingDescriptor *descriptor = tx_.descriptor(current);
-        total += descriptor->length;
+        descriptors += descriptor->length;
 
         if (descriptor->length >= sizeof(NetworkHeader)) {
-            auto *data      = reinterpret_cast<uint8_t *>(descriptor->address) + sizeof(NetworkHeader);
-            uint32_t length = descriptor->length - sizeof(NetworkHeader);
-            send(data, length);
+            descriptors += (descriptor->length - sizeof(NetworkHeader));
         }
+
+        RingDescriptor *first = descriptor;
 
         while (descriptor->flags & VRING_DESC_F_NEXT) {
             assert(count < MaximumNumberOfDescriptors);
             current    = descriptor->next;
             descriptor = tx_.descriptor(current);
-            total += descriptor->length;
-            auto *data = reinterpret_cast<uint8_t *>(descriptor->address);
-            send(data, descriptor->length);
+
+            descriptors += descriptor->length;
+            payload += descriptor->length;
             count++;
         }
 
-        return total;
-    }
-
-    void send(const uint8_t *data, uint32_t length) {
-        if (length == 0) return;
-        NetworkBuffer *buffer = device_->alloc(length);
-        if (buffer) {
-            buffer->shrink(buffer->offset());
-            buffer->rewind(buffer->offset());
-            memcpy(buffer->start(), data, length);
-            device_->send(buffer);
+        if (payload == 0) {
+            return descriptors;
         }
+
+        NetworkBuffer *buffer = device_->alloc(payload);
+
+        assert(buffer);
+
+        buffer->shrink(buffer->offset());
+        buffer->rewind(buffer->offset());
+        auto *destination = reinterpret_cast<uint8_t *>(buffer->start());
+
+        descriptor = first;
+
+        if (descriptor->length >= sizeof(NetworkHeader)) {
+            auto *data      = reinterpret_cast<uint8_t *>(descriptor->address) + sizeof(NetworkHeader);
+            uint32_t length = descriptor->length - sizeof(NetworkHeader);
+            memcpy(destination, data, length);
+            destination += length;
+        }
+
+        while (descriptor->flags & VRING_DESC_F_NEXT) {
+            head       = descriptor->next;
+            descriptor = tx_.descriptor(head);
+            auto *data = reinterpret_cast<uint8_t *>(descriptor->address);
+            memcpy(destination, data, descriptor->length);
+            destination += descriptor->length;
+        }
+
+        device_->send(buffer);
+
+        return descriptors;
     }
 
   public:
