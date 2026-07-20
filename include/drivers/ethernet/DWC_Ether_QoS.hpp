@@ -297,6 +297,10 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         CH0_TX_CONTROL_OSF  = 1 << 4,
     };
 
+    enum Shift {
+        SYSBUS_MODE_RD_OSR_LMT_SHIFT = 16,
+    };
+
   public:
     DWC_Ether_QoS_DMA()
         : sx_head_(0),
@@ -315,6 +319,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
             release(&rx_buffers_[i]);
         }
 
+        Reg32(Address, DMA_SYSBUS_MODE) = 2 << SYSBUS_MODE_RD_OSR_LMT_SHIFT;
         Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_EAME | SYSBUS_MODE_MB;
         Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_BLEN16 | SYSBUS_MODE_BLEN8 | SYSBUS_MODE_BLEN4;
 
@@ -386,11 +391,11 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         sx_lock_.release();
 
-        while (1) {
-            Cache::flush(&descriptor, sizeof(Descriptor));
-            if (!(descriptor.des3 & Descriptor::OWN)) break;
-            Thread::yield();
-        }
+        // while (1) {
+        //     Cache::flush(&descriptor, sizeof(Descriptor));
+        //     if (!(descriptor.des3 & Descriptor::OWN)) break;
+        //     Thread::yield();
+        // }
 
         return length;
     }
@@ -470,8 +475,8 @@ template <unsigned long Base> class DWC_Ether_QoS_MTL : Driver {
   public:
     static void init() {
         TraceIn();
-        Reg32(Base, TX_QUEUE0_OPERATION_MODE) |= TX_QUEUE0_OPERATION_MODE_TSF | TX_QUEUE0_OPERATION_MODE_ENABLE;
-        Reg32(Base, RX_QUEUE0_OPERATION_MODE) |= RX_QUEUE0_OPERATION_MODE_FUP | RX_QUEUE0_OPERATION_MODE_RSF;
+        Reg32(Base, TX_QUEUE0_OPERATION_MODE) = TX_QUEUE0_OPERATION_MODE_TSF | TX_QUEUE0_OPERATION_MODE_ENABLE;
+        Reg32(Base, RX_QUEUE0_OPERATION_MODE) = RX_QUEUE0_OPERATION_MODE_FUP | RX_QUEUE0_OPERATION_MODE_RSF;
         TraceOut();
     }
 };
@@ -543,10 +548,10 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
 
     void interrupts(bool enable) {
         if (enable) {
-            reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
-            reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
+            Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
+            Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
         } else {
-            reg32(CH0_INTERRUPT_ENABLE) = 0;
+            Reg32(CH0_INTERRUPT_ENABLE) = 0;
         }
     }
 
@@ -557,12 +562,12 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
     void free(NetworkBuffer *buffer) override { dma_->free(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
 
     static void isr(size_t) {
-        volatile uint32_t &status = reg32(CH0_INTERRUPT_STATUS);
+        volatile uint32_t &status = Reg32(CH0_INTERRUPT_STATUS);
         DWC_Ether_QoS *self       = instance();
 
         if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI)) {
-            WorkerManager::schedule(worker, self);
             status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI;
+            WorkerManager::schedule(worker, self);
         }
     }
 
@@ -580,7 +585,7 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
         return &instance;
     }
 
-    static volatile uint32_t &reg32(size_t offset) { return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset); }
+    static volatile uint32_t &Reg32(size_t offset) { return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset); }
 
   private:
     Address address_;

@@ -14,16 +14,6 @@ class WorkerManager {
     };
 
   public:
-    WorkerManager()
-        : running_(true),
-          thread_(dispatcher, this) {}
-
-    ~WorkerManager() {
-        running_ = false;
-        pending_.v();
-        thread_.join();
-    }
-
     static void init() {
         for (auto &i : managers_) {
             i = new WorkerManager();
@@ -41,6 +31,16 @@ class WorkerManager {
     }
 
   private:
+    WorkerManager()
+        : running_(true),
+          thread_(dispatcher, this) {}
+
+    ~WorkerManager() {
+        running_ = false;
+        pending_.v();
+        thread_.join();
+    }
+
     bool schedule(Worker &&worker) {
         if (workers_.insert(worker)) {
             pending_.v();
