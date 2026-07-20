@@ -3,6 +3,7 @@
 #include <architecture/Timer.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Memory.hpp>
+#include <utility/WorkerManager.hpp>
 
 using namespace QUARK;
 
@@ -14,6 +15,7 @@ extern "C" void init() {
         Memory::init();
         Thread::init();
         Payload::init();
+        WorkerManager::init();
     }
 
     if constexpr (Traits<Timer>::Enable) Timer::init();

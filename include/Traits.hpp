@@ -19,6 +19,7 @@ class CPU;
 class IPv4;
 class Scheduler;
 class Monitor;
+class WorkerManager;
 
 template <typename T> struct Traits;
 
@@ -44,6 +45,11 @@ template <> struct Traits<Debug> {
 
 template <> struct Traits<Scheduler> {
     typedef FixedCore Criterion;
+};
+
+template <> struct Traits<WorkerManager> {
+    static constexpr size_t Threads  = 1;
+    static constexpr size_t Capacity = 32;
 };
 
 } // namespace QUARK

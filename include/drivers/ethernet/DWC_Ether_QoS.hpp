@@ -10,6 +10,7 @@
 #include <memory/Heap.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
+#include <utility/WorkerManager.hpp>
 #include <utility/collections/FIFO.hpp>
 
 namespace QUARK {
@@ -511,10 +512,9 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
         MAC::speed(PHY::speed());
         MTL::init();
         MAC::init();
-        NetworkDevice::init();
 
         for (auto &i : MyTraits::IRQs) {
-            IC::install(i, onTrap);
+            IC::install(i, isr);
         }
 
         interrupts(true);
@@ -556,13 +556,22 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
 
     void free(NetworkBuffer *buffer) override { dma_->free(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
 
-    static void onTrap(size_t) {
+    static void isr(size_t) {
         volatile uint32_t &status = reg32(CH0_INTERRUPT_STATUS);
         DWC_Ether_QoS *self       = instance();
 
         if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI)) {
-            self->notify();
+            WorkerManager::schedule(worker, self);
             status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI;
+        }
+    }
+
+    static void worker(void *pointer) {
+        DWC_Ether_QoS *self = reinterpret_cast<DWC_Ether_QoS *>(pointer);
+        NetworkBuffer *received;
+        while ((received = self->receive()) != nullptr) {
+            self->notify(received);
+            self->release(received);
         }
     }
 

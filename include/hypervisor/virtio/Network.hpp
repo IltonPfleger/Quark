@@ -1,13 +1,12 @@
 #pragma once
 
-#include <Semaphore.hpp>
-#include <Thread.hpp>
 #include <Traits.hpp>
 #include <hypervisor/VirtualMachine.hpp>
 #include <hypervisor/virtio/Handler.hpp>
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <network/NetworkDevice.hpp>
+#include <utility/WorkerManager.hpp>
 
 namespace QUARK::virtio {
 
@@ -27,24 +26,15 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     Network(VirtualMachine &owner)
         : Handler(1, 0, MaximumNumberOfDescriptors),
           device_(DEVICE::instance()),
-          owner_(owner),
-          running_(true),
-          thread_(entry, this) {
+          owner_(owner) {
         device_->attach(this);
-    }
-
-    ~Network() {
-        device_->detach(this);
-        running_ = false;
-        semaphore_.v();
-        thread_.join();
     }
 
     uint32_t configuration(uint32_t) { return 0; }
 
     void notify(uint32_t source) {
         if (source != 1) return;
-        semaphore_.v();
+        WorkerManager::schedule(worker, this);
     }
 
     void update(const NetworkBuffer *buffer) override {
@@ -73,32 +63,25 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     }
 
   private:
-    static void *entry(void *self) { return reinterpret_cast<Network *>(self)->worker(); }
+    static void worker(void *pointer) {
+        auto *self = reinterpret_cast<Network *>(pointer);
 
-    void *worker() {
-        while (true) {
-            semaphore_.p();
+        self->tx_.notifiable(false);
 
-            tx_.notifiable(false);
-
-            if (!running_) break;
-
-            bool interrupt = false;
-            while (tx_.available()) {
-                uint32_t head = tx_.alloc();
-                size_t length = process(head);
-                tx_.free(head, length);
-                interrupt = true;
-            }
-
-            if (tx_.notifiable() && interrupt) {
-                this->interrupt();
-                owner_.interrupt(IRQ);
-            }
-
-            tx_.notifiable(true);
+        bool interrupt = false;
+        while (self->tx_.available()) {
+            uint32_t head = self->tx_.alloc();
+            size_t length = self->process(head);
+            self->tx_.free(head, length);
+            interrupt = true;
         }
-        return nullptr;
+
+        if (self->tx_.notifiable() && interrupt) {
+            self->interrupt();
+            self->owner_.interrupt(IRQ);
+        }
+
+        self->tx_.notifiable(true);
     }
 
     size_t process(int head) {
@@ -191,11 +174,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
   private:
     DEVICE *device_;
     VirtualMachine &owner_;
-
-    Semaphore semaphore_;
-
-    volatile bool running_;
-    Thread thread_;
 
     Queue tx_;
     Queue rx_;
