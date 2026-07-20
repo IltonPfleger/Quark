@@ -243,7 +243,8 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         enum {
             OWN   = 1 << 31,
-            IOC   = 1 << 30,
+            RIOC  = 1 << 30,
+            TIOC  = 1 << 31,
             FD    = 1 << 29,
             LD    = 1 << 28,
             ES    = 1 << 15,
@@ -278,29 +279,21 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         CH0_RX_TAIL_POINTER    = 0x1128,
         CH0_TXDESC_RING_LENGTH = 0x112c,
         CH0_RXDESC_RING_LENGTH = 0x1130,
-        CH0_INTERRUPT_ENABLE   = 0x1134,
-        CH0_INTERRUPT_STATUS   = 0x1160,
     };
 
     enum Bits {
-        MODE_SOFTWARE_RESET   = 1 << 0,
-        SYSBUS_MODE_MB        = 1 << 14,
-        SYSBUS_MODE_EAME      = 1 << 11,
-        SYSBUS_MODE_BLEN256   = 1 << 7,
-        SYSBUS_MODE_BLEN128   = 1 << 6,
-        SYSBUS_MODE_BLEN64    = 1 << 5,
-        SYSBUS_MODE_BLEN32    = 1 << 4,
-        SYSBUS_MODE_BLEN16    = 1 << 3,
-        SYSBUS_MODE_BLEN8     = 1 << 2,
-        SYSBUS_MODE_BLEN4     = 1 << 1,
-        SYSBUS_MODE_FB        = 1 << 0,
-        INTERRUPT_ENABLE_NIE  = 1 << 15,
-        INTERRUPT_ENABLE_AIE  = 1 << 14,
-        INTERRUPT_ENABLE_RIE  = 1 << 6,
-        INTERRUPT_ENABLE_RBUE = 1 << 7,
-        INTERRUPT_STATUS_RI   = 1 << 6,
-        INTERRUPT_STATUS_RBU  = 1 << 7,
-        CH0_TX_CONTROL_PBL8   = 1 << 16,
+        MODE_SOFTWARE_RESET = 1 << 0,
+        SYSBUS_MODE_MB      = 1 << 14,
+        SYSBUS_MODE_EAME    = 1 << 11,
+        SYSBUS_MODE_BLEN256 = 1 << 7,
+        SYSBUS_MODE_BLEN128 = 1 << 6,
+        SYSBUS_MODE_BLEN64  = 1 << 5,
+        SYSBUS_MODE_BLEN32  = 1 << 4,
+        SYSBUS_MODE_BLEN16  = 1 << 3,
+        SYSBUS_MODE_BLEN8   = 1 << 2,
+        SYSBUS_MODE_BLEN4   = 1 << 1,
+        SYSBUS_MODE_FB      = 1 << 0,
+        CH0_TX_CONTROL_OSF  = 1 << 4,
     };
 
   public:
@@ -322,7 +315,6 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         }
 
         Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_EAME | SYSBUS_MODE_MB;
-        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_BLEN256 | SYSBUS_MODE_BLEN128 | SYSBUS_MODE_BLEN64 | SYSBUS_MODE_BLEN32;
         Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_BLEN16 | SYSBUS_MODE_BLEN8 | SYSBUS_MODE_BLEN4;
 
         uintptr_t rx                           = reinterpret_cast<uintptr_t>(rx_descriptors_);
@@ -335,6 +327,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         Reg32(Address, CH0_TXDESC_LIST_HADDR)  = static_cast<uint32_t>(tx >> 32);
         Reg32(Address, CH0_TXDESC_RING_LENGTH) = MyTraits::SendBufferCount - 1;
 
+        Reg32(Address, CH0_TX_CONTROL) |= CH0_TX_CONTROL_OSF;
         Reg32(Address, CH0_TX_CONTROL) |= 1;
         Reg32(Address, CH0_RX_CONTROL) |= 1;
 
@@ -384,14 +377,19 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         }
 
         descriptor.buffer(data);
-        descriptor.des2 = length & 0x3FFF;
+        descriptor.des2 = (length & 0x3FFF) | Descriptor::TIOC;
         descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
         Cache::flush(&descriptor, sizeof(Descriptor));
 
-        i++;
-        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (i % MyTraits::SendBufferCount));
+        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (i++ % MyTraits::SendBufferCount));
 
         sx_lock_.release();
+
+        while (1) {
+            Cache::flush(&descriptor, sizeof(Descriptor));
+            if (!(descriptor.des3 & Descriptor::OWN)) break;
+            Thread::yield();
+        }
 
         return length;
     }
@@ -423,7 +421,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         descriptor.buffer(buffer);
         descriptor.des2 = 0;
-        descriptor.des3 = Descriptor::OWN | Descriptor::IOC | Descriptor::BUF1V;
+        descriptor.des3 = Descriptor::OWN | Descriptor::RIOC | Descriptor::BUF1V;
 
         Cache::flush(&descriptor, sizeof(Descriptor));
 
@@ -488,10 +486,12 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
         INTERRUPT_ENABLE_AIE  = 1 << 14,
         INTERRUPT_ENABLE_RIE  = 1 << 6,
         INTERRUPT_ENABLE_TIE  = 1 << 0,
-        INTERRUPT_STATUS_TI   = 1 << 0,
         INTERRUPT_ENABLE_RBUE = 1 << 7,
+        INTERRUPT_ENABLE_ERIE = 1 << 11,
+        INTERRUPT_STATUS_TI   = 1 << 0,
         INTERRUPT_STATUS_RI   = 1 << 6,
         INTERRUPT_STATUS_RBU  = 1 << 7,
+        INTERRUPT_STATUS_ERI  = 1 << 11,
     };
 
   public:
@@ -517,8 +517,7 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
             IC::install(i, onTrap);
         }
 
-        reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
-        reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
+        interrupts(true);
 
         TraceOut();
     }
@@ -542,6 +541,15 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
 
     void release(NetworkBuffer *buffer) override { dma_->release(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
 
+    void interrupts(bool enable) {
+        if (enable) {
+            reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
+            reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
+        } else {
+            reg32(CH0_INTERRUPT_ENABLE) = 0;
+        }
+    }
+
     NetworkAddress address() const override { return address_; }
 
     void address(const NetworkAddress &address) override { new (&address_) Address(address); }
@@ -552,14 +560,9 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
         volatile uint32_t &status = reg32(CH0_INTERRUPT_STATUS);
         DWC_Ether_QoS *self       = instance();
 
-        if (status & INTERRUPT_STATUS_RI) {
+        if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI)) {
             self->notify();
-            status = INTERRUPT_STATUS_RI;
-        }
-
-        if (status & INTERRUPT_STATUS_RBU) {
-            self->notify();
-            status = INTERRUPT_STATUS_RBU;
+            status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI;
         }
     }
 

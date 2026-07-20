@@ -149,7 +149,8 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         asm("sd a6, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a6)));
         asm("sd a7, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a7)));
 
-        // asm("blt t0, zero, 1f");
+        asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::CAUSE), "i"(__builtin_offsetof(ContextFrame, cause)));
+        asm("blt t0, zero, 1f");
         asm("sd s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
         asm("sd s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
         asm("sd s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
@@ -162,9 +163,8 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         asm("sd s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
         asm("sd s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
         asm("sd s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
-        // asm("1:");
+        asm("1:");
 
-        asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::CAUSE), "i"(__builtin_offsetof(ContextFrame, cause)));
         asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::STATUS), "i"(__builtin_offsetof(ContextFrame, status)));
         asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::EPC), "i"(__builtin_offsetof(ContextFrame, pc)));
         asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::TVAL), "i"(__builtin_offsetof(ContextFrame, value)));
@@ -177,8 +177,8 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         asm("ld t0, %0(sp); csrw %1, t0" ::"i"(__builtin_offsetof(ContextFrame, status)), "i"(T::STATUS));
         asm("ld t0, %0(sp); csrw %1, t0" ::"i"(__builtin_offsetof(ContextFrame, pc)), "i"(T::EPC));
 
-        // asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, cause)));
-        // asm("blt t0, zero, 1f");
+        asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, cause)));
+        asm("blt t0, zero, 1f");
         asm("ld s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
         asm("ld s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
         asm("ld s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
@@ -191,7 +191,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         asm("ld s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
         asm("ld s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
         asm("ld s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
-        // asm("1:");
+        asm("1:");
 
         asm("ld ra, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ra)));
         asm("ld gp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, gp)));

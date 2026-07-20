@@ -97,12 +97,12 @@ class VirtualCPU {
     }
 
     static bool read(uintptr_t address, uint32_t *destination) {
-        if (!current()) return false;
+        assert(current());
         return current()->vm_->read(address, destination);
     }
 
     static bool write(uintptr_t address, uint32_t source) {
-        if (!current()) return false;
+        assert(current());
         return current()->vm_->write(address, source);
     }
 
@@ -171,8 +171,8 @@ class VirtualCPU {
 
     static constexpr uintmax_t MIDELEG = SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
     static constexpr uintmax_t MEDELEG = 0          //
-                                         | 1 << 4   //
-                                         | 1 << 6   //
+                                         | 1 << 4   // Load Address Misaligned
+                                         | 1 << 6   // Store Address Misaligned
                                          | 1 << 3   // Breakpoint
                                          | 1 << 8   // Environment Call From U-Mode
                                          | 1 << 12  // Instruction Page Fault

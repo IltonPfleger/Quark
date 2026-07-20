@@ -77,8 +77,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
     void *worker() {
         while (true) {
-            tx_.notifiable(true);
-
             semaphore_.p();
 
             tx_.notifiable(false);
@@ -97,6 +95,8 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
                 this->interrupt();
                 owner_.interrupt(IRQ);
             }
+
+            tx_.notifiable(true);
         }
         return nullptr;
     }
@@ -114,7 +114,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         size_t payload = descriptor->length - sizeof(NetworkHeader);
-        descriptors += payload;
 
         auto *data = reinterpret_cast<uint8_t *>(descriptor->address) + sizeof(NetworkHeader);
         NetworkBuffer buffer(data, 0, payload, nullptr);
@@ -134,8 +133,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
         if (descriptor->length >= sizeof(NetworkHeader)) {
             size_t total = descriptor->length - sizeof(NetworkHeader);
-            descriptors += total;
-            payload += total;
+            payload      = total;
         }
 
         RingDescriptor *first = descriptor;
@@ -155,6 +153,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         NetworkBuffer *buffer = device_->alloc(payload);
+
         assert(buffer);
 
         buffer->shrink(buffer->offset());

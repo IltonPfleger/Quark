@@ -55,6 +55,8 @@ class Queue {
         address = align(address, alignment);
 
         used_ = reinterpret_cast<RingUsed *>(address);
+
+        notifiable(true);
     }
 
     bool available() {
