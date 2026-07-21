@@ -5,13 +5,13 @@
 
 namespace QUARK {
 
-class EthernetDevice : public NetworkDevice {
+class Ethernet_Controller : public NetworkDevice {
   public:
     using Address = Ethernet::Address;
     using Header  = Ethernet::Header;
     using NetworkDevice::send;
 
-    virtual ~EthernetDevice() {}
+    virtual ~Ethernet_Controller() {}
 
     virtual NetworkAddress address() const       = 0;
     virtual void address(const NetworkAddress &) = 0;

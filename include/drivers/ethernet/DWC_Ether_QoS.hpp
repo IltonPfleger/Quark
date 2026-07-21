@@ -4,7 +4,7 @@
 #include <architecture/CPU.hpp>
 #include <architecture/IC.hpp>
 #include <drivers/Driver.hpp>
-#include <drivers/ethernet/EthernetDevice.hpp>
+#include <drivers/ethernet/Ethernet_Controller.hpp>
 #include <libraries/libc/string.h>
 #include <machine/Machine.hpp>
 #include <memory/Heap.hpp>
@@ -486,7 +486,7 @@ template <unsigned long Base> class DWC_Ether_QoS_MTL : Driver {
     }
 };
 
-template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
+template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
     enum Registers {
         CH0_INTERRUPT_ENABLE = 0x1134,
         CH0_INTERRUPT_STATUS = 0x1160,

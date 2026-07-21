@@ -2,12 +2,9 @@
 #define __QUARK_NETWORK_BUFFER__
 
 #include <types.hpp>
-#include <utility/Atomic.hpp>
 #include <utility/collections/Node.hpp>
 
 namespace QUARK {
-
-class NetworkDevice;
 
 class NetworkBuffer {
   public:

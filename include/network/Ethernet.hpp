@@ -8,6 +8,9 @@ namespace QUARK {
 class Ethernet {
   public:
     typedef GenericAddress<6> Address;
+
+    static constexpr Address Broadcast = {255, 255, 255, 255, 255, 255};
+
     typedef uint16_t Protocol;
 
     class Header {

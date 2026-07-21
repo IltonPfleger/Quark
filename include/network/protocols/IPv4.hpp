@@ -16,6 +16,8 @@ class IPv4 : public Observer<const NetworkBuffer *>,
 
     using Address = GenericAddress<4>;
 
+    static constexpr Address Broadcast = {255, 255, 255, 255};
+
     struct Header {
         uint8_t version;
         uint8_t tos;

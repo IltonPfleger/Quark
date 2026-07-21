@@ -1,7 +1,7 @@
 #ifndef __QUARK_IPV4_TO_ETHERNET_LINK_LAYER__
 #define __QUARK_IPV4_TO_ETHERNET_LINK_LAYER__
 
-#include <drivers/ethernet/EthernetDevice.hpp>
+#include <drivers/ethernet/Ethernet_Controller.hpp>
 #include <network/NetworkAddress.hpp>
 #include <network/NetworkBuffer.hpp>
 #include <network/NetworkLinkLayer.hpp>
@@ -13,10 +13,10 @@ namespace QUARK {
 class LinkIPv4ToEthernet : public NetworkLinkLayer, public Observer<const NetworkBuffer *> {
     using MAC    = GenericAddress<6>;
     using IP     = GenericAddress<4>;
-    using Router = ARP<EthernetDevice, IPv4>;
+    using Router = ARP<Ethernet_Controller, IPv4>;
 
   public:
-    LinkIPv4ToEthernet(EthernetDevice &device)
+    LinkIPv4ToEthernet(Ethernet_Controller &device)
         : device_(device),
           router_(Router(device_)) {
         device_.attach(this);
@@ -35,21 +35,16 @@ class LinkIPv4ToEthernet : public NetworkLinkLayer, public Observer<const Networ
     void bind(const NetworkAddress &address) override { router_.bind(address); }
 
     int send(const NetworkAddress &address, NetworkBuffer *buffer) override {
-        if (IP(address) == IPv4Broadcast) return device_.send(EthernetBroadcast, Ethertype, buffer);
+        if (IP(address) == IPv4::Broadcast) return device_.send(Ethernet::Broadcast, IPv4::ProtocolValue, buffer);
 
         MAC solved;
-        if (router_.resolve(address, EthernetBroadcast, solved)) return device_.send(solved, Ethertype, buffer);
+        if (router_.resolve(address, Ethernet::Broadcast, solved)) return device_.send(solved, IPv4::ProtocolValue, buffer);
 
         return 0;
     }
 
   private:
-    static constexpr Ethernet::Protocol Ethertype = IPv4::ProtocolValue;
-    static constexpr MAC EthernetBroadcast        = {255, 255, 255, 255, 255, 255};
-    static constexpr IP IPv4Broadcast             = {255, 255, 255, 255};
-
-  private:
-    EthernetDevice &device_;
+    Ethernet_Controller &device_;
     Router router_;
 };
 
