@@ -8,7 +8,7 @@ template <typename T, size_t Capacity, typename Lock = void> class CircularBuffe
     CircularBuffer()
         : head_(0),
           tail_(0),
-          size_(0) {}
+          length_(0) {}
 
     bool insert(const T &source) {
         bool response = true;
@@ -18,11 +18,11 @@ template <typename T, size_t Capacity, typename Lock = void> class CircularBuffe
         buffer_[tail_] = source;
         tail_          = (tail_ + 1) % Capacity;
 
-        if (size_ == Capacity) {
+        if (length_ == Capacity) {
             head_    = (head_ + 1) % Capacity;
             response = false;
         } else {
-            ++size_;
+            ++length_;
         }
 
         unlock();
@@ -33,27 +33,27 @@ template <typename T, size_t Capacity, typename Lock = void> class CircularBuffe
     bool remove(T &destination) {
         lock();
 
-        if (size_ == 0) {
+        if (length_ == 0) {
             unlock();
             return false;
         }
 
         destination = buffer_[head_];
         head_       = (head_ + 1) % Capacity;
-        --size_;
+        --length_;
 
         unlock();
         return true;
     }
 
     void lock() {
-        if constexpr (!Meta::IsVoid<Lock>::Result) {
+        if constexpr (!Meta::Same<Lock, Meta::Empty>::Result) {
             lock_.acquire();
         }
     }
 
     void unlock() {
-        if constexpr (!Meta::IsVoid<Lock>::Result) {
+        if constexpr (!Meta::Same<Lock, Meta::Empty>::Result) {
             lock_.release();
         }
     }
@@ -72,7 +72,7 @@ template <typename T, size_t Capacity, typename Lock = void> class CircularBuffe
 
     size_t head_;
     size_t tail_;
-    size_t size_;
+    size_t length_;
 
     Meta::IF<!Meta::IsVoid<Lock>::Result, Lock, Meta::Empty>::Result lock_;
 };

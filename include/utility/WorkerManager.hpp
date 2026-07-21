@@ -42,7 +42,7 @@ class WorkerManager {
     }
 
     bool schedule(Worker &&worker) {
-        if (workers_.insert(worker)) {
+        if (running_ && workers_.insert(static_cast<Worker &&>(worker))) {
             pending_.v();
             return true;
         }
@@ -54,11 +54,11 @@ class WorkerManager {
 
         while (1) {
             self->pending_.p();
-            if (!self->running_) break;
             Worker worker;
-            if (self->workers_.remove(worker)) {
+            while (self->workers_.remove(worker)) {
                 worker();
             }
+            if (!self->running_) break;
         };
 
         return nullptr;
@@ -70,9 +70,10 @@ class WorkerManager {
   private:
     volatile bool running_;
 
-    Thread thread_;
     Semaphore pending_;
     List workers_;
+
+    Thread thread_;
 
   private:
     static inline WorkerManager *managers_[Traits<WorkerManager>::Threads];

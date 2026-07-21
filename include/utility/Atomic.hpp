@@ -25,17 +25,19 @@ template <typename T> class Atomic {
         return CPU::Atomic::fdec(value_);
     }
 
+    bool tsl() { return CPU::Atomic::tsl(value_); }
+
     bool cas(T &expected, T desired) { return CPU::Atomic::cas(value_, expected, desired); }
 
     void store(T value) { CPU::Atomic::store(value_, value); }
 
-    T operator++(int)
+    T operator++()
         requires Meta::Integer<T>
     {
         return finc();
     }
 
-    T operator--(int)
+    T operator--()
         requires Meta::Integer<T>
     {
         return fdec();

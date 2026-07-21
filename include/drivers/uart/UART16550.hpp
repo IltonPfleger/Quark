@@ -2,12 +2,14 @@
 
 #include <architecture/IC.hpp>
 #include <drivers/Driver.hpp>
+#include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
 #include <utility/Observer.hpp>
+#include <utility/WorkerManager.hpp>
 
 namespace QUARK {
 
-template <typename Tag> class UART16550 : public Driver, public Observed<const unsigned char *, size_t> {
+template <typename Tag> class UART16550 : public Driver, public Observed<const char *, size_t> {
     using MyTraits = Traits<Tag>;
 
     static constexpr unsigned long Address    = MyTraits::Address;
@@ -52,26 +54,33 @@ template <typename Tag> class UART16550 : public Driver, public Observed<const u
         LSR_TX_EMPTY = 1 << 5,
     };
 
-    static void handler(size_t) {
-        unsigned char buffer[32];
-        unsigned int i = 0;
+    static void isr(size_t) {
+        auto *self = reinterpret_cast<UART16550 *>(instance());
+        if (!self->pending_.tsl()) WorkerManager ::schedule(worker, instance());
+    }
+
+    static void worker(void *pointer) {
+        auto *self = reinterpret_cast<UART16550 *>(pointer);
+        char buffer[128];
+        size_t i = 0;
         while (Reg8(Address, LSR) & LSR_RX_READY && i < sizeof(buffer)) {
-            unsigned char c = Reg8(Address, RBR);
-            buffer[i]       = c;
+            char c    = Reg8(Address, RBR);
+            buffer[i] = c;
             i++;
         }
-        instance()->notify(buffer, i);
+        self->notify(buffer, i);
+        self->pending_.store(false);
     }
 
   public:
     static void init() {
         for (auto &i : MyTraits::IRQs)
-            IC::install(i, handler);
+            IC::install(i, isr);
     }
 
     static UART16550 *instance() {
-        static UART16550 $;
-        return &$;
+        static UART16550 instance;
+        return &instance;
     }
 
     void putc(char c) {
@@ -85,6 +94,12 @@ template <typename Tag> class UART16550 : public Driver, public Observed<const u
             ;
         return Reg8(Address, RBR);
     }
+
+  private:
+    static constexpr uint8_t *Address = static_cast<uint8_t *>(MyTraits::Address);
+
+  private:
+    Atomic<bool> pending_;
 };
 
 } // namespace QUARK

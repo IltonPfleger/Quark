@@ -12,7 +12,7 @@ namespace QUARK {
 
 namespace virtio {
 
-template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : public Handler, public Observer<const unsigned char *, size_t> {
+template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : public Handler, public Observer<const char *, size_t> {
     friend Handler;
 
   public:
@@ -35,7 +35,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         }
     }
 
-    void update(const unsigned char *buffer, size_t size) override {
+    void update(const char *buffer, size_t size) override {
         if (!rx_.available()) return;
 
         int id            = rx_.alloc();
