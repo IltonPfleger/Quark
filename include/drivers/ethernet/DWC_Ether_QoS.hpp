@@ -446,8 +446,8 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
   private:
     collections::FIFO<NetworkBuffer::Node, Mutex> sx_list_;
 
-    Descriptor sx_descriptors_[MyTraits::SendBufferCount];
-    Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
+    alignas(sizeof(Descriptor)) Descriptor sx_descriptors_[MyTraits::SendBufferCount];
+    alignas(sizeof(Descriptor)) Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
 
     alignas(MyTraits::BufferAlignment) DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
     alignas(MyTraits::BufferAlignment) DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
