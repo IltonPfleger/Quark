@@ -237,10 +237,10 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     typedef Meta::GetFromTypeList<Traits<QUARK::CacheController>::Devices, 0>::Result Cache;
 
     struct Descriptor {
-        uint32_t des0;
-        uint32_t des1;
-        unsigned int des2;
-        unsigned int des3;
+        volatile uint32_t des0;
+        volatile uint32_t des1;
+        volatile uint32_t des2;
+        volatile uint32_t des3;
 
         enum {
             OWN   = 1 << 31,
@@ -382,6 +382,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         if (descriptor.des3 & Descriptor::OWN) {
             sx_lock_.release();
+            free(buffer);
             return -1;
         }
 
@@ -390,14 +391,13 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
         Cache::flush(&descriptor, sizeof(Descriptor));
 
-        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (i++ % MyTraits::SendBufferCount));
+        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (++i % MyTraits::SendBufferCount));
 
         sx_lock_.release();
 
         while (1) {
-            Cache::flush(&descriptor, sizeof(Descriptor));
+            Cache::invalidate(&descriptor, sizeof(Descriptor));
             if (!(descriptor.des3 & Descriptor::OWN)) break;
-            Thread::yield();
         }
 
         free(buffer);
