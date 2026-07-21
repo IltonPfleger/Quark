@@ -55,7 +55,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
 
     static void isr(size_t) {
         auto *self = reinterpret_cast<UART16550 *>(instance());
-        if (!self->pending_.tsl()) WorkerManager ::schedule(worker, instance());
+        if (!self->pending_.tsl()) WorkerManager::schedule(worker, instance());
     }
 
     static void worker(void *pointer) {

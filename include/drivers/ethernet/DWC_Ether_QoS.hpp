@@ -581,7 +581,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
 
         if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU)) {
             status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU;
-            WorkerManager::schedule(worker, self);
+            if (!self->pending_.tsl()) WorkerManager::schedule(worker, self);
         }
     }
 
@@ -594,6 +594,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
             self->notify(received);
             self->release(received);
         }
+        self->pending_.store(false);
     }
 
     static auto *instance() {
@@ -604,6 +605,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
     static volatile uint32_t &Reg32(size_t offset) { return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset); }
 
   private:
+    Atomic<bool> pending_;
     Address address_;
     DMA *dma_;
 };

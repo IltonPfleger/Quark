@@ -2,6 +2,7 @@
 
 #include <Semaphore.hpp>
 #include <Spin.hpp>
+#include <utility/Atomic.hpp>
 #include <utility/collections/CircularBuffer.hpp>
 
 namespace QUARK {
@@ -22,8 +23,11 @@ class WorkerManager {
 
     template <typename Function, typename Argument> static bool schedule(Function function, Argument argument) {
         Worker worker(function, argument);
-        for (auto &i : managers_) {
-            if (i->schedule(static_cast<Worker &&>(worker))) {
+        size_t i  = 0;
+        size_t me = counter_.finc() % Traits<WorkerManager>::Threads;
+        for (; i < Traits<WorkerManager>::Threads; i++) {
+            WorkerManager *manager = managers_[i + me];
+            if (manager->schedule(static_cast<Worker &&>(worker))) {
                 return true;
             }
         }
@@ -33,7 +37,7 @@ class WorkerManager {
   private:
     WorkerManager()
         : running_(true),
-          thread_(dispatcher, this) {}
+          thread_(dispatcher, this, Thread::Criterion(Thread::Criterion::NORMAL, counter_.finc() % Traits<CPU>::Active)) {}
 
     ~WorkerManager() {
         running_ = false;
@@ -76,6 +80,7 @@ class WorkerManager {
     Thread thread_;
 
   private:
+    static inline Atomic<size_t> counter_ = 0;
     static inline WorkerManager *managers_[Traits<WorkerManager>::Threads];
 };
 

@@ -48,7 +48,7 @@ template <> struct Traits<Scheduler> {
 };
 
 template <> struct Traits<WorkerManager> {
-    static constexpr size_t Threads  = 1;
+    static constexpr size_t Threads  = 4;
     static constexpr size_t Capacity = 128;
 };
 

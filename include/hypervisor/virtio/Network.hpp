@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Mutex.hpp>
 #include <Traits.hpp>
 #include <hypervisor/VirtualMachine.hpp>
 #include <hypervisor/virtio/Handler.hpp>
@@ -32,7 +33,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
     void notify(uint32_t source) {
         if (source != 1) return;
-        WorkerManager::schedule(worker, this);
+        if (!pending_.tsl()) WorkerManager::schedule(worker, this);
     }
 
     void update(const NetworkBuffer *buffer) override {
@@ -80,6 +81,8 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         self->tx_.notifiable(true);
+
+        self->pending_.store(false);
     }
 
     size_t process(int head) {
@@ -173,6 +176,8 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     static constexpr size_t MaximumNumberOfDescriptors = 1024;
 
   private:
+    Atomic<bool> pending_;
+
     DEVICE *device_;
     VirtualMachine &owner_;
 
