@@ -304,9 +304,12 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
   public:
     DWC_Ether_QoS_DMA()
         : sx_head_(0),
+          sx_tail_(0),
           rx_head_(0),
           rx_tail_(0) {
         TraceIn();
+
+        memset(sx_pending_, 0, sizeof(sx_pending_));
 
         for (size_t i = 0; i < MyTraits::SendBufferCount; i++) {
             memset(&sx_descriptors_[i], 0, sizeof(Descriptor));
@@ -319,9 +322,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
             release(&rx_buffers_[i]);
         }
 
-        Reg32(Address, DMA_SYSBUS_MODE) = 2 << SYSBUS_MODE_RD_OSR_LMT_SHIFT;
-        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_EAME | SYSBUS_MODE_MB;
-        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_BLEN16 | SYSBUS_MODE_BLEN8 | SYSBUS_MODE_BLEN4;
+        Reg32(Address, DMA_SYSBUS_MODE) |= SYSBUS_MODE_EAME;
 
         uintptr_t rx                           = reinterpret_cast<uintptr_t>(rx_descriptors_);
         Reg32(Address, CH0_RXDESC_LIST_ADDR)   = static_cast<uint32_t>(rx);
@@ -350,6 +351,8 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     }
 
     DWC_Ether_QoS_Buffer *alloc(size_t length) {
+        reclaim();
+
         sx_semaphore_.p();
 
         NetworkBuffer::Node *node = sx_list_.remove();
@@ -359,6 +362,26 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         new (buffer) DWC_Ether_QoS_Buffer(0, length);
 
         return buffer;
+    }
+
+    void reclaim() {
+        size_t head = sx_head_;
+        size_t tail = sx_tail_;
+        while (tail != head) {
+            Descriptor &descriptor       = sx_descriptors_[tail % MyTraits::SendBufferCount];
+            DWC_Ether_QoS_Buffer *buffer = sx_pending_[tail % MyTraits::SendBufferCount];
+
+            tail++;
+
+            Cache::invalidate(&descriptor, sizeof(Descriptor));
+
+            if (descriptor.des3 & Descriptor::OWN) break;
+            if (!buffer) break;
+
+            free(buffer);
+
+            sx_tail_ = tail;
+        }
     }
 
     void free(DWC_Ether_QoS_Buffer *buffer) {
@@ -386,21 +409,17 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
             return -1;
         }
 
+        sx_pending_[i % MyTraits::SendBufferCount] = buffer;
+
         descriptor.buffer(data);
         descriptor.des2 = (length & 0x3FFF) | Descriptor::TIOC;
         descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
+
         Cache::flush(&descriptor, sizeof(Descriptor));
 
         Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (++i % MyTraits::SendBufferCount));
 
         sx_lock_.release();
-
-        while (1) {
-            Cache::invalidate(&descriptor, sizeof(Descriptor));
-            if (!(descriptor.des3 & Descriptor::OWN)) break;
-        }
-
-        free(buffer);
 
         return length;
     }
@@ -452,11 +471,14 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     alignas(MyTraits::BufferAlignment) DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
     alignas(MyTraits::BufferAlignment) DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
 
+    DWC_Ether_QoS_Buffer *sx_pending_[MyTraits::SendBufferCount];
+
     Semaphore sx_semaphore_;
 
     Mutex sx_lock_;
 
     size_t sx_head_;
+    size_t sx_tail_;
     size_t rx_head_;
     size_t rx_tail_;
 };
@@ -527,7 +549,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
             IC::install(i, isr);
         }
 
-        Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
+        Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE | INTERRUPT_ENABLE_TIE;
         Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
 
         TraceOut();
@@ -557,15 +579,17 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
         volatile uint32_t &status = Reg32(CH0_INTERRUPT_STATUS);
         DWC_Ether_QoS *self       = instance();
 
-        if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI)) {
-            status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU | INTERRUPT_STATUS_ERI;
+        if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU)) {
+            status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU;
             WorkerManager::schedule(worker, self);
         }
     }
 
     static void worker(void *pointer) {
         DWC_Ether_QoS *self = reinterpret_cast<DWC_Ether_QoS *>(pointer);
+
         NetworkBuffer *received;
+
         while ((received = self->receive()) != nullptr) {
             self->notify(received);
             self->release(received);

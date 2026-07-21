@@ -28,7 +28,7 @@ template <> struct Traits<Kernel> {
 };
 
 template <> struct Traits<Timer> {
-    static constexpr Hz Frequency = 10'000;
+    static constexpr Hz Frequency = 1'000;
     static constexpr bool Enable  = true;
 };
 
@@ -49,7 +49,7 @@ template <> struct Traits<Scheduler> {
 
 template <> struct Traits<WorkerManager> {
     static constexpr size_t Threads  = 1;
-    static constexpr size_t Capacity = 32;
+    static constexpr size_t Capacity = 128;
 };
 
 } // namespace QUARK

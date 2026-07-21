@@ -16,8 +16,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     struct Configuration {
         uint8_t mac[6];
         uint16_t status;
-        uint16_t pairs;
-        uint16_t mtu;
     };
 
     friend Handler;

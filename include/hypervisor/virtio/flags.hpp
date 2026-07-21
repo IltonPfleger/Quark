@@ -7,8 +7,11 @@ enum {
     VRING_DESC_F_WRITE    = 0x2,
     VRING_DESC_F_INDIRECT = 0x4,
 
-    VRING_AVAIL_F_NO_INTERRUPT = 0x1,
-    VRING_USED_F_NO_NOTIFY     = 0x1,
+    VRING_AVAIL_F_NO_INTERRUPT  = 0x1,
+    VRING_USED_F_NO_NOTIFY      = 0x1,
+    VIRTIO_NET_F_CSUM           = 1 << 0,
+    VIRTIO_NET_F_HOST_TSO4      = 1 << 11,
+    VIRTIO_NET_HDR_F_NEEDS_CSUM = 1 << 0,
 };
 
 }
