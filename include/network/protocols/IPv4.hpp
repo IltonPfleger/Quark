@@ -62,8 +62,6 @@ class IPv4 : public Observer<const NetworkBuffer *>,
         return buffer;
     }
 
-    void free(NetworkBuffer *buffer) { link_.free(buffer); }
-
   public:
     void update(const NetworkBuffer *received) {
         Header *header       = received->data<Header *>();

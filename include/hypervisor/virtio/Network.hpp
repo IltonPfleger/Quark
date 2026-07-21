@@ -99,8 +99,12 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         size_t payload = descriptor->length - sizeof(NetworkHeader);
 
         auto *data = reinterpret_cast<uint8_t *>(descriptor->address) + sizeof(NetworkHeader);
-        NetworkBuffer buffer(data, 0, payload, nullptr);
-        device_->send(&buffer);
+
+        NetworkBuffer *buffer = device_->alloc(payload);
+
+        memcpy(buffer->start(), data, payload);
+
+        device_->send(buffer);
 
         return descriptors;
     }
@@ -161,7 +165,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         device_->send(buffer);
-        device_->free(buffer);
 
         return descriptors;
     }

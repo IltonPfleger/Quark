@@ -15,7 +15,6 @@ class NetworkDevice : public Observed<const NetworkBuffer *> {
   public:
     virtual ~NetworkDevice()              = default;
     virtual int send(NetworkBuffer *)     = 0;
-    virtual void free(NetworkBuffer *)    = 0;
     virtual NetworkBuffer *alloc(size_t)  = 0;
     virtual NetworkBuffer *receive()      = 0;
     virtual void release(NetworkBuffer *) = 0;

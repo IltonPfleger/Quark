@@ -366,7 +366,10 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
         sx_semaphore_.v();
     }
 
-    int send(const void *data, size_t length) {
+    int send(DWC_Ether_QoS_Buffer *buffer) {
+        auto *data    = buffer->start();
+        size_t length = buffer->length();
+
         Cache::flush(data, length);
 
         sx_lock_.acquire();
@@ -391,11 +394,13 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         sx_lock_.release();
 
-        // while (1) {
-        //     Cache::flush(&descriptor, sizeof(Descriptor));
-        //     if (!(descriptor.des3 & Descriptor::OWN)) break;
-        //     Thread::yield();
-        // }
+        while (1) {
+            Cache::flush(&descriptor, sizeof(Descriptor));
+            if (!(descriptor.des3 & Descriptor::OWN)) break;
+            Thread::yield();
+        }
+
+        free(buffer);
 
         return length;
     }
@@ -522,7 +527,8 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
             IC::install(i, isr);
         }
 
-        interrupts(true);
+        Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
+        Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
 
         TraceOut();
     }
@@ -539,27 +545,13 @@ template <typename Tag> class DWC_Ether_QoS final : public EthernetDevice {
         return buffer;
     }
 
-    int send(NetworkBuffer *buffer) override {
-        assert(buffer->start<uintptr_t>() + buffer->length() < ((1ULL << 40) - 1));
-        return dma_->send(buffer->start(), buffer->length());
-    }
+    int send(NetworkBuffer *buffer) override { return dma_->send(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
 
     void release(NetworkBuffer *buffer) override { dma_->release(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
-
-    void interrupts(bool enable) {
-        if (enable) {
-            Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
-            Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
-        } else {
-            Reg32(CH0_INTERRUPT_ENABLE) = 0;
-        }
-    }
 
     NetworkAddress address() const override { return address_; }
 
     void address(const NetworkAddress &address) override { new (&address_) Address(address); }
-
-    void free(NetworkBuffer *buffer) override { dma_->free(static_cast<DWC_Ether_QoS_Buffer *>(buffer)); }
 
     static void isr(size_t) {
         volatile uint32_t &status = Reg32(CH0_INTERRUPT_STATUS);

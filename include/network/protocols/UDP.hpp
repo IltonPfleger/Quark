@@ -33,8 +33,6 @@ class UDP : public Observer<NetworkBuffer, const NetworkAddress &, const Network
         return buffer;
     }
 
-    void free(NetworkBuffer *buffer) { handler_.free(buffer); }
-
     int send(const NetworkAddress &address, uint16_t port, NetworkBuffer *buffer) {
         buffer->rewind(sizeof(Header));
         size_t length       = buffer->length() - buffer->offset();

@@ -26,8 +26,6 @@ class LinkIPv4ToEthernet : public NetworkLinkLayer, public Observer<const Networ
 
     NetworkBuffer *alloc(size_t length) override { return device_.alloc(length); }
 
-    void free(NetworkBuffer *buffer) override { device_.free(buffer); }
-
     void update(const NetworkBuffer *buffer) override {
         auto *header = reinterpret_cast<Ethernet::Header *>(buffer->start());
         if (header->protocol() != IPv4::ProtocolValue) return;
