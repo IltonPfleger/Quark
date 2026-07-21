@@ -9,7 +9,7 @@
 namespace QUARK {
 
 class IPv4 : public Observer<const NetworkBuffer *>,
-             public Observed<NetworkBuffer, const NetworkAddress &, const NetworkAddress &, uint8_t> {
+             public Observed<const NetworkBuffer *, const NetworkAddress &, const NetworkAddress &, uint8_t> {
   public:
     enum : uint16_t { ProtocolValue = 0x0800 };
     enum : uint8_t { DefaultTTL = 64, VersionIHL = 0x45 };
@@ -69,7 +69,7 @@ class IPv4 : public Observer<const NetworkBuffer *>,
         Header *header       = received->data<Header *>();
         NetworkBuffer buffer = *received;
         buffer.advance(header->length());
-        notify(buffer, header->destination, header->source, header->protocol);
+        notify(&buffer, header->destination, header->source, header->protocol);
     }
 
     int send(const NetworkAddress &pa, uint8_t protocol, NetworkBuffer *buffer) {

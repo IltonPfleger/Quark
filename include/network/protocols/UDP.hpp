@@ -4,8 +4,8 @@
 
 namespace QUARK {
 
-class UDP : public Observer<NetworkBuffer, const NetworkAddress &, const NetworkAddress &, uint8_t>,
-            public Observed<NetworkBuffer, uint16_t, uint16_t> {
+class UDP : public Observer<const NetworkBuffer *, const NetworkAddress &, const NetworkAddress &, uint8_t>,
+            public Observed<const NetworkBuffer *, uint16_t, uint16_t> {
 
     using Handler = IPv4;
 
@@ -44,12 +44,18 @@ class UDP : public Observer<NetworkBuffer, const NetworkAddress &, const Network
         return handler_.send(address, Protocol, buffer);
     }
 
-    void update(NetworkBuffer buffer, const NetworkAddress &, const NetworkAddress &, uint8_t protocol) {
+    void update(const NetworkBuffer *received, const NetworkAddress &, const NetworkAddress &, uint8_t protocol) {
         if (protocol != Protocol) return;
-        Header *header = buffer.data<Header *>();
+
+        Header *header = received->data<Header *>();
+
         if (port_ && header->destination != port_) return;
+
+        NetworkBuffer buffer = *received;
+
         buffer.advance(sizeof(Header));
-        notify(buffer, CPU::be16toh(header->destination), CPU::be16toh(header->source));
+
+        notify(&buffer, CPU::be16toh(header->destination), CPU::be16toh(header->source));
     }
 
   private:

@@ -5,7 +5,7 @@
 
 namespace QUARK {
 
-class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
+class TFTP : public Observer<const NetworkBuffer *, uint16_t, uint16_t> {
 
     enum Operation : uint16_t {
         RRQ  = 1,
@@ -54,8 +54,8 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         return received_;
     }
 
-    void update(NetworkBuffer packet, uint16_t, uint16_t source) override {
-        uint16_t *header   = packet.data<uint16_t *>();
+    void update(const NetworkBuffer *received, uint16_t, uint16_t source) override {
+        uint16_t *header   = received->data<uint16_t *>();
         uint16_t operation = CPU::be16toh(*header);
 
         if (state_ == State::WAITING) {
@@ -74,7 +74,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
                 if (state_ == State::WAITING) state_ = State::RECEIVING;
                 if (state_ != State::RECEIVING) return;
                 uint16_t block = CPU::be16toh(*(header + 1));
-                size_t length  = packet.length() - 4;
+                size_t length  = received->length() - 4;
                 uint8_t *data  = reinterpret_cast<uint8_t *>(header + 2);
                 onData(data, block, length);
                 break;
