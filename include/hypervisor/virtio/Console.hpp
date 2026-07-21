@@ -7,6 +7,7 @@
 #include <memory/Heap.hpp>
 #include <utility/Console.hpp>
 #include <utility/Observer.hpp>
+#include <utility/WorkerManager.hpp>
 
 namespace QUARK {
 
@@ -26,12 +27,15 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
     uint32_t configuration(uint32_t) { return 0; }
 
     void notify(unsigned int source) {
-        if (source != 1) return;
+        if (source == 1) WorkerManager::schedule(worker, this);
+    }
 
-        while (tx_.available()) {
-            int head      = tx_.alloc();
-            size_t length = process(head);
-            tx_.free(head, length);
+    static void worker(void *pointer) {
+        auto *self = reinterpret_cast<Console *>(pointer);
+        while (self->tx_.available()) {
+            int head      = self->tx_.alloc();
+            size_t length = self->process(head);
+            self->tx_.free(head, length);
         }
     }
 
