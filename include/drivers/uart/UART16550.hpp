@@ -1,7 +1,6 @@
 #pragma once
 
 #include <architecture/IC.hpp>
-#include <drivers/Driver.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
 #include <utility/Observer.hpp>
@@ -9,39 +8,39 @@
 
 namespace QUARK {
 
-template <typename Tag> class UART16550 : public Driver, public Observed<const char *, size_t> {
-    using MyTraits = Traits<Tag>;
+template <typename Tag> class UART16550 : public Observed<const char *, size_t> {
+    using Traits = QUARK::Traits<Tag>;
 
-    static constexpr unsigned long Address    = MyTraits::Address;
-    static constexpr unsigned int Clock       = MyTraits::Clock;
-    static constexpr unsigned int BaudRate    = MyTraits::BaudRate;
+    static constexpr unsigned int Clock       = Traits::Clock;
+    static constexpr unsigned int BaudRate    = Traits::BaudRate;
     static constexpr unsigned int BaudDivisor = Clock / (16 * BaudRate);
 
   private:
     UART16550() {
-        Reg8(Address, IER) = 0x00;
-        Reg8(Address, LCR) = LCR_DLAB;
-        Reg8(Address, DLL) = static_cast<uint8_t>(BaudDivisor & 0xFF);
-        Reg8(Address, DLM) = static_cast<uint8_t>((BaudDivisor >> 8) & 0xFF);
-        Reg8(Address, LCR) = LCR_8N1;
-        Reg8(Address, FCR) = FCR_ENABLE | FCR_CLEAR;
-        Reg8(Address, IER) = IER_RX;
-        Reg8(Address, MCR) = 0x0B;
+        Address[IER] = 0x00;
+        Address[IER] = 0x00;
+        Address[LCR] = LCR_DLAB;
+        Address[DLL] = static_cast<uint8_t>(BaudDivisor & 0xFF);
+        Address[DLM] = static_cast<uint8_t>((BaudDivisor >> 8) & 0xFF);
+        Address[LCR] = LCR_8N1;
+        Address[FCR] = FCR_ENABLE | FCR_CLEAR;
+        Address[IER] = IER_RX;
+        Address[MCR] = 0x0B;
     }
 
     enum Registers {
-        RBR = 0 << MyTraits::Shift, // Receiver Buffer
-        THR = 0 << MyTraits::Shift, // Transmitter Holding
-        DLL = 0 << MyTraits::Shift, // Divisor Latch Low
-        IER = 1 << MyTraits::Shift, // Interrupt Enable
-        DLM = 1 << MyTraits::Shift, // Divisor Latch High
-        IIR = 2 << MyTraits::Shift, // Interrupt Identity
-        FCR = 2 << MyTraits::Shift, // FIFO Control
-        LCR = 3 << MyTraits::Shift, // Line Control
-        MCR = 4 << MyTraits::Shift, // Modem Control
-        LSR = 5 << MyTraits::Shift, // Line Status
-        MSR = 6 << MyTraits::Shift, // Modem Status
-        SCR = 7 << MyTraits::Shift  // Scratch
+        RBR = 0 << Traits::Shift, // Receiver Buffer
+        THR = 0 << Traits::Shift, // Transmitter Holding
+        DLL = 0 << Traits::Shift, // Divisor Latch Low
+        IER = 1 << Traits::Shift, // Interrupt Enable
+        DLM = 1 << Traits::Shift, // Divisor Latch High
+        IIR = 2 << Traits::Shift, // Interrupt Identity
+        FCR = 2 << Traits::Shift, // FIFO Control
+        LCR = 3 << Traits::Shift, // Line Control
+        MCR = 4 << Traits::Shift, // Modem Control
+        LSR = 5 << Traits::Shift, // Line Status
+        MSR = 6 << Traits::Shift, // Modem Status
+        SCR = 7 << Traits::Shift  // Scratch
     };
 
     enum Bits {
@@ -63,8 +62,8 @@ template <typename Tag> class UART16550 : public Driver, public Observed<const c
         auto *self = reinterpret_cast<UART16550 *>(pointer);
         char buffer[128];
         size_t i = 0;
-        while (Reg8(Address, LSR) & LSR_RX_READY && i < sizeof(buffer)) {
-            char c    = Reg8(Address, RBR);
+        while (Address[LSR] & LSR_RX_READY && i < sizeof(buffer)) {
+            char c    = Address[RBR];
             buffer[i] = c;
             i++;
         }
@@ -74,7 +73,7 @@ template <typename Tag> class UART16550 : public Driver, public Observed<const c
 
   public:
     static void init() {
-        for (auto &i : MyTraits::IRQs)
+        for (auto &i : Traits::IRQs)
             IC::install(i, isr);
     }
 
@@ -84,19 +83,19 @@ template <typename Tag> class UART16550 : public Driver, public Observed<const c
     }
 
     void putc(char c) {
-        while ((Reg8(Address, LSR) & LSR_TX_EMPTY) == 0)
+        while ((Address[LSR] & LSR_TX_EMPTY) == 0)
             ;
-        Reg8(Address, THR) = c;
+        Address[THR] = c;
     }
 
     char getc() {
-        while ((Reg8(Address, LSR) & LSR_RX_READY) == 0)
+        while ((Address[LSR] & LSR_RX_READY) == 0)
             ;
-        return Reg8(Address, RBR);
+        return Address[RBR];
     }
 
   private:
-    static constexpr uint8_t *Address = static_cast<uint8_t *>(MyTraits::Address);
+    static inline volatile uint8_t *Address = reinterpret_cast<uint8_t *>(Traits::Address);
 
   private:
     Atomic<bool> pending_;
