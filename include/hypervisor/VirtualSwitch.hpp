@@ -21,17 +21,13 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
     void free(NetworkBuffer *buffer) { device_.free(buffer); }
 
     int send(NetworkBuffer *buffer, typename DEVICE::Observer *sender = nullptr) {
-        size_t length = buffer->length();
-
         lock_.acquire();
 
         this->notify(buffer, sender);
 
         lock_.release();
 
-        device_.send(buffer);
-
-        return length;
+        return device_.send(buffer);
     }
 
     void update(const NetworkBuffer *buffer) override {

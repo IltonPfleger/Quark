@@ -39,7 +39,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
     void update(const NetworkBuffer *buffer) override {
         auto data = buffer->start();
-        auto size = buffer->length();
+        auto size = buffer->capacity();
 
         if (!rx_.available()) return;
 

@@ -71,7 +71,8 @@ class IPv4 : public Observer<const NetworkBuffer *>,
     }
 
     int send(const NetworkAddress &pa, uint8_t protocol, NetworkBuffer *buffer) {
-        size_t length = buffer->length() - buffer->offset();
+        size_t length = buffer->length();
+
         buffer->rewind(sizeof(Header));
 
         new (buffer->data()) Header(pa, _address, protocol, length);

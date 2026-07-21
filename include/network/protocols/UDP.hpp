@@ -35,7 +35,7 @@ class UDP : public Observer<NetworkBuffer, const NetworkAddress &, const Network
 
     int send(const NetworkAddress &address, uint16_t port, NetworkBuffer *buffer) {
         buffer->rewind(sizeof(Header));
-        size_t length       = buffer->length() - buffer->offset();
+        size_t length       = buffer->length();
         Header *header      = buffer->data<Header *>();
         header->source      = CPU::htobe16(port_);
         header->destination = CPU::htobe16(port);

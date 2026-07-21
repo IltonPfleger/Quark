@@ -13,15 +13,11 @@ class NetworkBuffer {
   public:
     using Node = collections::Node<NetworkBuffer *>;
 
-    NetworkBuffer(void *start, size_t head, size_t tail, Atomic<uint32_t> *references = nullptr)
+    constexpr NetworkBuffer(void *start = 0, size_t head = 0, size_t tail = 0)
         : start_(static_cast<uint8_t *>(start)),
           head_(start_ + head),
           tail_(start_ + tail),
-          node_(this),
-          references_(references) {}
-
-    NetworkBuffer()
-        : NetworkBuffer(nullptr, 0, 0, nullptr) {}
+          node_(this) {}
 
     template <typename T = uint8_t *>
     [[nodiscard]]
@@ -41,14 +37,13 @@ class NetworkBuffer {
     }
 
     [[nodiscard]]
-    size_t references() const {
-        assert(references_);
-        return *references_;
+    size_t capacity() const {
+        return static_cast<size_t>(tail_ - start_);
     }
 
     [[nodiscard]]
     size_t length() const {
-        return static_cast<size_t>(tail_ - start_);
+        return capacity() - offset();
     }
 
     [[nodiscard]]
@@ -81,11 +76,6 @@ class NetworkBuffer {
         return true;
     }
 
-    void hold() const {
-        assert(references_);
-        references_->finc();
-    };
-
   private:
     uint8_t *const start_;
 
@@ -93,8 +83,6 @@ class NetworkBuffer {
     uint8_t *tail_;
 
     Node node_;
-
-    mutable Atomic<uint32_t> *references_;
 };
 
 } // namespace QUARK

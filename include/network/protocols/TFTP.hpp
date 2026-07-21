@@ -74,7 +74,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
                 if (state_ == State::WAITING) state_ = State::RECEIVING;
                 if (state_ != State::RECEIVING) return;
                 uint16_t block = CPU::be16toh(*(header + 1));
-                size_t length  = packet.length() - packet.offset() - 4;
+                size_t length  = packet.length() - 4;
                 uint8_t *data  = reinterpret_cast<uint8_t *>(header + 2);
                 onData(data, block, length);
                 break;
@@ -141,7 +141,7 @@ class TFTP : public Observer<NetworkBuffer, uint16_t, uint16_t> {
         memcpy(pointer, BlockSizeString, sizeof(BlockSizeString));
         pointer += sizeof(BlockSizeString);
         size_t total = 2 + length + 6 + 8 + sizeof(BlockSizeString) + 1;
-        packet->shrink(packet->length() - packet->offset() - total);
+        packet->shrink(packet->length() - total);
         udp_.send(server_, 69, packet);
     }
 

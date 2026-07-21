@@ -368,7 +368,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
     int send(DWC_Ether_QoS_Buffer *buffer) {
         auto *data    = buffer->start();
-        size_t length = buffer->length();
+        size_t length = buffer->capacity();
 
         Cache::flush(data, length);
 
