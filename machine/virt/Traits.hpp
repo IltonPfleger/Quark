@@ -15,6 +15,7 @@ class UART;
 class UART0;
 class RISCV;
 class IC;
+class PMU;
 
 template <typename> class UART16550;
 
@@ -78,9 +79,9 @@ template <> struct Traits<CLINT> {
 template <> struct Traits<PLIC> {
     static constexpr bool Enable               = true;
     static constexpr int NumberOfInterruptions = 30;
-    using ContextsType                         = Meta::Array<Traits<CPU>::Count, Meta::Array<2, int>>;
-    static constexpr ContextsType Contexts     = []() {
-        ContextsType contexts{};
+    using Array                                = Meta::Array<Traits<CPU>::Count, Meta::Array<2, int>>;
+    static constexpr Array Contexts            = []() {
+        Array contexts{};
         for (int i = 0; i < Traits<CPU>::Count; i++) {
             contexts[i][0] = i * 2;
             contexts[i][1] = i * 2 + 1;
@@ -88,5 +89,7 @@ template <> struct Traits<PLIC> {
         return contexts;
     }();
 };
+
+template <> struct Traits<PMU> {};
 
 } // namespace QUARK

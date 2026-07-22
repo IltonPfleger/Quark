@@ -594,6 +594,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
             self->notify(received);
             self->release(received);
         }
+
         self->pending_.store(false);
     }
 
