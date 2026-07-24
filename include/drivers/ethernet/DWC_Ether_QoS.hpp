@@ -10,7 +10,7 @@
 #include <memory/Heap.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
-#include <utility/WorkerManager.hpp>
+#include <utility/Deferred.hpp>
 #include <utility/collections/FIFO.hpp>
 
 namespace QUARK {
@@ -581,7 +581,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
 
         if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU)) {
             status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU;
-            if (!self->pending_.tsl()) WorkerManager::schedule(worker, self);
+            if (!self->pending_.tsl()) Deferred::schedule(worker, self);
         }
     }
 

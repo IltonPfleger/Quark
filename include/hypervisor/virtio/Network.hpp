@@ -7,7 +7,7 @@
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <network/NetworkDevice.hpp>
-#include <utility/WorkerManager.hpp>
+#include <utility/Deferred.hpp>
 
 namespace QUARK::virtio {
 
@@ -33,7 +33,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
     void notify(uint32_t source) {
         if (source != 1) return;
-        if (!pending_.tsl()) WorkerManager::schedule(worker, this);
+        if (!pending_.tsl()) Deferred::schedule(worker, this);
     }
 
     void update(const NetworkBuffer *buffer) override {

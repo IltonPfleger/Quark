@@ -3,8 +3,8 @@
 #include <architecture/IC.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
+#include <utility/Deferred.hpp>
 #include <utility/Observer.hpp>
-#include <utility/WorkerManager.hpp>
 
 namespace QUARK {
 
@@ -16,7 +16,8 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
     static constexpr unsigned int BaudDivisor = Clock / (16 * BaudRate);
 
   private:
-    UART16550() {
+    UART16550()
+        : deferred_(worker, this, true) {
         Address[IER] = 0x00;
         Address[IER] = 0x00;
         Address[LCR] = LCR_DLAB;
@@ -55,7 +56,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
 
     static void isr(size_t) {
         auto *self = reinterpret_cast<UART16550 *>(instance());
-        if (!self->pending_.tsl()) WorkerManager::schedule(worker, instance());
+        Deferred::schedule(self->deferred_);
     }
 
     static void worker(void *pointer) {
@@ -68,7 +69,6 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
             i++;
         }
         self->notify(buffer, i);
-        self->pending_.store(false);
     }
 
   public:
@@ -82,13 +82,13 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
         return &instance;
     }
 
-    void putc(char c) {
+    void write(char c) {
         while ((Address[LSR] & LSR_TX_EMPTY) == 0)
             ;
         Address[THR] = c;
     }
 
-    char getc() {
+    char read() {
         while ((Address[LSR] & LSR_RX_READY) == 0)
             ;
         return Address[RBR];
@@ -98,7 +98,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
     static inline volatile uint8_t *Address = reinterpret_cast<uint8_t *>(Traits::Address);
 
   private:
-    Atomic<bool> pending_;
+    Deferred::Work deferred_;
 };
 
 } // namespace QUARK

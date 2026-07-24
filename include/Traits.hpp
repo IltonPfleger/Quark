@@ -19,7 +19,7 @@ class CPU;
 class IPv4;
 class Scheduler;
 class Monitor;
-class WorkerManager;
+class Deferred;
 
 template <typename T> struct Traits;
 
@@ -47,8 +47,8 @@ template <> struct Traits<Scheduler> {
     typedef FixedCore Criterion;
 };
 
-template <> struct Traits<WorkerManager> {
-    static constexpr size_t Threads  = 4;
+template <> struct Traits<Deferred> {
+    static constexpr size_t Threads  = 1;
     static constexpr size_t Capacity = 128;
 };
 

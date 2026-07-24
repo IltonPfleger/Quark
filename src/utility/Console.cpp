@@ -11,10 +11,10 @@ void Console::print(char c) {
     Device *device = Device::instance();
 
     if (c == '\n') {
-        device->putc('\r');
+        device->write('\r');
     }
 
-    device->putc(c);
+    device->write(c);
 }
 
 void Console::panic() { CPU::Atomic::cas(panic_, 0, Thread::running()); }

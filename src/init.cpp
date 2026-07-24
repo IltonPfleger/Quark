@@ -3,7 +3,7 @@
 #include <architecture/Timer.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Memory.hpp>
-#include <utility/WorkerManager.hpp>
+#include <utility/Deferred.hpp>
 
 using namespace QUARK;
 
@@ -15,7 +15,7 @@ extern "C" void init() {
         Memory::init();
         Thread::init();
         Payload::init();
-        WorkerManager::init();
+        Deferred::init();
     }
 
     if constexpr (Traits<Timer>::Enable) Timer::init();

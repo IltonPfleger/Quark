@@ -6,8 +6,8 @@
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <utility/Console.hpp>
+#include <utility/Deferred.hpp>
 #include <utility/Observer.hpp>
-#include <utility/WorkerManager.hpp>
 
 namespace QUARK {
 
@@ -20,14 +20,15 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
     Console(VirtualMachine &owner)
         : Handler(3, 1 << 27, N),
           device_(DEVICE::instance()),
-          owner_(owner) {
+          owner_(owner),
+          deferred_(worker, this, true) {
         device_->attach(this);
     }
 
     uint32_t configuration(uint32_t) { return 0; }
 
     void notify(unsigned int source) {
-        if (source == 1) WorkerManager::schedule(worker, this);
+        if (source == 1) Deferred::schedule(deferred_);
     }
 
     static void worker(void *pointer) {
@@ -94,6 +95,8 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
   private:
     DEVICE *device_;
     VirtualMachine &owner_;
+
+    Deferred::Work deferred_;
 
     Queue tx_;
     Queue rx_;
