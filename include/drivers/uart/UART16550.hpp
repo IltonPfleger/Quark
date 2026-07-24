@@ -17,7 +17,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
 
   private:
     UART16550()
-        : deferred_(worker, this, true) {
+        : deferred_(worker, this) {
         Address[IER] = 0x00;
         Address[IER] = 0x00;
         Address[LCR] = LCR_DLAB;

@@ -21,7 +21,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         : Handler(3, 1 << 27, N),
           device_(DEVICE::instance()),
           owner_(owner),
-          deferred_(worker, this, true) {
+          deferred_(worker, this) {
         device_->attach(this);
     }
 

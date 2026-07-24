@@ -48,7 +48,7 @@ template <> struct Traits<Scheduler> {
 };
 
 template <> struct Traits<Deferred> {
-    static constexpr size_t Threads  = 1;
+    static constexpr size_t Threads  = 2;
     static constexpr size_t Capacity = 128;
 };
 

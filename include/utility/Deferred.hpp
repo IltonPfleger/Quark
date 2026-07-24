@@ -17,7 +17,7 @@ class Deferred {
 
   public:
     struct Work : public Element {
-        Work(void (*function)(void *), void *argument, bool atomic = false)
+        Work(void (*function)(void *), void *argument, bool atomic = true)
             : Node(*this),
               function_(function),
               argument_(argument),
@@ -44,6 +44,7 @@ class Deferred {
             }
 
             counter_--;
+
             pending_ = true;
 
             if (counter_ > 0 && !atomic_) {
@@ -96,9 +97,9 @@ class Deferred {
 
     static bool schedule(Work &work) {
         size_t i       = 0;
-        size_t counter = counter_.finc() % Traits<Deferred>::Threads;
+        size_t counter = counter_.finc();
         for (; i < Traits<Deferred>::Threads; i++) {
-            Deferred *manager = managers_[i + counter];
+            Deferred *manager = managers_[(i + counter) % Traits<Deferred>::Threads];
             if (manager->enqueue(work)) {
                 return true;
             }
@@ -109,7 +110,7 @@ class Deferred {
   private:
     Deferred()
         : running_(true),
-          thread_(dispatcher, this, Thread::Criterion(Thread::Criterion::NORMAL, counter_.finc() % Traits<CPU>::Active)) {}
+          thread_(dispatcher, this) {}
 
     ~Deferred() {
         running_ = false;
