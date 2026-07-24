@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_VIRTIO_CONSOLE__
+#define __QUARK_VIRTIO_CONSOLE__
 
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
@@ -9,9 +10,7 @@
 #include <utility/Deferred.hpp>
 #include <utility/Observer.hpp>
 
-namespace QUARK {
-
-namespace virtio {
+namespace QUARK::virtio {
 
 template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : public Handler, public Observer<const char *, size_t> {
     friend Handler;
@@ -103,6 +102,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
     Queue *queues_[2] = {&rx_, &tx_};
 };
 
-} // namespace virtio
+} // namespace QUARK::virtio
 
-} // namespace QUARK
+#endif

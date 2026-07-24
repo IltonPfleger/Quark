@@ -56,8 +56,7 @@ class Atomic {
         return old;
     }
 
-    template <typename T>
-    static bool cas(T &v, typename Meta::Remove<T>::Result expected, typename Meta::Remove<T>::Result desired) {
+    template <typename T> static bool cas(T &v, typename Meta::Remove<T>::Result expected, typename Meta::Remove<T>::Result desired) {
         typename Meta::Remove<T>::Result old;
 
         if constexpr (sizeof(T) == 4) {

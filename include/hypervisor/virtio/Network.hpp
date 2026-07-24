@@ -25,7 +25,8 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     Network(VirtualMachine &owner)
         : Handler(1, 0, MaximumNumberOfDescriptors),
           device_(DEVICE::instance()),
-          owner_(owner) {
+          owner_(owner),
+          deferred_(worker, this) {
         device_->attach(this);
     }
 
@@ -33,7 +34,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
 
     void notify(uint32_t source) {
         if (source != 1) return;
-        if (!pending_.tsl()) Deferred::schedule(worker, this);
+        Deferred::schedule(deferred_);
     }
 
     void update(const NetworkBuffer *buffer) override {
@@ -68,6 +69,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         self->tx_.notifiable(false);
 
         bool interrupt = false;
+
         while (self->tx_.available()) {
             uint32_t head = self->tx_.alloc();
             size_t length = self->process(head);
@@ -81,8 +83,6 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
         }
 
         self->tx_.notifiable(true);
-
-        self->pending_.store(false);
     }
 
     size_t process(int head) {
@@ -176,10 +176,10 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
     static constexpr size_t MaximumNumberOfDescriptors = 1024;
 
   private:
-    Atomic<bool> pending_;
-
     DEVICE *device_;
     VirtualMachine &owner_;
+
+    Deferred::Work deferred_;
 
     Queue tx_;
     Queue rx_;

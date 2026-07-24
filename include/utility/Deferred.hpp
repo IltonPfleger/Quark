@@ -3,7 +3,7 @@
 #include <Semaphore.hpp>
 #include <Spin.hpp>
 #include <utility/Atomic.hpp>
-#include <utility/collections/UnorderedList.hpp>
+#include <utility/collections/FIFO.hpp>
 
 namespace QUARK {
 
@@ -13,78 +13,66 @@ class Deferred {
 
   private:
     using Element = collections::Node<Work &>;
-    using List    = collections::UnorderedList<Element, Spin>;
+    using List    = collections::FIFO<Element, Spin>;
 
   public:
-    struct Work : public Element {
-        Work(void (*function)(void *), void *argument, bool atomic = true)
+    class Work : public Element {
+      public:
+        Work(void (*function)(void *), void *argument)
             : Node(*this),
               function_(function),
               argument_(argument),
-              atomic_(atomic),
-              lined_(false),
-              pending_(false),
-              counter_(0) {}
-
-        void decrement(List &list) {
-            lock_.acquire();
-
-            lined_ = false;
-
-            if (atomic_ && pending_) {
-                lined_ = true;
-                list.insert(this);
-                lock_.release();
-                return;
-            }
-
-            if (counter_ == 0) {
-                lock_.release();
-                return;
-            }
-
-            counter_--;
-
-            pending_ = true;
-
-            if (counter_ > 0 && !atomic_) {
-                lined_ = true;
-                list.insert(this);
-            }
-
-            lock_.release();
-
-            function_(argument_);
-
-            lock_.acquire();
-
-            pending_ = false;
-
-            if (counter_ > 0 && !lined_ && atomic_) {
-                lined_ = true;
-                list.insert(this);
-            }
-
-            lock_.release();
-        }
+              pending_(0),
+              queued_(false) {}
 
         void increment(List &list) {
+            CPU::IRQ::Guard _;
+
             lock_.acquire();
-            counter_++;
-            if (!lined_) {
-                lined_ = true;
-                list.insert(this);
+
+            pending_++;
+
+            bool enqueue = false;
+
+            if (!queued_) {
+                queued_ = true;
+                enqueue = true;
             }
+
             lock_.release();
+
+            if (enqueue) list.insert(this);
+        }
+
+        void decrement(List &list) {
+            function_(argument_);
+
+            {
+                bool enqueue = false;
+
+                CPU::IRQ::Guard _;
+
+                lock_.acquire();
+
+                pending_--;
+
+                if (pending_ > 0) {
+                    enqueue = true;
+                } else {
+                    queued_ = false;
+                }
+
+                lock_.release();
+
+                if (enqueue) list.insert(this);
+            }
         }
 
       private:
         void (*function_)(void *);
-        void *const argument_;
-        const bool atomic_;
-        bool lined_;
-        bool pending_;
-        int counter_;
+        void *argument_;
+        int pending_;
+        volatile bool queued_;
         Spin lock_;
     };
 
@@ -114,42 +102,44 @@ class Deferred {
 
     ~Deferred() {
         running_ = false;
-        pending_.v();
+        // pending_.v();
         thread_.join();
     }
 
     bool enqueue(Work &work) {
         if (!running_) return false;
         work.increment(workers_);
-        pending_.v();
-        return false;
+        // pending_.v();
+        return true;
     }
 
     static void *dispatcher(void *pointer) {
         Deferred *self = reinterpret_cast<Deferred *>(pointer);
 
         while (1) {
-            self->pending_.p();
+            // self->pending_.p();
 
-            Element *element = self->workers_.remove();
+            if (!self->running_) break;
 
-            while (element) {
-                Work &work = element->value;
-                work.decrement(self->workers_);
+            Element *element;
+            {
+                CPU::IRQ::Guard _;
                 element = self->workers_.remove();
             }
 
-            if (!self->running_) break;
-        };
+            if (!element) continue;
+
+            Work &work = element->value;
+            work.decrement(self->workers_);
+        }
 
         return nullptr;
     }
 
   private:
-  private:
     volatile bool running_;
 
-    Semaphore pending_;
+    // Semaphore pending_;
     List workers_;
 
     Thread thread_;

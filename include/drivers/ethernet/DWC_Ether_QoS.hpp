@@ -535,7 +535,8 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
     using MAC      = DWC_Ether_QoS_MAC<MyTraits::Address>;
 
     DWC_Ether_QoS()
-        : address_(MyTraits::MAC) {
+        : deferred_(worker, this),
+          address_(MyTraits::MAC) {
         TraceIn();
         PHY::init();
         DMA::reset();
@@ -581,21 +582,19 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
 
         if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU)) {
             status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU;
-            if (!self->pending_.tsl()) Deferred::schedule(worker, self);
+            Deferred::schedule(self->deferred_);
         }
     }
 
     static void worker(void *pointer) {
         DWC_Ether_QoS *self = reinterpret_cast<DWC_Ether_QoS *>(pointer);
 
-        NetworkBuffer *received;
+        NetworkBuffer *received = self->receive();
 
-        while ((received = self->receive()) != nullptr) {
-            self->notify(received);
-            self->release(received);
-        }
+        if (!received) return;
 
-        self->pending_.store(false);
+        self->notify(received);
+        self->release(received);
     }
 
     static auto *instance() {
@@ -606,7 +605,7 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
     static volatile uint32_t &Reg32(size_t offset) { return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset); }
 
   private:
-    Atomic<bool> pending_;
+    Deferred::Work deferred_;
     Address address_;
     DMA *dma_;
 };

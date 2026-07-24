@@ -25,7 +25,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
         Address[DLM] = static_cast<uint8_t>((BaudDivisor >> 8) & 0xFF);
         Address[LCR] = LCR_8N1;
         Address[FCR] = FCR_ENABLE | FCR_CLEAR;
-        Address[IER] = IER_RX;
+        Address[IER] = RIER;
         Address[MCR] = 0x0B;
     }
 
@@ -49,7 +49,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
         LCR_8N1      = 0x03,
         FCR_ENABLE   = 0x01,
         FCR_CLEAR    = 0x06,
-        IER_RX       = 0x01,
+        RIER         = 0x01,
         LSR_RX_READY = 1 << 0,
         LSR_TX_EMPTY = 1 << 5,
     };
@@ -57,18 +57,25 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
     static void isr(size_t) {
         auto *self = reinterpret_cast<UART16550 *>(instance());
         Deferred::schedule(self->deferred_);
+        Address[IER] = 0;
     }
 
     static void worker(void *pointer) {
         auto *self = reinterpret_cast<UART16550 *>(pointer);
-        char buffer[128];
+
+        char buffer[32];
+
         size_t i = 0;
+
         while (Address[LSR] & LSR_RX_READY && i < sizeof(buffer)) {
             char c    = Address[RBR];
             buffer[i] = c;
             i++;
         }
+
         self->notify(buffer, i);
+
+        Address[IER] = RIER;
     }
 
   public:
