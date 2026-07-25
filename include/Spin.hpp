@@ -3,6 +3,7 @@
 
 #include <architecture/CPU.hpp>
 #include <types.hpp>
+#include <utility/Guard.hpp>
 
 namespace QUARK {
 
@@ -16,6 +17,9 @@ class Spin {
             ;
     }
     void release() { CPU::Atomic::store(locked_, 0); }
+
+  public:
+    using Guard = QUARK::Guard<Spin, &Spin::acquire, &Spin::release>;
 
   private:
     volatile uint32_t locked_;
