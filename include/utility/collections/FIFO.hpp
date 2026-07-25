@@ -15,21 +15,34 @@ template <typename T, typename Lock = void> class FIFO {
     FIFO &operator=(FIFO &&other) = delete;
 
     void insert(T *node) {
+        assert(!node->next);
+
         lock();
+
         node->next = nullptr;
+
         if (!head_)
             head_ = tail_ = node;
         else
             tail_ = (tail_->next = node);
+
         unlock();
     }
 
     T *remove() {
         lock();
+
         T *node = head_;
-        if (node) head_ = node->next;
+
+        if (node) {
+            head_      = node->next;
+            node->next = nullptr;
+        }
+
         if (!head_) tail_ = nullptr;
+
         unlock();
+
         return node;
     }
 

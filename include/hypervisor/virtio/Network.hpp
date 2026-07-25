@@ -77,12 +77,12 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : publ
             interrupt = true;
         }
 
+        self->tx_.notifiable(true);
+
         if (self->tx_.notifiable() && interrupt) {
             self->interrupt();
             self->owner_.interrupt(IRQ);
         }
-
-        self->tx_.notifiable(true);
     }
 
     size_t process(int head) {

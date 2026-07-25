@@ -27,7 +27,7 @@ class IllegalInstruction {
             }
             context->pc += 4;
         } else if (Decoder::wfi(instruction)) {
-            Alarm(0);
+            // Alarm(0);
             context->pc += 4;
         } else if (Decoder::fp(instruction) && !FPU::enabled(context)) {
             FPU::enable<MachineMode>(context);

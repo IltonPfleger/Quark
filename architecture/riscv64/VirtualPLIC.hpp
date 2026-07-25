@@ -119,7 +119,7 @@ template <uintptr_t Address> class VirtualPLIC : public VirtualInterruptControll
   private:
     static constexpr unsigned int NumberOfContexts = 2;
     uint32_t priority_[1024]                       = {0}; // 32 Bits For Each IRQ
-    Atomic<uint32_t> pending_[32]                  = {0}; // One Bit For Each IRQ
+    uint32_t pending_[32]                          = {0}; // One Bit For Each IRQ
     uint32_t enabled_[NumberOfContexts][32]        = {0};
     uint32_t threshold_[NumberOfContexts]          = {0}; // Threshold Per Context
     VirtualCPU &cpu_;

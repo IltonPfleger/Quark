@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_DEFERRED__
+#define __QUARK_DEFERRED__
 
 #include <Semaphore.hpp>
 #include <Spin.hpp>
@@ -22,61 +23,39 @@ class Deferred {
             : Node(*this),
               function_(function),
               argument_(argument),
-              pending_(0),
-              queued_(false) {}
+              pending_(0) {}
 
-        void increment(List &list) {
+        void increment(List &list, Semaphore &semaphore) {
+            assert(pending_ >= 0);
+
             CPU::IRQ::Guard _;
-
-            lock_.acquire();
-
-            pending_++;
-
-            bool enqueue = false;
-
-            if (!queued_) {
-                queued_ = true;
-                enqueue = true;
+            if (pending_.finc() == 0) {
+                list.insert(this);
+                semaphore.v();
             }
-
-            lock_.release();
-
-            if (enqueue) list.insert(this);
         }
 
-        void decrement(List &list) {
+        void decrement(List &list, Semaphore &semaphore) {
             function_(argument_);
 
-            {
-                bool enqueue = false;
+            assert(pending_ > 0);
 
-                CPU::IRQ::Guard _;
-
-                lock_.acquire();
-
-                pending_--;
-
-                if (pending_ > 0) {
-                    enqueue = true;
-                } else {
-                    queued_ = false;
-                }
-
-                lock_.release();
-
-                if (enqueue) list.insert(this);
+            CPU::IRQ::Guard _;
+            if (pending_.fdec() > 1) {
+                list.insert(this);
+                semaphore.v();
             }
         }
 
       private:
         void (*function_)(void *);
         void *argument_;
-        int pending_;
-        volatile bool queued_;
-        Spin lock_;
+        Atomic<int> pending_;
     };
 
   public:
+    static size_t id() { return counter_.finc() % Traits<Deferred>::Threads; }
+
     static void init() {
         for (auto &i : managers_) {
             i = new Deferred();
@@ -84,13 +63,10 @@ class Deferred {
     }
 
     static bool schedule(Work &work) {
-        size_t i       = 0;
-        size_t counter = counter_.finc();
-        for (; i < Traits<Deferred>::Threads; i++) {
-            Deferred *manager = managers_[(i + counter) % Traits<Deferred>::Threads];
-            if (manager->enqueue(work)) {
-                return true;
-            }
+        size_t start = id();
+        for (size_t i = 0; i < Traits<Deferred>::Threads; i++) {
+            Deferred *manager = managers_[(start + i) % Traits<Deferred>::Threads];
+            if (manager->enqueue(work)) return true;
         }
         return false;
     }
@@ -98,18 +74,17 @@ class Deferred {
   private:
     Deferred()
         : running_(true),
-          thread_(dispatcher, this) {}
+          thread_(dispatcher, this, Thread::Criterion(Thread::Criterion::NORMAL, id())) {}
 
     ~Deferred() {
         running_ = false;
-        // pending_.v();
+        pending_.v();
         thread_.join();
     }
 
     bool enqueue(Work &work) {
         if (!running_) return false;
-        work.increment(workers_);
-        // pending_.v();
+        work.increment(workers_, pending_);
         return true;
     }
 
@@ -117,7 +92,7 @@ class Deferred {
         Deferred *self = reinterpret_cast<Deferred *>(pointer);
 
         while (1) {
-            // self->pending_.p();
+            self->pending_.p();
 
             if (!self->running_) break;
 
@@ -130,7 +105,8 @@ class Deferred {
             if (!element) continue;
 
             Work &work = element->value;
-            work.decrement(self->workers_);
+
+            work.decrement(self->workers_, self->pending_);
         }
 
         return nullptr;
@@ -139,7 +115,8 @@ class Deferred {
   private:
     volatile bool running_;
 
-    // Semaphore pending_;
+    Semaphore pending_;
+
     List workers_;
 
     Thread thread_;
@@ -150,3 +127,5 @@ class Deferred {
 };
 
 } // namespace QUARK
+
+#endif

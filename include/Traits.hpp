@@ -47,10 +47,6 @@ template <> struct Traits<Scheduler> {
     typedef FixedCore Criterion;
 };
 
-template <> struct Traits<Deferred> {
-    static constexpr size_t Threads = 1;
-};
-
 } // namespace QUARK
 
 #include <machine/Traits.hpp>
@@ -64,6 +60,10 @@ template <> struct Traits<Thread> {
     static constexpr bool UserStack         = Traits<Payload>::Virtualized || Traits<Debug>::Error;
     static constexpr size_t KernelStackSize = Traits<Memory>::StackSize;
     static constexpr size_t UserStackSize   = UserStack ? Traits<Memory>::StackSize : 0;
+};
+
+template <> struct Traits<Deferred> {
+    static constexpr size_t Threads = Traits<CPU>::Active;
 };
 
 } // namespace QUARK
