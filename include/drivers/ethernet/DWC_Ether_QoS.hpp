@@ -350,56 +350,10 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
             ;
     }
 
-    void reclaim() {
-        CPU::IRQ::disable();
-
-        while (1) {
-            sx_lock_.acquire();
-
-            size_t tail;
-
-            DWC_Ether_QoS_Buffer *buffer;
-
-            if (sx_tail_ < sx_head_) {
-                tail = sx_tail_ % MyTraits::SendBufferCount;
-
-                Descriptor &descriptor = sx_descriptors_[tail];
-
-                Cache::invalidate(&descriptor, sizeof(Descriptor));
-
-                buffer = sx_pending_[tail];
-
-                if (buffer && descriptor.des3 & Descriptor::OWN) {
-                    sx_lock_.release();
-                    break;
-                }
-
-                sx_pending_[tail] = nullptr;
-
-                sx_tail_++;
-
-            } else {
-                sx_lock_.release();
-                break;
-            }
-
-            sx_lock_.release();
-
-            free(buffer);
-        }
-    }
-
     DWC_Ether_QoS_Buffer *alloc(size_t length) {
         sx_semaphore_.p();
 
-        NetworkBuffer::Node *node;
-
-        {
-            CPU::IRQ::Guard _;
-            sx_lock_.acquire();
-            node = sx_list_.remove();
-            sx_lock_.release();
-        }
+        NetworkBuffer::Node *node = sx_list_.remove();
 
         assert(node);
 
@@ -411,10 +365,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     }
 
     void free(DWC_Ether_QoS_Buffer *buffer) {
-        CPU::IRQ::Guard _;
-        sx_lock_.acquire();
         sx_list_.insert(buffer->node());
-        sx_lock_.release();
         sx_semaphore_.v();
     }
 
@@ -424,34 +375,39 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
         Cache::flush(data, length);
 
-        {
-            CPU::IRQ::Guard _;
-            sx_lock_.acquire();
+        sx_lock_.acquire();
 
-            size_t &i = sx_head_;
+        size_t &i = sx_head_;
 
-            Descriptor &descriptor = sx_descriptors_[i % MyTraits::SendBufferCount];
+        Descriptor &descriptor = sx_descriptors_[i % MyTraits::SendBufferCount];
 
-            Cache::invalidate(&descriptor, sizeof(Descriptor));
+        Cache::invalidate(&descriptor, sizeof(Descriptor));
 
-            if (descriptor.des3 & Descriptor::OWN) {
-                sx_lock_.release();
-                free(buffer);
-                return -1;
-            }
-
-            sx_pending_[i % MyTraits::SendBufferCount] = buffer;
-
-            descriptor.buffer(data);
-            descriptor.des2 = (length & 0x3FFF) | Descriptor::TIOC;
-            descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
-
-            Cache::flush(&descriptor, sizeof(Descriptor));
-
-            Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (++i % MyTraits::SendBufferCount));
-
+        if (descriptor.des3 & Descriptor::OWN) {
             sx_lock_.release();
+            free(buffer);
+            return -1;
         }
+
+        sx_pending_[i % MyTraits::SendBufferCount] = buffer;
+
+        descriptor.buffer(data);
+        descriptor.des2 = (length & 0x3FFF);
+        descriptor.des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
+
+        Cache::flush(&descriptor, sizeof(Descriptor));
+
+        Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(sx_descriptors_ + (++i % MyTraits::SendBufferCount));
+
+        sx_lock_.release();
+
+        while (1) {
+            Cache::flush(&descriptor, sizeof(Descriptor));
+            if (!(descriptor.des3 & Descriptor::OWN)) break;
+            Thread::yield();
+        }
+
+        free(buffer);
 
         return length;
     }
@@ -494,7 +450,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
     static constexpr uintptr_t Address = MyTraits::Address;
 
   private:
-    collections::FIFO<NetworkBuffer::Node> sx_list_;
+    collections::FIFO<NetworkBuffer::Node, Mutex> sx_list_;
 
     alignas(sizeof(Descriptor)) Descriptor sx_descriptors_[MyTraits::SendBufferCount];
     alignas(sizeof(Descriptor)) Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
@@ -506,7 +462,7 @@ template <typename MyTraits> class DWC_Ether_QoS_DMA : public Driver {
 
     Semaphore sx_semaphore_;
 
-    Spin sx_lock_;
+    Mutex sx_lock_;
 
     size_t sx_head_;
     size_t sx_tail_;
@@ -582,7 +538,6 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
         }
 
         Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_NIE | INTERRUPT_ENABLE_RIE;
-        Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_TIE;
         Reg32(CH0_INTERRUPT_ENABLE) |= INTERRUPT_ENABLE_AIE | INTERRUPT_ENABLE_RBUE;
 
         TraceOut();
@@ -615,10 +570,6 @@ template <typename Tag> class DWC_Ether_QoS final : public Ethernet_Controller {
         if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU)) {
             status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU;
             Deferred::schedule(self->deferred_);
-        }
-        if (status & INTERRUPT_STATUS_TI) {
-            status = INTERRUPT_STATUS_TI;
-            self->dma_->reclaim();
         }
     }
 
