@@ -13,7 +13,7 @@ class SIC {
 
         if constexpr (Traits<PLIC>::Enable) {
             PLIC::init();
-            TrapHandler::install(9, IC::onTrap);
+            TrapHandler::install(9, IC::isr);
             csrs<SupervisorMode::IE>(SupervisorMode::EI);
         }
     }

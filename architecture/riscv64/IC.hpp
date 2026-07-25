@@ -11,7 +11,7 @@ class IC : Traits<PLIC> {
     using ExternalHandler = void (*)(ID);
 
   public:
-    static void onTrap(ContextFrame *) {
+    static void isr(ContextFrame *) {
         auto id = PLIC::claim();
         if (id != 0) {
             handlers_[id](id);

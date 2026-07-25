@@ -59,8 +59,7 @@ int main(int, char *[]) {
         forks[i] = new Semaphore(1);
 
     for (long i = 0; i < Number; i++)
-        threads[i] =
-            new Thread(philosopher, (void *)i, Thread::Criterion(Thread::Criterion::NORMAL, i % Traits<CPU>::Active));
+        threads[i] = new Thread(philosopher, (void *)i, Thread::Criterion(Thread::Criterion::NORMAL, i % Traits<CPU>::Active));
 
     console->v();
 

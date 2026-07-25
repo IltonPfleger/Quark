@@ -20,13 +20,7 @@ class CLINT {
 
     static void write(uint64_t ticks = mtime() + Ticks, uint32_t core = mhartid()) { mtimecmp_[core] = ticks; }
 
-    static void forward(unsigned int = 0) {
-        csrc<MachineMode::IE>(MachineMode::TI);
-        csrs<MachineMode::IP>(SupervisorMode::TI);
-    }
-
-    static void syscall(uint64_t delta = 0) {
-        if (delta == 0) delta = Ticks + mtime();
+    static void reset(uint64_t delta = Ticks + mtime()) {
         write(delta);
         csrc<MachineMode::IP>(SupervisorMode::TI);
         csrs<MachineMode::IE>(MachineMode::TI);

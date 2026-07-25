@@ -15,7 +15,7 @@ class HIC {
         TrapHandler::init<MachineMode, true>();
         SBI::init();
         PLIC::init();
-        TrapHandler::install(11, IC::onTrap);
+        TrapHandler::install(11, IC::isr);
         TrapHandler::install(3, IPI::onTrap);
         csrs<MachineMode::IE>(MachineMode::EI);
         csrs<MachineMode::IE>(MachineMode::SI);
