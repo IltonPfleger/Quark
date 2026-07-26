@@ -24,12 +24,12 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool User      = true;
-    static constexpr bool Multitask = false;
+    static constexpr bool Privileged = false;
+    static constexpr bool Multitask  = false;
 };
 
 template <> struct Traits<Timer> {
-    static constexpr Hz Frequency = 1'000;
+    static constexpr Hz Frequency = 10'000;
     static constexpr bool Enable  = true;
 };
 

@@ -38,7 +38,7 @@ class MIC {
             csrs<MachineMode::IE>(MachineMode::EI);
         }
 
-        if constexpr (Traits<Kernel>::User) {
+        if constexpr (Traits<Kernel>::Privileged) {
             TrapHandler::install(11, abi, TrapHandler::Exception);
         }
 
