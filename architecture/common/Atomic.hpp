@@ -20,6 +20,10 @@ class Atomic {
     template <typename T> static bool cas(T &value, Meta::Remove<T>::Result expected, Meta::Remove<T>::Result desired) {
         return __atomic_compare_exchange_n(&value, &expected, desired, false, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
     }
+
+    template <typename T> static Meta::Remove<T>::Result exchange(T &value, Meta::Remove<T>::Result desired) {
+        return __atomic_exchange_n(&value, desired, __ATOMIC_ACQ_REL);
+    }
 };
 
 } // namespace QUARK::ArchitectureCommon

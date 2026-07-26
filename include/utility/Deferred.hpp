@@ -4,7 +4,7 @@
 #include <Semaphore.hpp>
 #include <Spin.hpp>
 #include <utility/Atomic.hpp>
-#include <utility/collections/FIFO.hpp>
+#include <utility/collections/MPSC.hpp>
 
 namespace QUARK {
 
@@ -13,14 +13,14 @@ class Deferred {
     struct Work;
 
   private:
-    using Element = collections::Node<Work &>;
-    using List    = collections::FIFO<Element, Spin>;
+    using Element = collections::Node<Work *>;
+    using List    = collections::MPSC<Element>;
 
   public:
     class Work : public Element {
       public:
         Work(void (*function)(void *), void *argument)
-            : Node(*this),
+            : Node(this),
               function_(function),
               argument_(argument),
               pending_(0) {}
@@ -28,7 +28,6 @@ class Deferred {
         void increment(List &list, Semaphore &semaphore) {
             assert(pending_ >= 0);
 
-            CPU::IRQ::Guard _;
             if (pending_.finc() == 0) {
                 list.insert(this);
                 semaphore.v();
@@ -40,7 +39,6 @@ class Deferred {
 
             assert(pending_ > 0);
 
-            CPU::IRQ::Guard _;
             if (pending_.fdec() > 1) {
                 list.insert(this);
                 semaphore.v();
@@ -98,17 +96,13 @@ class Deferred {
 
             if (!self->running_) break;
 
-            Element *element;
-            {
-                CPU::IRQ::Guard _;
-                element = self->workers_.remove();
-            }
+            Element *element = self->workers_.remove();
 
             if (!element) continue;
 
-            Work &work = element->value;
+            Work *work = element->value;
 
-            work.decrement(self->workers_, self->pending_);
+            work->decrement(self->workers_, self->pending_);
         }
 
         return nullptr;
