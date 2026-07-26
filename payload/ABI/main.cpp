@@ -24,7 +24,7 @@ void *philosopher(void *p) {
 
     while (iterations--) {
         console->p();
-        QUARK::Console::println("<", QUARK::CPU::id(), ">", " Filósofo ", id, " está pensando! <", iterations, ">");
+        QUARK::Console::println("Filósofo ", id, " está pensando! <", iterations, ">");
         console->v();
 
         if (id == Number - 1) {
@@ -36,7 +36,7 @@ void *philosopher(void *p) {
         }
 
         console->p();
-        QUARK::Console::println("<", QUARK::CPU::id(), ">", " Filósofo ", id, " está comendo! <", iterations, ">");
+        QUARK::Console::println("Filósofo ", id, " está comendo! <", iterations, ">");
         console->v();
 
         forks[right]->v();
