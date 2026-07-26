@@ -14,6 +14,8 @@ namespace QUARK::virtio {
 template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Network : public Handler, public DEVICE::Observer {
     typedef unsigned char NetworkHeader[10];
 
+    static_assert(Traits<Deferred>::Threads > 0);
+
     struct Configuration {
         uint8_t mac[6];
         uint16_t status;

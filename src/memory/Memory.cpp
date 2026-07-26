@@ -23,14 +23,6 @@ void Memory::init() {
         allocator_.insert(reinterpret_cast<void *>(page.start()), page.size());
     }
 
-    // Trace("System Size: ");
-    // Trace((__kmm.text.size() + __kmm.rodata.size() + __kmm.data.size() + __kmm.bss.size()) / 1024);
-    // Trace("KB\n");
-
-    // Trace("Available Memory: ");
-    // Trace(free * (PageSize / 1024));
-    // Trace("KB\n");
-
     TraceOut();
 }
 
@@ -46,11 +38,15 @@ void *Memory::alloc(size_t size) {
 
     spin_.acquire();
 
+    TraceIn(size);
+
     void *chunk = allocator_.remove(size);
 
     assert(chunk, "Out of Memory!");
 
     spin_.release();
+
+    TraceOut(chunk);
 
     return chunk;
 }
@@ -60,9 +56,13 @@ void Memory::free(void *chunk, size_t size) {
 
     spin_.acquire();
 
+    TraceIn(chunk, size);
+
     assert(chunk != nullptr, "Invalid Free!");
 
     allocator_.insert(chunk, size);
+
+    TraceOut();
 
     spin_.release();
 }
