@@ -15,6 +15,8 @@ namespace QUARK::virtio {
 template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : public Handler, public Observer<const char *, size_t> {
     friend Handler;
 
+    static_assert(Traits<Deferred>::Threads > 0);
+
   public:
     Console(VirtualMachine &owner)
         : Handler(3, 1 << 27, N),

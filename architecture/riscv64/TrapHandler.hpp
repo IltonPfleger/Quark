@@ -25,11 +25,12 @@ class TrapHandler {
         assert(index < NumberOfHandlers, index);
         assert(s_handlers[index], index, " ", id);
 
+        // Console::println(id);
+
         s_handlers[index](c);
     }
 
-    template <typename Privilege, bool ChangeStack>
-    __attribute__((naked, optimize("O0"), aligned(4))) static void entry() {
+    template <typename Privilege, bool ChangeStack> __attribute__((naked, optimize("O0"), aligned(4))) static void entry() {
         using Context = ContextTemplate<Privilege, ChangeStack>;
         dispatch(Context::push());
         Context::pop();
@@ -42,9 +43,7 @@ class TrapHandler {
         s_handlers[index] = handler;
     };
 
-    template <typename Privilege, bool ChangeStack> static void init() {
-        csrw<Privilege::TVEC>(entry<Privilege, ChangeStack>);
-    }
+    template <typename Privilege, bool ChangeStack> static void init() { csrw<Privilege::TVEC>(entry<Privilege, ChangeStack>); }
 
     static void init() {
         for (int i = 0; i < 16; i++)

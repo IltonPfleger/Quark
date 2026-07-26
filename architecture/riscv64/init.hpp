@@ -35,10 +35,11 @@ inline void init() {
 
     CoreContextHandler<MachineMode>::bind(CoreContextHandler<MachineMode>::init(core));
 
-    if constexpr (Traits<RISCV>::Hypervisor)
+    if constexpr (Traits<RISCV>::Hypervisor) {
         HIC::init();
-    else
+    } else {
         MIC::init();
+    }
 
     if constexpr (Traits<RISCV>::Supervisor) {
         CoreContext *context = CoreContextHandler<SupervisorMode>::init(core);

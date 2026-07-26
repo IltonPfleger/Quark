@@ -39,7 +39,7 @@ class Timer : public ArchitectureCommon::Timer {
     static Nanosecond ns(uintmax_t ticks) { return Nanosecond((ticks * 1'000'000'000ULL) / Traits<CLINT>::Clock); }
 
     static void dispatch(ContextFrame *) {
-        if constexpr (Traits<Payload>::Virtualized) {
+        if constexpr (Traits<Payload>::Virtualization) {
             CLINT::write();
             VirtualCPU::onTick();
         } else if (!Traits<RISCV>::Supervisor) {

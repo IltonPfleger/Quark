@@ -15,7 +15,7 @@ void Thread::entry(Function f, Argument a) {
 
     if (s_previous[CPU::id()]) epilogue();
 
-    if constexpr (Traits<Kernel>::Privileged) {
+    if constexpr (Traits<Payload>::Unprivileged) {
         if (current->domain_ == Domain::USER) {
             Context::demote(current->kstack_, current->stack_, f, ABI::Thread::exit, a);
             return;

@@ -15,10 +15,10 @@ namespace QUARK {
 
 class CPU : public ArchitectureCommon::CPU {
   public:
-    static constexpr bool Supervisor  = Traits<RISCV>::Supervisor;
-    static constexpr bool Virtualized = Traits<Payload>::Virtualized;
+    static constexpr bool Supervisor     = Traits<RISCV>::Supervisor;
+    static constexpr bool Virtualization = Traits<Payload>::Virtualization;
 
-    using NotSupervisorContext = Meta::IF<!Virtualized, QUARK::MachineContext<>, HypervisorContext>::Result;
+    using NotSupervisorContext = Meta::IF<!Virtualization, QUARK::MachineContext<>, HypervisorContext>::Result;
     using Context              = Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
     static void tp(size_t tp) { asm("mv tp, %0" ::"r"(tp)); }

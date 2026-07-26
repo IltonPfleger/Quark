@@ -38,7 +38,7 @@ class MIC {
             csrs<MachineMode::IE>(MachineMode::EI);
         }
 
-        if constexpr (Traits<Kernel>::Privileged) {
+        if constexpr (Traits<Payload>::Unprivileged) {
             PMP::NAPOT<0>(0, 0, PMP::R | PMP::W | PMP::X);
             TrapHandler::install(8, abi, TrapHandler::Exception);
         }

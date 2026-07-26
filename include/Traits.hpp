@@ -24,8 +24,7 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool Privileged = true;
-    static constexpr bool Multitask  = false;
+    static constexpr bool Multitask = false;
 };
 
 template <> struct Traits<Timer> {
@@ -58,13 +57,13 @@ namespace QUARK {
 
 template <> struct Traits<Thread> {
     static constexpr Hz Frequency           = Traits<Timer>::Frequency;
-    static constexpr bool UserStack         = Traits<Payload>::Virtualized || Traits<Kernel>::Privileged;
+    static constexpr bool UserStack         = Traits<Payload>::Virtualization || Traits<Payload>::Unprivileged;
     static constexpr size_t KernelStackSize = Traits<Memory>::StackSize;
     static constexpr size_t UserStackSize   = UserStack ? Traits<Memory>::StackSize : 0;
 };
 
 template <> struct Traits<Deferred> {
-    static constexpr bool Enable    = false;
+    static constexpr bool Enable    = true;
     static constexpr size_t Threads = Enable ? Traits<CPU>::Active : 0;
 };
 

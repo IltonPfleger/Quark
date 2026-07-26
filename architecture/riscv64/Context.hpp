@@ -24,7 +24,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         frame_->status = 0;
     }
 
-    static void demote(const Chunk &ksp, const Chunk &usp, auto pc, auto ra, auto a0) {
+    __attribute__((naked)) static void demote(const Chunk &ksp, const Chunk &usp, auto pc, auto ra, auto a0) {
         asm("csrr t0, %0; sd %1, %2(t0)" ::"i"(T::SCRATCH), "r"(ksp.end()), "i"(__builtin_offsetof(CoreContext, ksp)) : "t0");
         asm("csrw %0, %1" ::"i"(T::STATUS), "r"(T::PP_U | T::PIRQE));
         asm("csrw %0, %1" ::"i"(T::EPC), "r"(pc));
