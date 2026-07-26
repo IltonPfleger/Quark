@@ -15,7 +15,7 @@ void Thread::entry(Function f, Argument a) {
     if (s_previous[CPU::id()]) epilogue();
 
     if constexpr (Traits<Kernel>::Privileged) {
-        Context::demote(current->kstack_, current->stack_, f, exit, a);
+        if (current->domain_ == Domain::USER) Context::demote(current->kstack_, current->stack_, f, exit, a);
         return;
     }
 
