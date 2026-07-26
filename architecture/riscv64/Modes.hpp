@@ -6,13 +6,13 @@ namespace QUARK {
 
 struct MachineMode {
     enum {
-        PP   = 3 << 11, // Previous Privilege
-        PP_M = 3 << 11, // Previous Privilege Machine
-        PP_S = 1 << 11, // Previous Privilege Supervisor
-        PP_U = 0 << 11, // Previous Privilege User
-        TW   = 1 << 21, // Timeout Wait
+        PP      = 3 << 11, // Previous Privilege
+        PP_M    = 3 << 11, // Previous Privilege Machine
+        PP_S    = 1 << 11, // Previous Privilege Supervisor
+        PP_U    = 0 << 11, // Previous Privilege User
+        PP_SELF = PP_M,
 
-        ME2ME = PP_M,
+        TW = 1 << 21, // Timeout Wait
 
         CYCLE   = 1 << 0,
         TIME    = 1 << 1,
@@ -52,15 +52,18 @@ struct MachineMode {
 };
 
 struct SupervisorMode {
-    enum : unsigned long {
-        ME2ME   = 1ULL << 8,  // Supervisor to Supervisor
-        ME2USER = 0ULL << 8,  // Supervisor to User
-        IRQE    = 1ULL << 1,  // Interrupt Enable
-        PIRQE   = 1ULL << 5,  // Previous Interrupt Enable
-        SUM     = 1ULL << 18, // Supervisor User Memory
-        SI      = 1ULL << 1,  // Software Interrupt Enable
-        TI      = 1ULL << 5,  // Timer Interrupt Enable
-        EI      = 1ULL << 9,  // External Interrupt Enable
+    enum {
+        PP      = 1ULL << 8, // Previous Privilege
+        PP_S    = 1ULL << 8, // Previous Privilege
+        PP_U    = 0ULL << 8, // User Privilege
+        PP_SELF = PP_U,
+
+        IRQE  = 1ULL << 1,  // Interrupt Enable
+        PIRQE = 1ULL << 5,  // Previous Interrupt Enable
+        SUM   = 1ULL << 18, // Supervisor User Memory
+        SI    = 1ULL << 1,  // Software Interrupt Enable
+        TI    = 1ULL << 5,  // Timer Interrupt Enable
+        EI    = 1ULL << 9,  // External Interrupt Enable
     };
 
     static constexpr const int SATP    = 0x180;

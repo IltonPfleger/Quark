@@ -17,7 +17,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
   public:
     ContextTemplate(KernelContext, const Chunk &usp, const Chunk &ksp, auto pc, auto a0, auto a1) {
         frame_         = reinterpret_cast<ContextFrame *>(ksp.end()) - 1;
-        frame_->status = static_cast<uint64_t>(T::ME2ME);
+        frame_->status = static_cast<uint64_t>(T::PP_SELF);
         frame_->pc     = reinterpret_cast<uint64_t>(pc);
         frame_->a0     = reinterpret_cast<uint64_t>(a0);
         frame_->a1     = reinterpret_cast<uint64_t>(a1);
@@ -26,7 +26,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
 
     ContextTemplate(UserContext, const Chunk &usp, const Chunk &ksp, auto pc, auto ra, auto a0) {
         frame_         = reinterpret_cast<ContextFrame *>(usp.end()) - 1;
-        frame_->status = static_cast<uint64_t>(T::ME2ME | T::PIRQE);
+        frame_->status = static_cast<uint64_t>(T::PP_SELF | T::PIRQE);
         frame_->pc     = reinterpret_cast<uint64_t>(pc);
         frame_->ra     = reinterpret_cast<uint64_t>(ra);
         frame_->a0     = reinterpret_cast<uint64_t>(a0);
@@ -98,7 +98,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         asm("sd ra,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, pc)));
 
         asm("csrr t0, %0" ::"i"(T::STATUS));
-        asm("or   t0, t0, %0" ::"r"(T::ME2ME));
+        asm("or   t0, t0, %0" ::"r"(T::PP_SELF));
         asm("and  t0, t0, %0" ::"r"(~T::PIRQE));
         asm("sd   t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, status)));
 
@@ -112,10 +112,23 @@ template <typename T, bool ChangeStack> class ContextTemplate {
     __attribute__((always_inline)) static inline ContextFrame *push() {
         if constexpr (ChangeStack) {
             asm("csrrw t0, %0, t0" ::"i"(T::SCRATCH));
+
             asm("sd a0, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch0)));
             asm("sd sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch1)));
+
+            asm("csrr a0, %0" ::"i"(T::STATUS));
+            asm("li sp, %0" ::"i"(T::PP));
+            asm("and a0, a0, sp" ::: "a0");
+            asm("li sp, %0" ::"i"(T::PP_SELF));
+            asm("beq a0, sp, 1f");
             asm("ld sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
+            asm("j 2f");
+            asm("1:");
+            asm("ld sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch1)));
+            asm("2:");
+
             asm("mv a0, t0");
+
             asm("csrrw t0, %0, t0" ::"i"(T::SCRATCH));
         }
 
