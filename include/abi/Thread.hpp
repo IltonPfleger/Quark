@@ -15,6 +15,8 @@ class Thread {
 
     void join() { Syscall(ABI::Function::ABI_THREAD_JOIN, handler_); }
 
+    static void exit() { Syscall(ABI::Function::ABI_THREAD_EXIT); }
+
   private:
     void *handler_;
 };

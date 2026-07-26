@@ -16,6 +16,10 @@ void *Handler::dispatch(Function f, const Arguments a) {
             reinterpret_cast<Thread *>(a[0])->join();
             break;
         }
+        case Function::ABI_THREAD_EXIT: {
+            QUARK::Thread::exit();
+            break;
+        }
         case Function::ABI_THREAD_DESTRUCTOR: {
             delete reinterpret_cast<Thread *>(a[0]);
             break;

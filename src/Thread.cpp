@@ -1,5 +1,6 @@
 #include <Thread.hpp>
 #include <Traits.hpp>
+#include <abi/Thread.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Heap.hpp>
 #include <memory/Memory.hpp>
@@ -15,8 +16,10 @@ void Thread::entry(Function f, Argument a) {
     if (s_previous[CPU::id()]) epilogue();
 
     if constexpr (Traits<Kernel>::Privileged) {
-        if (current->domain_ == Domain::USER) Context::demote(current->kstack_, current->stack_, f, exit, a);
-        return;
+        if (current->domain_ == Domain::USER) {
+            Context::demote(current->kstack_, current->stack_, f, ABI::Thread::exit, a);
+            return;
+        }
     }
 
     CPU::IRQ::enable();
@@ -124,7 +127,7 @@ void Thread::init() {
     new (&s_scheduler) Scheduler();
 
     for (int i = 0; i < Traits<CPU>::Active; ++i)
-        new Thread(idle, 0, Criterion::IDLE);
+        new Thread(idle, 0, Criterion::IDLE, Domain::KERNEL);
 
     TraceOut();
 }

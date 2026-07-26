@@ -39,7 +39,8 @@ class MIC {
         }
 
         if constexpr (Traits<Kernel>::Privileged) {
-            TrapHandler::install(11, abi, TrapHandler::Exception);
+            PMP::NAPOT<0>(0, 0, PMP::R | PMP::W | PMP::X);
+            TrapHandler::install(8, abi, TrapHandler::Exception);
         }
 
         if constexpr (Traits<RISCV>::FPU) {
@@ -64,9 +65,8 @@ class MIC {
     }
 
     static void fpu(ContextFrame *context) {
-        if (Decoder::fp(context->value)) {
-            FPU::enable<MachineMode>(context);
-        }
+        if (Decoder::fp(context->value)) FPU::enable<MachineMode>(context);
+        ExceptionHandler::onTrap(context);
     }
 };
 

@@ -54,7 +54,10 @@ class Deferred {
     };
 
   public:
-    static size_t id() { return counter_.finc() % Traits<Deferred>::Threads; }
+    static size_t id() {
+        if constexpr (Traits<Deferred>::Threads != 0) return counter_.finc() % Traits<Deferred>::Threads;
+        return 0;
+    }
 
     static void init() {
         for (auto &i : managers_) {
@@ -63,9 +66,8 @@ class Deferred {
     }
 
     static bool schedule(Work &work) {
-        size_t start = id();
         for (size_t i = 0; i < Traits<Deferred>::Threads; i++) {
-            Deferred *manager = managers_[(start + i) % Traits<Deferred>::Threads];
+            Deferred *manager = managers_[id()];
             if (manager->enqueue(work)) return true;
         }
         return false;
@@ -123,7 +125,7 @@ class Deferred {
 
   private:
     static inline Atomic<size_t> counter_ = 0;
-    static inline Deferred *managers_[Traits<Deferred>::Threads];
+    static inline Meta::Array<Traits<Deferred>::Threads, Deferred *> managers_;
 };
 
 } // namespace QUARK

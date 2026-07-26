@@ -24,7 +24,7 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool Privileged = false;
+    static constexpr bool Privileged = true;
     static constexpr bool Multitask  = false;
 };
 
@@ -64,7 +64,8 @@ template <> struct Traits<Thread> {
 };
 
 template <> struct Traits<Deferred> {
-    static constexpr size_t Threads = Traits<CPU>::Active;
+    static constexpr bool Enable    = false;
+    static constexpr size_t Threads = Enable ? Traits<CPU>::Active : 0;
 };
 
 } // namespace QUARK

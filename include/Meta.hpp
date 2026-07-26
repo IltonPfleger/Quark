@@ -1,8 +1,8 @@
 #pragma once
 
-namespace QUARK {
+#include <utility/meta/Array.hpp>
 
-namespace Meta {
+namespace QUARK::Meta {
 
 struct Empty {};
 
@@ -12,14 +12,6 @@ template <bool B, typename True, typename False> struct IF {
 
 template <typename True, typename False> struct IF<false, True, False> {
     using Result = False;
-};
-
-template <unsigned N, typename T> struct Array {
-    constexpr T &operator[](unsigned int row) { return m_data[row]; }
-    constexpr const T &operator[](unsigned int row) const { return m_data[row]; }
-
-  private:
-    T m_data[N];
 };
 
 template <typename T, typename U> struct Same {
@@ -47,9 +39,7 @@ template <typename Head, typename... Tail, unsigned int Index> struct GetFromTyp
     using Result = typename GetFromTypeList<TypeList<Tail...>, Index - 1>::Result;
 };
 
-template <typename... Ts, typename Function> void forEach(TypeList<Ts...>, Function f) {
-    (f.template operator()<Ts>(), ...);
-}
+template <typename... Ts, typename Function> void forEach(TypeList<Ts...>, Function f) { (f.template operator()<Ts>(), ...); }
 
 template <typename T>
 concept Pointer = requires(T t) { []<typename U>(U *) {}(t); };
@@ -164,6 +154,4 @@ concept Void = IsVoid<T>::Result;
 template <typename T>
 concept Const = IsConst<T>::Result;
 
-} // namespace Meta
-
-} // namespace QUARK
+} // namespace QUARK::Meta
