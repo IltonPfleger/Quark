@@ -50,8 +50,7 @@ template <> struct Traits<Scheduler> {
 } // namespace QUARK
 
 #include <machine/Traits.hpp>
-
-#include __PAYLOAD_TRAITS_HEADER
+#include <payload/Traits.hpp>
 
 namespace QUARK {
 
