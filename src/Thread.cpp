@@ -10,18 +10,18 @@ namespace QUARK {
 Thread *Thread::running() { return s_scheduler.current(); }
 
 void Thread::entry(Function f, Argument a) {
-    // Thread *current = running();
+    Thread *current = running();
 
     if (s_previous[CPU::id()]) epilogue();
 
-    // if constexpr (Traits<Thread>::UserStack) {
-    //     new (&current->context_) Context(UserContext{}, current->stack_, current->kstack_, f, exit, a);
-    //     Context::load(current->context_);
-    // } else {
+    if constexpr (Traits<Kernel>::Privileged) {
+        Context::demote(current->kstack_, current->stack_, f, exit, a);
+        return;
+    }
+
     CPU::IRQ::enable();
     f(a);
     exit();
-    // }
 }
 
 Thread::Return Thread::idle(Argument) {
@@ -77,12 +77,13 @@ void Thread::epilogue() {
     }
 }
 
-Thread::Thread(Function f, Argument a, Criterion c)
-    : stack_(Memory::alloc(Traits<Thread>::UserStackSize), Traits<Thread>::UserStackSize),
+Thread::Thread(Function f, Argument a, Criterion c, Domain d)
+    : stack_(Memory::alloc(d == Domain::USER ? Traits<Thread>::UserStackSize : 0), d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
       kstack_(Memory::alloc(Traits<Thread>::KernelStackSize), Traits<Thread>::KernelStackSize),
       node_(Node(this, c)),
       state_(State::READY),
-      context_(kstack_, stack_, entry, f, a) {
+      context_(kstack_, stack_, entry, f, a),
+      domain_(d) {
     TraceIn(this);
 
     {

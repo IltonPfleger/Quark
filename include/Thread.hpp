@@ -11,6 +11,7 @@ class Thread {
 
   public:
     enum class State { RUNNING, READY, WAITING, FINISHING, FINISHED };
+    enum class Domain { USER, KERNEL };
 
     using Scheduler = QUARK::Scheduler;
     using Criterion = Scheduler::Criterion;
@@ -26,7 +27,7 @@ class Thread {
     Thread(const Thread &&)           = delete;
     Thread &operator=(Thread &&)      = delete;
     Thread &operator=(const Thread &) = delete;
-    Thread(Function, Argument = 0, Criterion = Criterion::NORMAL);
+    Thread(Function, Argument = 0, Criterion = Criterion::NORMAL, Domain = Domain::USER);
     ~Thread();
 
     static void init();
@@ -52,6 +53,7 @@ class Thread {
     Node node_;
     volatile State state_;
     Context context_;
+    Domain domain_;
 
   private:
     static constinit inline Scheduler s_scheduler;
