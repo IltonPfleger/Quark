@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_SEMAPHORE__
+#define __QUARK_SEMAPHORE__
 
 #include <Spin.hpp>
 #include <Thread.hpp>
@@ -13,7 +14,7 @@ class Semaphore {
           lock_() {}
 
     void p() {
-        CPU::IRQ::Guard _;
+        CPU::IRQ::Guard irq;
 
         lock_.acquire();
 
@@ -25,7 +26,7 @@ class Semaphore {
     }
 
     void v() {
-        CPU::IRQ::Guard _;
+        CPU::IRQ::Guard irq;
         lock_.acquire();
         if (CPU::Atomic::finc(value_) < 0) Thread::wakeup(&waiting_);
         lock_.release();
@@ -38,3 +39,5 @@ class Semaphore {
 };
 
 } // namespace QUARK
+
+#endif
