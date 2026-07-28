@@ -14,7 +14,7 @@ class Semaphore {
           lock_() {}
 
     void p() {
-        CPU::IRQ::Guard irq;
+        CPU::IRQ::Guard irqg;
 
         lock_.acquire();
 
@@ -26,7 +26,7 @@ class Semaphore {
     }
 
     void v() {
-        CPU::IRQ::Guard irq;
+        CPU::IRQ::Guard irqg;
         lock_.acquire();
         if (CPU::Atomic::finc(value_) < 0) Thread::wakeup(&waiting_);
         lock_.release();
