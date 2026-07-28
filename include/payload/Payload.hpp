@@ -6,8 +6,8 @@
 #include <libraries/libc/string.h>
 #include <memory/Heap.hpp>
 #include <memory/Memory.hpp>
-#include <utility/ELF/Elf_Ehdr.hpp>
-#include <utility/ELF/Elf_Phdr.hpp>
+#include <utility/elf/Elf_Ehdr.hpp>
+#include <utility/elf/Elf_Phdr.hpp>
 
 namespace QUARK {
 

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_ELF64_EHDR__
+#define __QUARK_ELF64_EHDR__
 
 namespace QUARK {
 
@@ -33,3 +34,5 @@ class Elf64_Ehdr {
 };
 
 } // namespace QUARK
+
+#endif
