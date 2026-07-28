@@ -10,14 +10,15 @@ TOOLS          := $(HERE)/tools
 SYSTEM         := $(BUILD)/QUARK
 IMAGE          := $(BUILD)/Image
 CONFIG         := $(BUILD)/Config
-SYSTEM_ELF     := $(BUILD)/QUARK.elf
-SYSTEM_BINARY  := $(BUILD)/QUARK.bun
+KERNEL_ELF     := $(BUILD)/QUARK.elf
+KERNEL_BINARY  := $(BUILD)/QUARK.bin
 
 CONFIGURATOR   := $(TOOLS)/TraitsLoggerGenerator
 TRAITS         := $(shell find $(HERE) -name "Traits.hpp")
 HASH           := $(BUILD)/Traits.hash
 MAPPER         := $(BUILD)/Mapper
 
+SIZE           := size
 TOOL           := riscv64-linux-gnu
 CC             := $(TOOL)-g++
 LD             := $(TOOL)-ld
