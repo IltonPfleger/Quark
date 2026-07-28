@@ -20,15 +20,15 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
   public:
     Console(VirtualMachine &owner)
         : Handler(3, 1 << 27, N),
-          device_(DEVICE::instance()),
+          device_(*DEVICE::instance()),
           owner_(owner),
           deferred_(worker, this) {
-        device_->attach(this);
+        device_.attach(this);
     }
 
     uint32_t configuration(uint32_t) { return 0; }
 
-    void notify(unsigned int source) {
+    void notify(uint32_t source) {
         if (source == 1) Deferred::schedule(deferred_);
     }
 
@@ -46,7 +46,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
 
         int id            = rx_.alloc();
         auto *descriptor  = rx_.descriptor(id);
-        auto *destination = reinterpret_cast<unsigned char *>(descriptor->address);
+        auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
 
         descriptor->length = size;
         descriptor->flags  = 0;
@@ -85,7 +85,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
         char *data      = reinterpret_cast<char *>(descriptor->address);
         uint32_t length = descriptor->length;
         for (uint32_t j = 0; j < descriptor->length; j++)
-            QUARK::Console::print(data[j]);
+            device_.write(data[j]);
         return length;
     }
 
@@ -94,7 +94,7 @@ template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : publ
     static constexpr size_t N          = 32;
 
   private:
-    DEVICE *device_;
+    DEVICE &device_;
     VirtualMachine &owner_;
 
     Deferred::Work deferred_;

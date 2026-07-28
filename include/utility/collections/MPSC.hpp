@@ -31,29 +31,28 @@ template <typename T> class MPSC {
         }
 
         volatile T *node = head_;
-        T *response      = head_;
 
         if (next) {
-            head_          = next;
-            response->next = nullptr;
-            return response;
+            head_      = next;
+            node->next = nullptr;
+            return const_cast<T *>(node);
         }
 
         if (node == tail) {
             insert(&stub_);
             next = node->next;
             if (next) {
-                head_          = next;
-                response->next = nullptr;
-                return response;
+                head_      = next;
+                node->next = nullptr;
+                return const_cast<T *>(node);
             }
         }
 
         while ((next = node->next) == nullptr)
             ;
-        head_          = next;
-        response->next = nullptr;
-        return response;
+        head_      = next;
+        node->next = nullptr;
+        return const_cast<T *>(node);
     }
 
   private:
