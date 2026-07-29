@@ -45,10 +45,13 @@ int main(int, char *[]) {
         start->v();
 
     for (int i = 0; i < Number; i++)
-        Thread::join(*threads[i]);
+        threads[i]->join();
 
     for (int i = 0; i < Number; i++)
         delete threads[i];
+
+    delete console;
+    delete start;
 
     return 0;
 }

@@ -14,7 +14,7 @@ class FPU {
   public:
     constexpr FPU() = default;
 
-    static bool enabled(ContextFrame *context) { return context->status & MASK; }
+    static bool enabled(ContextFrame &context) { return context.status & MASK; }
 
     template <typename T> static void enable(ContextFrame *context) {
         context->status &= ~MASK;
@@ -22,21 +22,6 @@ class FPU {
         csrs<T::STATUS>(INITIAL);
         fcsr(0);
         csrc<T::STATUS>(MASK);
-    }
-
-    template <typename T>
-    __attribute__((naked)) static void swtch(ContextFrame *p, ContextFrame *n, FPU *previous, FPU *next) {
-        if (p->status & MASK) {
-            previous->save();
-        }
-
-        if (n->status & MASK) {
-            csrs<T::STATUS>(INITIAL);
-            next->load();
-            csrc<T::STATUS>(MASK);
-        }
-
-        asm("ret");
     }
 
     __attribute__((always_inline)) inline void save() {
@@ -121,7 +106,7 @@ class FPU {
             : "t0", "memory");
     }
 
-  private:
+  public:
     static constexpr uint64_t SHIFT   = 13;
     static constexpr uint64_t MASK    = (3ULL << SHIFT);
     static constexpr uint64_t OFF     = (0ULL << SHIFT);

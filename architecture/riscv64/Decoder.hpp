@@ -20,7 +20,7 @@ class Decoder {
         INSTRET = 0xC02,
     };
 
-    [[nodiscard]] static constexpr bool fp(uint32_t instruction) {
+    [[nodiscard]] static constexpr bool floating(uint32_t instruction) {
         constexpr uint8_t LD     = 0x07;
         constexpr uint8_t SD     = 0x27;
         constexpr uint8_t OP     = 0x53;
@@ -29,8 +29,7 @@ class Decoder {
         constexpr uint8_t FNMSUB = 0x4B;
         constexpr uint8_t FNMADD = 0x4F;
         uint8_t opcode           = Decoder::opcode(instruction);
-        return (opcode == LD) || (opcode == SD) || (opcode == OP) || (opcode == FMADD) || (opcode == FMSUB) || (opcode == FNMSUB) ||
-               (opcode == FNMADD);
+        return (opcode == LD) || (opcode == SD) || (opcode == OP) || (opcode == FMADD) || (opcode == FMSUB) || (opcode == FNMSUB) || (opcode == FNMADD);
     }
 
     [[nodiscard]] static constexpr bool wfi(uint32_t instruction) {

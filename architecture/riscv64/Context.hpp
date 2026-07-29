@@ -6,12 +6,10 @@
 #include <architecture/riscv64/CoreContext.hpp>
 #include <architecture/riscv64/FPU.hpp>
 #include <architecture/riscv64/Modes.hpp>
+#include <architecture/riscv64/PMU.hpp>
 #include <memory/Chunk.hpp>
 
 namespace QUARK {
-
-struct UserContext {};
-struct KernelContext {};
 
 template <typename T, bool ChangeStack> class ContextTemplate {
   public:
@@ -32,8 +30,21 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         T::ret();
     }
 
-    static void load(ContextTemplate &next) {
-        asm volatile("mv sp, %0; jr %1" : : "r"(next.frame_), "r"(static_cast<void (*)()>(&ContextTemplate::load)));
+    static void load(ContextTemplate &next) { asm volatile("mv sp, %0; jr %1" : : "r"(next.frame_), "r"(static_cast<void (*)()>(&ContextTemplate::load))); }
+
+    static void epilogue(ContextTemplate &previous, ContextTemplate &next) {
+        if (FPU::enabled(*previous.frame_)) {
+            previous.fpu_.save();
+        }
+
+        if (FPU::enabled(*next.frame_)) {
+            csrs<T::STATUS>(FPU::INITIAL);
+            next.fpu_.load();
+            csrc<T::STATUS>(FPU::MASK);
+        }
+
+        previous.pmu_.save();
+        next.pmu_.load();
     }
 
     __attribute__((naked)) static void swtch(ContextTemplate &previous, ContextTemplate &next) {
@@ -42,7 +53,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         asm("sd sp, 0(%0)" ::"r"(&previous.frame_));
         asm("mv sp, %0" ::"r"(next.frame_));
 
-        FPU::swtch<T>(previous.frame_, next.frame_, &previous.fpu_, &next.fpu_);
+        epilogue(previous, next);
 
         load();
     }
@@ -233,6 +244,7 @@ template <typename T, bool ChangeStack> class ContextTemplate {
   protected:
     ContextFrame *frame_;
     FPU fpu_;
+    PMU pmu_;
 };
 
 template <bool ChangeStack = Traits<Thread>::UserStack> using MachineContext = ContextTemplate<MachineMode, ChangeStack>;

@@ -43,7 +43,7 @@ class MIC {
             TrapHandler::install(8, abi, TrapHandler::Exception);
         }
 
-        if constexpr (Traits<RISCV>::FPU) {
+        if constexpr (Traits<FPU>::Enable) {
             TrapHandler::install(2, fpu, TrapHandler::Exception);
         }
     }
@@ -65,8 +65,11 @@ class MIC {
     }
 
     static void fpu(ContextFrame *context) {
-        if (Decoder::fp(context->value)) FPU::enable<MachineMode>(context);
-        ExceptionHandler::onTrap(context);
+        if (Decoder::floating(context->value)) {
+            FPU::enable<MachineMode>(context);
+        } else {
+            ExceptionHandler::onTrap(context);
+        }
     }
 };
 

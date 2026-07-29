@@ -2,6 +2,7 @@
 
 #include <Meta.hpp>
 #include <Traits.hpp>
+#include <monitor/events.hpp>
 
 namespace QUARK {
 
@@ -16,6 +17,7 @@ class UART0;
 class RISCV;
 class IC;
 class PMU;
+class FPU;
 
 template <typename> class UART16550;
 
@@ -90,6 +92,15 @@ template <> struct Traits<PLIC> {
     }();
 };
 
-template <> struct Traits<PMU> {};
+template <> struct Traits<PMU> {
+    static constexpr size_t Fixed                                       = 2;
+    static constexpr size_t Programmable                                = 0;
+    static constexpr bool Enable                                        = true;
+    static constexpr Meta::Array<2, Meta::Pair<Event, uint64_t>> Events = {{{CPU_CYCLES, 0x00001}, {INSTRUCTIONS, 0x00002}}};
+};
+
+template <> struct Traits<FPU> {
+    static constexpr bool Enable = true;
+};
 
 } // namespace QUARK

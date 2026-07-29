@@ -1,6 +1,8 @@
 #ifndef __QUARK_RISCV64_PMU__
 #define __QUARK_RISCV64_PMU__
 
+#include <Traits.hpp>
+
 namespace QUARK {
 
 class PMU {
@@ -18,17 +20,13 @@ class PMU {
     }
 
     static void enable(size_t channel) {
-        uint64_t inhibit;
-        asm volatile("csrr %0, mcountinhibit" : "=r"(inhibit));
-        inhibit &= ~(1ULL << channel);
-        asm volatile("csrw mcountinhibit, %0" : : "r"(inhibit));
+        uint64_t mask = 1ULL << channel;
+        asm volatile("csrc mcountinhibit, %0" ::"r"(mask));
     }
 
     static void disable(size_t channel) {
-        uint64_t inhibit;
-        asm volatile("csrr %0, mcountinhibit" : "=r"(inhibit));
-        inhibit |= 1ULL << channel;
-        asm volatile("csrw mcountinhibit, %0" : : "r"(inhibit));
+        uint64_t mask = 1ULL << channel;
+        asm volatile("csrs mcountinhibit, %0" ::"r"(mask));
     }
 
     static void configure(size_t channel, uint64_t event) {
@@ -135,6 +133,80 @@ class PMU {
             case 31: asm volatile("csrw mhpmcounter31, %0" ::"r"(value)); break;
         }
     }
+
+    static uint64_t event(size_t channel) {
+        uint64_t value = 0;
+        switch (channel) {
+            case 3: asm volatile("csrr %0, mhpmevent3" : "=r"(value)); break;
+            case 4: asm volatile("csrr %0, mhpmevent4" : "=r"(value)); break;
+            case 5: asm volatile("csrr %0, mhpmevent5" : "=r"(value)); break;
+            case 6: asm volatile("csrr %0, mhpmevent6" : "=r"(value)); break;
+            case 7: asm volatile("csrr %0, mhpmevent7" : "=r"(value)); break;
+            case 8: asm volatile("csrr %0, mhpmevent8" : "=r"(value)); break;
+            case 9: asm volatile("csrr %0, mhpmevent9" : "=r"(value)); break;
+            case 10: asm volatile("csrr %0, mhpmevent10" : "=r"(value)); break;
+            case 11: asm volatile("csrr %0, mhpmevent11" : "=r"(value)); break;
+            case 12: asm volatile("csrr %0, mhpmevent12" : "=r"(value)); break;
+            case 13: asm volatile("csrr %0, mhpmevent13" : "=r"(value)); break;
+            case 14: asm volatile("csrr %0, mhpmevent14" : "=r"(value)); break;
+            case 15: asm volatile("csrr %0, mhpmevent15" : "=r"(value)); break;
+            case 16: asm volatile("csrr %0, mhpmevent16" : "=r"(value)); break;
+            case 17: asm volatile("csrr %0, mhpmevent17" : "=r"(value)); break;
+            case 18: asm volatile("csrr %0, mhpmevent18" : "=r"(value)); break;
+            case 19: asm volatile("csrr %0, mhpmevent19" : "=r"(value)); break;
+            case 20: asm volatile("csrr %0, mhpmevent20" : "=r"(value)); break;
+            case 21: asm volatile("csrr %0, mhpmevent21" : "=r"(value)); break;
+            case 22: asm volatile("csrr %0, mhpmevent22" : "=r"(value)); break;
+            case 23: asm volatile("csrr %0, mhpmevent23" : "=r"(value)); break;
+            case 24: asm volatile("csrr %0, mhpmevent24" : "=r"(value)); break;
+            case 25: asm volatile("csrr %0, mhpmevent25" : "=r"(value)); break;
+            case 26: asm volatile("csrr %0, mhpmevent26" : "=r"(value)); break;
+            case 27: asm volatile("csrr %0, mhpmevent27" : "=r"(value)); break;
+            case 28: asm volatile("csrr %0, mhpmevent28" : "=r"(value)); break;
+            case 29: asm volatile("csrr %0, mhpmevent29" : "=r"(value)); break;
+            case 30: asm volatile("csrr %0, mhpmevent30" : "=r"(value)); break;
+            case 31: asm volatile("csrr %0, mhpmevent31" : "=r"(value)); break;
+        }
+        return value;
+    }
+
+    void load() {
+        if constexpr (Traits<PMU>::Enable) {
+            if (!initialized_) {
+                initialized_ = true;
+                for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
+                    disable(channel);
+                    configure(channel, 0);
+                    write(channel, 0);
+                }
+            } else {
+                for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
+                    configure(channel, mhpmevent_[channel - 3]);
+                    write(channel, mhpmcounter_[channel - 3]);
+                    if (!(mcountinhibit_ & (1ULL << channel)))
+                        enable(channel);
+                    else
+                        disable(channel);
+                }
+            }
+        }
+    }
+
+    void save() {
+        if constexpr (Traits<PMU>::Enable) {
+            asm volatile("csrr %0, mcountinhibit" : "=r"(mcountinhibit_));
+            for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
+                mhpmevent_[channel - 3]   = event(channel);
+                mhpmcounter_[channel - 3] = read(channel);
+            }
+        }
+    }
+
+  private:
+    Meta::IF<Traits<PMU>::Enable, bool, Meta::Empty>::Result initialized_;
+    Meta::IF<Traits<PMU>::Enable, uint64_t, Meta::Empty>::Result mcountinhibit_;
+    Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmevent_;
+    Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmcounter_;
 };
 
 } // namespace QUARK

@@ -52,13 +52,13 @@ void *Memory::alloc(size_t size) {
 }
 
 void Memory::free(void *chunk, size_t size) {
+    if (!chunk) return;
+
     CPU::IRQ::Guard _;
 
     spin_.acquire();
 
     TraceIn(chunk, size);
-
-    assert(chunk != nullptr, "Invalid Free!");
 
     allocator_.insert(chunk, size);
 

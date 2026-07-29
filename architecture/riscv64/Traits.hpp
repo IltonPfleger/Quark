@@ -10,7 +10,6 @@ template <> struct Traits<RISCV> {
     static constexpr bool User       = Traits<Payload>::Unprivileged;
     static constexpr bool Hypervisor = Traits<Payload>::Virtualization;
     static constexpr bool Supervisor = false;
-    static constexpr bool FPU        = true;
     static_assert(!(Supervisor && Hypervisor));
 };
 

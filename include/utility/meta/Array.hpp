@@ -4,17 +4,17 @@
 namespace QUARK::Meta {
 
 template <unsigned N, typename T> struct Array {
-    constexpr T &operator[](unsigned i) { return m_data[i]; }
-    constexpr const T &operator[](unsigned i) const { return m_data[i]; }
+    constexpr T &operator[](unsigned i) { return data[i]; }
+    constexpr const T &operator[](unsigned i) const { return data[i]; }
 
-    constexpr T *begin() { return m_data; }
-    constexpr T *end() { return m_data + N; }
+    constexpr T *begin() { return data; }
+    constexpr T *end() { return data + N; }
 
-    constexpr const T *begin() const { return m_data; }
-    constexpr const T *end() const { return m_data + N; }
+    constexpr const T *begin() const { return data; }
+    constexpr const T *end() const { return data + N; }
+    constexpr unsigned length() const { return N; }
 
-  private:
-    T m_data[N];
+    T data[N];
 };
 
 template <typename T> struct Array<0, T> {

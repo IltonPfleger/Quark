@@ -1,6 +1,8 @@
 #pragma once
 
 #include <utility/meta/Array.hpp>
+#include <utility/meta/Pair.hpp>
+#include <utility/meta/Tuple.hpp>
 
 namespace QUARK::Meta {
 
@@ -43,22 +45,6 @@ template <typename... Ts, typename Function> void forEach(TypeList<Ts...>, Funct
 
 template <typename T>
 concept Pointer = requires(T t) { []<typename U>(U *) {}(t); };
-
-template <typename...> struct Tuple;
-
-template <> struct Tuple<> {};
-
-template <typename Head, typename... Tail> struct Tuple<Head, Tail...> {
-    Head m_value;
-    Tuple<Tail...> m_next;
-};
-
-template <typename Function> void forEach(Tuple<> &, Function) {}
-
-template <typename Head, typename... Tail, typename Function> void forEach(Tuple<Head, Tail...> &tuple, Function f) {
-    f(tuple.m_value);
-    forEach(tuple.m_next, f);
-}
 
 template <typename Base, typename Derived> struct IsBaseOf {
   private:

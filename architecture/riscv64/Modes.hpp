@@ -25,26 +25,27 @@ struct MachineMode {
         PIRQE = 1ULL << 7,  // Previous Interrupt Enable
     };
 
-    static constexpr int HARTID     = 0xF14;
-    static constexpr int STATUS     = 0x300;
-    static constexpr int MISA       = 0x301;
-    static constexpr int MEDELEG    = 0x302;
-    static constexpr int MIDELEG    = 0x303;
-    static constexpr int IE         = 0x304;
-    static constexpr int TVEC       = 0x305;
-    static constexpr int MCOUNTEREN = 0x306;
-    static constexpr int PMPADDR0   = 0x3B0;
-    static constexpr int PMPCFG0    = 0x3A0;
-    static constexpr int PMPADDR1   = 0x3B1;
-    static constexpr int PMPCFG1    = 0x3A1;
-    static constexpr int SCRATCH    = 0x340;
-    static constexpr int EPC        = 0x341;
-    static constexpr int CAUSE      = 0x342;
-    static constexpr int IP         = 0x344;
-    static constexpr int TVAL       = 0x343;
-    static constexpr int VENDORID   = 0xF11;
-    static constexpr int ARCHID     = 0xF12;
-    static constexpr int IMPID      = 0xF13;
+    static constexpr int HARTID        = 0xF14;
+    static constexpr int STATUS        = 0x300;
+    static constexpr int MISA          = 0x301;
+    static constexpr int MEDELEG       = 0x302;
+    static constexpr int MIDELEG       = 0x303;
+    static constexpr int IE            = 0x304;
+    static constexpr int TVEC          = 0x305;
+    static constexpr int MCOUNTEREN    = 0x306;
+    static constexpr int PMPADDR0      = 0x3B0;
+    static constexpr int PMPCFG0       = 0x3A0;
+    static constexpr int PMPADDR1      = 0x3B1;
+    static constexpr int PMPCFG1       = 0x3A1;
+    static constexpr int SCRATCH       = 0x340;
+    static constexpr int EPC           = 0x341;
+    static constexpr int CAUSE         = 0x342;
+    static constexpr int IP            = 0x344;
+    static constexpr int TVAL          = 0x343;
+    static constexpr int VENDORID      = 0xF11;
+    static constexpr int ARCHID        = 0xF12;
+    static constexpr int IMPID         = 0xF13;
+    static constexpr int MCOUNTINHIBIT = 0x320;
 
     static constexpr char PREFIX = 'm';
 
