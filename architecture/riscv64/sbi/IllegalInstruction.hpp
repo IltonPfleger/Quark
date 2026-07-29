@@ -23,7 +23,7 @@ class IllegalInstruction {
                 case Decoder::TIME: (*context)[rd] = CLINT::mtime(); break;
                 case Decoder::CYCLE: (*context)[rd] = PMU::cycles(); break;
                 case Decoder::INSTRET: (*context)[rd] = PMU::instret(); break;
-                default: ExceptionHandler::onTrap(context);
+                default: ExceptionHandler::esr(context);
             }
             context->pc += 4;
         } else if (Decoder::wfi(instruction)) {
@@ -32,7 +32,7 @@ class IllegalInstruction {
         } else if (Decoder::floating(instruction) && !FPU::enabled(*context)) {
             FPU::enable<MachineMode>(context);
         } else {
-            ExceptionHandler::onTrap(context);
+            ExceptionHandler::esr(context);
         }
     }
 };

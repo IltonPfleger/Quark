@@ -16,7 +16,7 @@ class Syscall {
             case Time::EID: Time::handler(c); break;
             case Counter::EID: Counter::handler(c); break;
             case FWFT::EID: FWFT::handler(c); break;
-            default: ExceptionHandler::onTrap(c);
+            default: ExceptionHandler::esr(c);
         }
         c->pc += 4;
     }

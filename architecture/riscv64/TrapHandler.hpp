@@ -47,7 +47,7 @@ class TrapHandler {
 
     static void init() {
         for (int i = 0; i < 16; i++)
-            install(i, ExceptionHandler::onTrap, Exception);
+            install(i, ExceptionHandler::esr, Exception);
     }
 
   private:

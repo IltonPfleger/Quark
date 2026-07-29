@@ -8,7 +8,7 @@ namespace QUARK {
 
 class ExceptionHandler {
   public:
-    static void onTrap(ContextFrame *c) {
+    static void esr(ContextFrame *c) {
         Console::panic();
         Console::println("\n<", CPU::id(), "> Ohh, It's a Trap!");
         Console::println("context: ", c);

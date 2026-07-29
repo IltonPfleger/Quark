@@ -6,19 +6,6 @@
 namespace QUARK {
 
 class PMU {
-  public:
-    static inline uint64_t cycles() {
-        uint64_t event;
-        asm volatile("rdcycle %0" : "=r"(event));
-        return event;
-    }
-
-    static inline uint64_t instret() {
-        uint64_t event;
-        asm volatile("rdinstret %0" : "=r"(event));
-        return event;
-    }
-
     static void enable(size_t channel) {
         uint64_t mask = 1ULL << channel;
         asm volatile("csrc mcountinhibit, %0" ::"r"(mask));
@@ -168,6 +155,19 @@ class PMU {
             case 31: asm volatile("csrr %0, mhpmevent31" : "=r"(value)); break;
         }
         return value;
+    }
+
+  public:
+    static inline uint64_t cycles() {
+        uint64_t event;
+        asm volatile("rdcycle %0" : "=r"(event));
+        return event;
+    }
+
+    static inline uint64_t instret() {
+        uint64_t event;
+        asm volatile("rdinstret %0" : "=r"(event));
+        return event;
     }
 
     void load() {

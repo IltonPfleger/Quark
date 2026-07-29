@@ -65,11 +65,13 @@ class MIC {
     }
 
     static void fpu(ContextFrame *context) {
-        if (Decoder::floating(context->value)) {
-            FPU::enable<MachineMode>(context);
-        } else {
-            ExceptionHandler::onTrap(context);
+        if ((context->value & MachineMode::PP) != MachineMode::PP_M) {
+            if (Decoder::floating(context->value)) {
+                FPU::enable<MachineMode>(context);
+                return;
+            }
         }
+        ExceptionHandler::esr(context);
     }
 };
 

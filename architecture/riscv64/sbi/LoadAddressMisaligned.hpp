@@ -9,7 +9,7 @@ class LoadAddressMisaligned {
     static constexpr uint32_t CODE = 4;
 
     static void dispatch(ContextFrame *c) {
-        if (((c->status >> 11) & 0x3) != 1) ExceptionHandler::onTrap(c);
+        if (((c->status >> 11) & 0x3) != 1) ExceptionHandler::esr(c);
 
         uintptr_t pc        = PageTable::virt2phys(c->pc);
         uint16_t compressed = Decoder::compressed(pc);
@@ -29,7 +29,7 @@ class LoadAddressMisaligned {
                 } else if (funct3 == 3) { // c.ld
                     width = 8;
                 } else {
-                    ExceptionHandler::onTrap(c);
+                    ExceptionHandler::esr(c);
                     return;
                 }
             } else if (opcode == 2) {
@@ -39,11 +39,11 @@ class LoadAddressMisaligned {
                 } else if (funct3 == 3) { // c.ldsp
                     width = 8;
                 } else {
-                    ExceptionHandler::onTrap(c);
+                    ExceptionHandler::esr(c);
                     return;
                 }
             } else {
-                ExceptionHandler::onTrap(c);
+                ExceptionHandler::esr(c);
                 return;
             }
 
@@ -84,7 +84,7 @@ class LoadAddressMisaligned {
                     width = 4;
                     sign  = false;
                     break;
-                default: ExceptionHandler::onTrap(c); return;
+                default: ExceptionHandler::esr(c); return;
             }
             c->pc += 4;
         }
