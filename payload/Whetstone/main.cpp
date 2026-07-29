@@ -7,7 +7,7 @@
 using namespace QUARK;
 
 static constexpr int Number     = 10;
-static constexpr int Iterations = 10000;
+static constexpr int Iterations = 100000;
 
 Semaphore *console;
 Semaphore *start;
