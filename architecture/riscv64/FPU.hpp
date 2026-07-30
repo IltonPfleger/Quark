@@ -24,8 +24,13 @@ class FPU {
         csrc<T::STATUS>(MASK);
     }
 
-    __attribute__((always_inline)) inline void save() {
+    __attribute__((always_inline)) inline void save(uint64_t status) {
         if constexpr (Traits<FPU>::Enable) {
+
+            if (!(status & MASK)) {
+                return;
+            }
+
             uint64_t *base = &registers_.f[0];
             asm("fsd f0,   0(%0)\n"
                 "fsd f1,   8(%0)\n"
@@ -67,8 +72,13 @@ class FPU {
         }
     }
 
-    __attribute__((always_inline)) void load() {
+    __attribute__((always_inline)) void load(uint64_t status) {
         if constexpr (Traits<FPU>::Enable) {
+
+            if (!(status & MASK)) {
+                return;
+            }
+
             uint64_t *base = &registers_.f[0];
             asm("fld f0,   0(%0)\n"
                 "fld f1,   8(%0)\n"

@@ -33,15 +33,11 @@ template <typename T, bool ChangeStack> class ContextTemplate {
     static void load(ContextTemplate &next) { asm volatile("mv sp, %0; jr %1" : : "r"(next.frame_), "r"(static_cast<void (*)()>(&ContextTemplate::load))); }
 
     static void epilogue(ContextTemplate &previous, ContextTemplate &next) {
-        if (FPU::enabled(*previous.frame_)) {
-            previous.fpu_.save();
-        }
+        previous.fpu_.save(previous.frame_->status);
 
-        if (FPU::enabled(*next.frame_)) {
-            csrs<T::STATUS>(FPU::INITIAL);
-            next.fpu_.load();
-            csrc<T::STATUS>(FPU::MASK);
-        }
+        csrs<T::STATUS>(FPU::INITIAL);
+        next.fpu_.load(next.frame_->status);
+        csrc<T::STATUS>(FPU::MASK);
 
         previous.pmu_.save();
         next.pmu_.load();
