@@ -53,6 +53,7 @@ class Base {
             }
             case PROBE_EXTENSION: {
                 c->a1 = 0;
+                if (c->a0 == Base::EID) c->a1 = 1;
                 if (c->a0 == Time::EID) c->a1 = 1;
                 c->a0 = 0;
                 break;
