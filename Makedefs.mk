@@ -28,6 +28,7 @@ OBJCOPY        := $(TOOL)-objcopy
 GDB            := $(TOOL)-gdb
 CAT            := cat
 MV             := mv
+MKDIR          := mkdir
 DD             := dd
 TRUNCATE       := truncate
 QEMU           := qemu-system-riscv64
@@ -44,13 +45,13 @@ CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -O3
 build: $(IMAGE).img
 
 $(HASH): $(TRAITS)
-	@mkdir -p $(dir $@)
+	@$(MKDIR) -p $(dir $@)
 	@cat $^ | sha256sum > $@
 
 MACH_CCFLAGS := $(CCFLAGS)
 
 $(CONFIG): $(HASH)
-	mkdir -p $(dir $@)
+	$(MKDIR) -p $(dir $@)
 	g++ $(CCFLAGS) -E $(HERE)/include/Traits.hpp -w -Wno-error=pragma-once-outside-header | $(CONFIGURATOR) > $(CONFIG).cpp
 	g++ $(CCFLAGS) $(CONFIG).cpp -o $(CONFIG).elf
 	$(CONFIG).elf > $@
