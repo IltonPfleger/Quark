@@ -8,10 +8,10 @@ class LoadAddressMisaligned {
   public:
     static constexpr uint32_t CODE = 4;
 
-    static void dispatch(ContextFrame *c) {
-        if ((c->status & MachineMode::PP) == MachineMode::PP_M) ExceptionHandler::esr(c);
+    static void dispatch(ContextFrame *context) {
+        if ((context->status & MachineMode::PP) == MachineMode::PP_M) ExceptionHandler::esr(context);
 
-        uintptr_t pc        = PageTable::virt2phys(c->pc);
+        uintptr_t pc        = PageTable::virt2phys(context->pc);
         uint16_t compressed = Decoder::compressed(pc);
 
         uint8_t rd   = 0;
@@ -29,7 +29,7 @@ class LoadAddressMisaligned {
                 } else if (funct3 == 3) {
                     width = 8;
                 } else {
-                    ExceptionHandler::esr(c);
+                    ExceptionHandler::esr(context);
                     return;
                 }
             } else if (opcode == 2) {
@@ -39,16 +39,16 @@ class LoadAddressMisaligned {
                 } else if (funct3 == 3) {
                     width = 8;
                 } else {
-                    ExceptionHandler::esr(c);
+                    ExceptionHandler::esr(context);
                     return;
                 }
             } else {
-                ExceptionHandler::esr(c);
+                ExceptionHandler::esr(context);
                 return;
             }
 
             sign = true;
-            c->pc += 2;
+            context->pc += 2;
 
         } else {
             uint32_t uncompressed = Decoder::uncompressed(pc);
@@ -84,16 +84,21 @@ class LoadAddressMisaligned {
                     width = 4;
                     sign  = false;
                     break;
-                default: ExceptionHandler::esr(c); return;
+                default: ExceptionHandler::esr(context); return;
             }
-            c->pc += 4;
+            context->pc += 4;
         }
 
         uintmax_t loaded = 0;
+
         for (size_t i = 0; i < width; ++i) {
             uintptr_t address = PageTable::virt2phys(csrr<MachineMode::TVAL>() + i);
-            uint8_t data      = *reinterpret_cast<uint8_t *>(address);
-            loaded |= (static_cast<uintmax_t>(data) << (i * 8));
+            uint8_t data;
+            if (!VirtualCPU::lb(address, &data)) {
+                ExceptionHandler::esr(context);
+            } else {
+                loaded |= (static_cast<uintmax_t>(data) << (i * 8));
+            }
         }
 
         if (sign && width < sizeof(uintmax_t)) {
@@ -102,7 +107,7 @@ class LoadAddressMisaligned {
         }
 
         if (rd != 0) {
-            (*c)[rd] = loaded;
+            (*context)[rd] = loaded;
         }
     }
 };

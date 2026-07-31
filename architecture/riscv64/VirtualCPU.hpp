@@ -111,6 +111,20 @@ class VirtualCPU {
         return current()->vm_->write(address, source);
     }
 
+    static bool sb(uintmax_t address, uint8_t source) {
+        assert(current());
+        if (!current()->vm_->memory().contains(Chunk(address, 1))) return false;
+        *reinterpret_cast<uint8_t *>(address) = source;
+        return true;
+    }
+
+    static bool lb(uintmax_t address, uint8_t *source) {
+        assert(current());
+        if (!current()->vm_->memory().contains(Chunk(address, 1))) return false;
+        *source = *reinterpret_cast<uint8_t *>(address);
+        return true;
+    }
+
     static VirtualCPU *current() { return current_[CPU::id()]; }
 
     static void swtch(VirtualCPU *previous, VirtualCPU *next) {

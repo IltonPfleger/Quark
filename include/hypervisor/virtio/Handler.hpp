@@ -107,7 +107,7 @@ class Handler {
         uint32_t length  = self.header_.queue_num;
         uint32_t align   = self.header_.queue_align;
 
-        assert(self.owner_.memory().validate(Chunk(address, Queue::size(length, align))));
+        assert(self.owner_.memory().contains(Chunk(address, Queue::size(length, align))));
 
         new (self.queues_[i]) Queue(address, length, align);
 

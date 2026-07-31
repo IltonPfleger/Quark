@@ -2,7 +2,6 @@
 #define __QUARK_HYPERVISOR_VIRTUAL_MACHINE__
 
 #include <Meta.hpp>
-#include <hypervisor/VirtualMemoryManager.hpp>
 #include <memory/Chunk.hpp>
 #include <types.hpp>
 
@@ -21,12 +20,12 @@ class VirtualMachine {
 
     virtual void interrupt(uint32_t id) = 0;
 
-    virtual const VirtualMemoryManager &memory() { return memory_; }
+    virtual const Chunk &memory() const { return memory_; }
 
     virtual ~VirtualMachine() = default;
 
   private:
-    VirtualMemoryManager memory_;
+    const Chunk memory_;
 };
 
 } // namespace QUARK

@@ -8,10 +8,10 @@ class StoreAddressMisaligned {
   public:
     static constexpr uint32_t CODE = 6;
 
-    static void dispatch(ContextFrame *c) {
-        if ((c->status & MachineMode::PP) == MachineMode::PP_M) ExceptionHandler::esr(c);
+    static void dispatch(ContextFrame *context) {
+        if ((context->status & MachineMode::PP) == MachineMode::PP_M) ExceptionHandler::esr(context);
 
-        uintptr_t pc        = PageTable::virt2phys(c->pc);
+        uintptr_t pc        = PageTable::virt2phys(context->pc);
         uint16_t compressed = Decoder::compressed(pc);
 
         uint8_t rs2  = 0;
@@ -29,7 +29,7 @@ class StoreAddressMisaligned {
                 } else if (funct3 == 7) {
                     width = 8;
                 } else {
-                    ExceptionHandler::esr(c);
+                    ExceptionHandler::esr(context);
                     return;
                 }
             } else if (opcode == 2) {
@@ -40,15 +40,15 @@ class StoreAddressMisaligned {
                 } else if (funct3 == 7) {
                     width = 8;
                 } else {
-                    ExceptionHandler::esr(c);
+                    ExceptionHandler::esr(context);
                     return;
                 }
             } else {
-                ExceptionHandler::esr(c);
+                ExceptionHandler::esr(context);
                 return;
             }
 
-            c->pc += 2;
+            context->pc += 2;
 
         } else {
             uint32_t uncompressed = Decoder::uncompressed(pc);
@@ -61,21 +61,20 @@ class StoreAddressMisaligned {
                 case 0x1: width = 2; break;
                 case 0x2: width = 4; break;
                 case 0x3: width = 8; break;
-                default: ExceptionHandler::esr(c); return;
+                default: ExceptionHandler::esr(context); return;
             }
 
-            c->pc += 4;
+            context->pc += 4;
         }
 
-        uintmax_t store = (*c)[rs2];
+        uintmax_t store   = (*context)[rs2];
+        uintptr_t address = csrr<MachineMode::TVAL>();
 
-        write(csrr<MachineMode::TVAL>(), store, width);
-    }
-
-    static void write(uintptr_t address, uintmax_t value, size_t width) {
         for (size_t i = 0; i < width; ++i) {
-            uintptr_t target                     = PageTable::virt2phys(address + i);
-            *reinterpret_cast<uint8_t *>(target) = static_cast<uint8_t>((value >> (i * 8)) & 0xFF);
+            uintptr_t target = PageTable::virt2phys(address + i);
+            if (!VirtualCPU::sb(target, static_cast<uint8_t>((store >> (i * 8)) & 0xFF))) {
+                ExceptionHandler::esr(context);
+            }
         }
     }
 };
