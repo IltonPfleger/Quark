@@ -20,7 +20,7 @@ template <size_t CORES, uintptr_t ADDRESS> class VirtualPLIC : public VirtualInt
     };
 
   public:
-    VirtualPLIC(VirtualCPU (&cpus)[CORES])
+    VirtualPLIC(Meta::Array<CORES, VirtualCPU> &cpus)
         : cpus_(cpus) {}
 
     bool pending(uint32_t context) const {
@@ -183,7 +183,7 @@ template <size_t CORES, uintptr_t ADDRESS> class VirtualPLIC : public VirtualInt
     uint32_t pending_[32]           = {0};
     uint32_t enabled_[Contexts][32] = {0};
     uint32_t threshold_[Contexts]   = {0};
-    VirtualCPU (&cpus_)[CORES];
+    Meta::Array<CORES, VirtualCPU> &cpus_;
 };
 
 } // namespace QUARK

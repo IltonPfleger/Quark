@@ -30,7 +30,7 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
     };
 
     template <typename... D> struct DeviceCollection {
-        DeviceCollection(VirtualMachine &, VirtualCPU (&)[CORES]) {}
+        DeviceCollection(VirtualMachine &, Meta::Array<CORES, VirtualCPU> &) {}
         bool read(uintptr_t, uint32_t *) { return false; }
         bool write(uintptr_t, uint32_t) { return false; }
         void interrupt(uint32_t) {}
@@ -40,11 +40,11 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
         Head _device;
         DeviceCollection<Tail...> _others;
 
-        DeviceCollection(VirtualMachine &machine, VirtualCPU (&cpus)[CORES])
+        DeviceCollection(VirtualMachine &machine, Meta::Array<CORES, VirtualCPU> &cpus)
             : _device(create(machine, cpus)),
               _others(machine, cpus) {}
 
-        static Head create(VirtualMachine &machine, VirtualCPU (&cpus)[CORES]) {
+        static Head create(VirtualMachine &machine, Meta::Array<CORES, VirtualCPU> &cpus) {
             if constexpr (Meta::IsBaseOf<VirtualInterruptController, Head>::Result) {
                 return Head(cpus);
             } else {
@@ -78,12 +78,14 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
   public:
     GenericVirtualMachine(void *entry, size_t size)
         : VirtualMachine(Chunk(entry, size)),
-          cpus_(this, this),
+          cpus_(icpus(Meta::MakeIndexSequence<CORES>{})),
           devices_(*this, cpus_) {
         for (size_t i = 0; i < CORES; i++) {
             threads_[i] = new Thread(worker, &arguments[i]);
         }
     }
+
+    template <size_t... Is> Meta::Array<CORES, VirtualCPU> icpus(Meta::IndexSequence<Is...>) { return {((void)Is, VirtualCPU(this))...}; }
 
     void boot(size_t core, void *entry, void *opaque) {
         arguments[core].cpu    = &cpus_[core];
@@ -108,7 +110,7 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
 
   private:
     Arguments arguments[CORES];
-    VirtualCPU cpus_[CORES];
+    Meta::Array<CORES, VirtualCPU> cpus_;
     Thread *threads_[CORES];
     DeviceCollection<Devices...> devices_;
 };
