@@ -45,9 +45,9 @@ class FixedCore {
 
     void build(uint8_t rank, uint32_t cpu) {
         if (rank == IDLE && cpu == ANY) {
-            cpu = CPU::Atomic::finc(idles_) % NumberOfCores;
+            cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
         } else if (cpu == ANY) {
-            cpu = Traits<CPU>::BSP;
+            cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
         }
 
         assert(rank < 2, rank);
@@ -58,7 +58,7 @@ class FixedCore {
     }
 
   private:
-    static constinit inline uint32_t idles_ = 0;
+    static constinit inline uint32_t counter_ = 0;
 
   private:
     uint32_t cpu_;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utility/meta/Array.hpp>
+#include <utility/meta/IndexSequence.hpp>
 #include <utility/meta/Pair.hpp>
 #include <utility/meta/Tuple.hpp>
 
@@ -139,17 +140,5 @@ concept Void = IsVoid<T>::Result;
 
 template <typename T>
 concept Const = IsConst<T>::Result;
-
-template <unsigned long... Is> struct IndexSequence {
-    using type = IndexSequence;
-};
-
-template <unsigned long N, unsigned long... Is> struct MakeIndexSequence_helper : MakeIndexSequence_helper<N - 1, N - 1, Is...> {};
-
-template <unsigned long... Is> struct MakeIndexSequence_helper<0, Is...> {
-    using type = IndexSequence<Is...>;
-};
-
-template <unsigned long N> using MakeIndexSequence = typename MakeIndexSequence_helper<N>::type;
 
 } // namespace QUARK::Meta

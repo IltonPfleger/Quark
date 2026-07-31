@@ -79,13 +79,11 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
     GenericVirtualMachine(void *entry, size_t size)
         : VirtualMachine(Chunk(entry, size)),
           cpus_(icpus(Meta::MakeIndexSequence<CORES>{})),
-          devices_(*this, cpus_) {
-        for (size_t i = 0; i < CORES; i++) {
-            threads_[i] = new Thread(worker, &arguments[i]);
-        }
-    }
+          devices_(*this, cpus_),
+          threads_(ithreads(Meta::MakeIndexSequence<CORES>{})) {}
 
     template <size_t... Is> Meta::Array<CORES, VirtualCPU> icpus(Meta::IndexSequence<Is...>) { return {((void)Is, VirtualCPU(this))...}; }
+    template <size_t... Is> Meta::Array<CORES, Thread> ithreads(Meta::IndexSequence<Is...>) { return {(Thread(worker, &arguments[Is]))...}; }
 
     void boot(size_t core, void *entry, void *opaque) {
         arguments[core].cpu    = &cpus_[core];
@@ -111,8 +109,8 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
   private:
     Arguments arguments[CORES];
     Meta::Array<CORES, VirtualCPU> cpus_;
-    Thread *threads_[CORES];
     DeviceCollection<Devices...> devices_;
+    Meta::Array<CORES, Thread> threads_;
 };
 
 } // namespace QUARK
