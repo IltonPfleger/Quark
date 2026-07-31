@@ -30,6 +30,8 @@ CAT            := cat
 MV             := mv
 MKDIR          := mkdir
 DD             := dd
+MAKE           := make
+RM             := rm
 TRUNCATE       := truncate
 QEMU           := qemu-system-riscv64
 

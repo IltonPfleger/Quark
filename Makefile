@@ -23,7 +23,7 @@ $(KERNEL_BINARY) : $(KERNEL_ELF) $(PAYLOAD_ELF)
 	$(CAT) $(PAYLOAD_ELF) >> $(KERNEL_BINARY)
 
 $(PAYLOAD_ELF): $(KERNEL_ELF)
-	make PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
+	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
 
 $(KERNEL_ELF): $(KERNEL_OBJECTS)
 	$(LD) -T Linker.ld --defsym=__BOOT__=$(MemoryMap_BootStart) -o $@ $^
@@ -38,6 +38,6 @@ $(BUILD)/%.o: src/%.cpp
 $(KERNEL_OBJECTS): $(CONFIG)
 
 clean:
-	rm -rf build
+	$(RM) -rf build
 
 -include $(KERNEL_DEPENDENCIES)
