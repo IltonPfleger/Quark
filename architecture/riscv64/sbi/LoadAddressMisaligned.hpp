@@ -93,6 +93,7 @@ class LoadAddressMisaligned {
 
         for (size_t i = 0; i < width; ++i) {
             uintptr_t address = PageTable::virt2phys(csrr<MachineMode::TVAL>() + i);
+            if (!address) ExceptionHandler::esr(context);
             uint8_t data;
             if (!VirtualCPU::lb(address, &data)) {
                 ExceptionHandler::esr(context);

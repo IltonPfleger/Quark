@@ -189,16 +189,12 @@ class VirtualCPU {
   private:
     static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};
 
-    static constexpr uintmax_t MIDELEG = SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
-
-    static constexpr uintmax_t MEDELEG = 0          //
-                                         | 1 << 4   // Load Address Misaligned
-                                         | 1 << 6   // Store Address Misaligned
-                                         | 1 << 3   // Breakpoint
-                                         | 1 << 8   // Environment Call From U-Mode
-                                         | 1 << 12  // Instruction Page Fault
-                                         | 1 << 13  // Load Page Fault
-                                         | 1 << 15; // Store Page Fault
+    static constexpr uintmax_t MIDELEG    = SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
+    static constexpr uintmax_t PAGE       = 1 << 12 | 1 << 13 | 1 << 15;
+    static constexpr uintmax_t ECALL      = 1 << 8;
+    static constexpr uintmax_t MISALIGNED = 1 << 4 | 1 << 6;
+    static constexpr uintmax_t BREAKPOINT = 1 << 3;
+    static constexpr uintmax_t MEDELEG    = MISALIGNED | BREAKPOINT | ECALL | PAGE;
 
   private:
     int core_;

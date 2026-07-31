@@ -72,6 +72,7 @@ class StoreAddressMisaligned {
 
         for (size_t i = 0; i < width; ++i) {
             uintptr_t target = PageTable::virt2phys(address + i);
+            if (!target) ExceptionHandler::esr(context);
             if (!VirtualCPU::sb(target, static_cast<uint8_t>((store >> (i * 8)) & 0xFF))) {
                 ExceptionHandler::esr(context);
             }
