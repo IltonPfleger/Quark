@@ -157,12 +157,12 @@ class PMU {
         return value;
     }
 
-    template <size_t... Is> void load_(Meta::IndexSequence<Is...>) {
+    template <size_t... Is> void load(Meta::IndexSequence<Is...>) {
         ((csrw<MachineMode::MHPMEVENT3 + Is>(mhpmevent_[Is]), csrw<MachineMode::MHPMCOUNTER3 + Is>(mhpmcounter_[Is])), ...);
         (((mcountinhibit_ & (1ULL << (Is + 3))) ? disable(Is + 3) : enable(Is + 3)), ...);
     }
 
-    template <size_t... Is> void save_(Meta::IndexSequence<Is...>) {
+    template <size_t... Is> void save(Meta::IndexSequence<Is...>) {
         ((mhpmevent_[Is] = csrr<MachineMode::MHPMEVENT3 + Is>(), mhpmcounter_[Is] = csrr<MachineMode::MHPMCOUNTER3 + Is>()), ...);
     }
 
@@ -182,14 +182,14 @@ class PMU {
     void load() {
         if constexpr (Traits<PMU>::Enable) {
             csrw<MachineMode::MCOUNTINHIBIT>(mcountinhibit_);
-            load_(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
+            load(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
         }
     }
 
     void save() {
         if constexpr (Traits<PMU>::Enable) {
             mcountinhibit_ = csrr<MachineMode::MCOUNTINHIBIT>();
-            save_(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
+            save(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
         }
     }
 
