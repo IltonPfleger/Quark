@@ -19,7 +19,7 @@ __attribute__((section(".__initrd__"), used)) static uint8_t INITRD[8 * MB];
 
 class LinuxLauncher {
   public:
-    static constexpr uint32_t CPUS = 3;
+    static constexpr uint32_t CPUS = 4;
 
     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
     using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;

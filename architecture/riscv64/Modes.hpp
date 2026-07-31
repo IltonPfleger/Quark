@@ -45,7 +45,11 @@ struct MachineMode {
     static constexpr int VENDORID      = 0xF11;
     static constexpr int ARCHID        = 0xF12;
     static constexpr int IMPID         = 0xF13;
+    static constexpr int MCYCLE        = 0xB00;
+    static constexpr int MINSTRET      = 0xB02;
+    static constexpr int MHPMCOUNTER3  = 0xB03;
     static constexpr int MCOUNTINHIBIT = 0x320;
+    static constexpr int MHPMEVENT3    = 0x323;
 
     static constexpr char PREFIX = 'm';
 

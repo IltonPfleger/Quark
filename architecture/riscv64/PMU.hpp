@@ -170,40 +170,30 @@ class PMU {
         return event;
     }
 
+    template <size_t... Is> void load_(Meta::IndexSequence<Is...>) {
+        ((csrw<MachineMode::MHPMEVENT3 + Is>(mhpmevent_[Is]), csrw<MachineMode::MHPMCOUNTER3 + Is>(mhpmcounter_[Is])), ...);
+        (((mcountinhibit_ & (1ULL << (Is + 3))) ? disable(Is + 3) : enable(Is + 3)), ...);
+    }
+
     void load() {
         if constexpr (Traits<PMU>::Enable) {
-            if (!initialized_) {
-                initialized_ = true;
-                for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
-                    disable(channel);
-                    configure(channel, 0);
-                    write(channel, 0);
-                }
-            } else {
-                for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
-                    configure(channel, mhpmevent_[channel - 3]);
-                    write(channel, mhpmcounter_[channel - 3]);
-                    if (!(mcountinhibit_ & (1ULL << channel)))
-                        enable(channel);
-                    else
-                        disable(channel);
-                }
-            }
+            csrw<MachineMode::MCOUNTINHIBIT>(mcountinhibit_);
+            load_(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
         }
+    }
+
+    template <size_t... Is> void save_(Meta::IndexSequence<Is...>) {
+        ((mhpmevent_[Is] = csrr<MachineMode::MHPMEVENT3 + Is>(), mhpmcounter_[Is] = csrr<MachineMode::MHPMCOUNTER3 + Is>()), ...);
     }
 
     void save() {
         if constexpr (Traits<PMU>::Enable) {
             mcountinhibit_ = csrr<MachineMode::MCOUNTINHIBIT>();
-            for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
-                mhpmevent_[channel - 3]   = event(channel);
-                mhpmcounter_[channel - 3] = read(channel);
-            }
+            save_(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
         }
     }
 
   private:
-    Meta::IF<Traits<PMU>::Enable, bool, Meta::Empty>::Result initialized_;
     Meta::IF<Traits<PMU>::Enable, uint64_t, Meta::Empty>::Result mcountinhibit_;
     Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmevent_;
     Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmcounter_;
