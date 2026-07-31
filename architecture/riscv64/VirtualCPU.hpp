@@ -187,14 +187,15 @@ class VirtualCPU {
     static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
 
   private:
-    static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};
-
     static constexpr uintmax_t MIDELEG    = SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
     static constexpr uintmax_t PAGE       = 1 << 12 | 1 << 13 | 1 << 15;
     static constexpr uintmax_t ECALL      = 1 << 8;
     static constexpr uintmax_t MISALIGNED = 1 << 4 | 1 << 6;
     static constexpr uintmax_t BREAKPOINT = 1 << 3;
     static constexpr uintmax_t MEDELEG    = MISALIGNED | BREAKPOINT | ECALL | PAGE;
+
+  private:
+    static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};
 
   private:
     int core_;
