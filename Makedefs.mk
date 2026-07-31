@@ -26,6 +26,7 @@ NM             := $(TOOL)-nm
 SIZE           := $(TOOL)-size
 OBJCOPY        := $(TOOL)-objcopy
 GDB            := $(TOOL)-gdb
+CAT            := cat
 DD             := dd
 TRUNCATE       := truncate
 QEMU           := qemu-system-riscv64

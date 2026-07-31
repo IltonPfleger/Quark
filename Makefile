@@ -19,8 +19,9 @@ $(IMAGE).bin: $(KERNEL_BINARY) $(PAYLOAD_ELF)
 	$(DD) bs=1M conv=notrunc if=$(KERNEL_BINARY) of=$@
 
 $(KERNEL_BINARY) : $(KERNEL_ELF) $(PAYLOAD_ELF)
-	$(OBJCOPY) --update-section .payload=$(PAYLOAD_ELF) $(KERNEL_ELF)
-	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BINARY)
+	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(KERNEL_ELF) $(KERNEL_BINARY)
+	$(CAT) $(PAYLOAD_ELF) >> $(KERNEL_BINARY)
+	#$(OBJCOPY) --update-section .payload=$(PAYLOAD_ELF) $(KERNEL_ELF)
 
 $(PAYLOAD_ELF): $(KERNEL_ELF)
 	make PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all

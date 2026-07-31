@@ -47,10 +47,5 @@ SECTIONS
         __bss_end = .;
     }
 
-	.payload :
-    {
-        KEEP(*(.payload))
-    }
-
     __kernel_end = .;
 }

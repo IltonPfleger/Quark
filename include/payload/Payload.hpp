@@ -14,7 +14,7 @@ namespace QUARK {
 class Payload : Traits<Payload> {
   public:
     static void alloc() {
-        Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(Image);
+        Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
         bool valid       = validate(header);
         assert(valid);
         entry_ = header->e_entry;
@@ -24,7 +24,7 @@ class Payload : Traits<Payload> {
     static bool validate(Elf_Ehdr *header) {
         if (!header->valid()) return false;
 
-        Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(Image + header->e_phoff);
+        Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(image() + header->e_phoff);
 
         uintptr_t start = ~0ULL;
         uintptr_t end   = 0;
@@ -44,12 +44,12 @@ class Payload : Traits<Payload> {
     }
 
     static void load(Elf_Ehdr *header) {
-        Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(Image + header->e_phoff);
+        Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(image() + header->e_phoff);
         for (size_t i = 0; i < header->e_phnum; ++i) {
             Elf_Phdr &phdr = list[i];
             if (phdr.p_type == Elf_Phdr::PT_LOAD) {
                 void *destination  = reinterpret_cast<void *>(phdr.p_vaddr);
-                const void *source = reinterpret_cast<const void *>(Image + phdr.p_offset);
+                const void *source = reinterpret_cast<const void *>(image() + phdr.p_offset);
                 if (phdr.p_filesz > 0) {
                     memcpy(destination, source, phdr.p_filesz);
                 }
@@ -62,13 +62,14 @@ class Payload : Traits<Payload> {
         }
     }
 
+    static uint8_t *image() { return reinterpret_cast<uint8_t *>(BootInformation::kernel().end()); }
+
     static void init() {
         auto main = reinterpret_cast<Thread::Return (*)(Thread::Argument)>(entry_);
         new Thread(main, 0, Thread::Criterion::NORMAL);
     };
 
   private:
-    __attribute__((section(".payload"), used)) static inline uint8_t Image[Size];
     static inline uintptr_t entry_;
 };
 
