@@ -1,6 +1,8 @@
 #pragma once
 
 #include <architecture/riscv64/ContextFrame.hpp>
+#include <architecture/riscv64/sbi/HSM.hpp>
+#include <architecture/riscv64/sbi/RFNC.hpp>
 #include <architecture/riscv64/sbi/Time.hpp>
 
 namespace QUARK::sbi {
@@ -55,6 +57,8 @@ class Base {
                 c->a1 = 0;
                 if (c->a0 == Base::EID) c->a1 = 1;
                 if (c->a0 == Time::EID) c->a1 = 1;
+                if (c->a0 == HSM::EID) c->a1 = 1;
+                if (c->a0 == RFNC::EID) c->a1 = 1;
                 c->a0 = 0;
                 break;
             }

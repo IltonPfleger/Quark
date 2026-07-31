@@ -18,7 +18,7 @@ class Semaphore {
 
         lock_.acquire();
 
-        if (CPU::Atomic::fdec(value_) < 1) {
+        if (CPU::Atomic::fdec(value_) <= 0) {
             Thread::sleep(&waiting_, &lock_);
         } else {
             lock_.release();

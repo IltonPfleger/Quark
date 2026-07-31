@@ -32,14 +32,19 @@ class VirtualCPU {
           registers_(),
           vm_(vm) {}
 
-    void boot(size_t core, auto... args) {
+    void boot(size_t core, void *entry, void *opaque) {
         CPU::IRQ::disable();
         activate();
         restore();
+        csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE | MachineMode::PP);
         csrs<MachineMode::STATUS>(MachineMode::TW | MachineMode::PP_S | MachineMode::PIRQE);
-        csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE);
-        csrw<MachineMode::EPC>(vm_->memory().start());
-        dispatch(core, args...);
+        csrw<MachineMode::EPC>(entry);
+        dispatch(core, opaque);
+    }
+
+    static void kick(size_t core, void *entry, void *opaque) {
+        assert(current());
+        current()->vm_->boot(core, entry, opaque);
     }
 
     void activate() {
@@ -126,8 +131,9 @@ class VirtualCPU {
     }
 
   private:
-    __attribute__((naked)) static void dispatch(auto... args) {
-        ((void)args, ...);
+    __attribute__((naked)) static void dispatch(size_t core, void *opaque) {
+        (void)core;
+        (void)opaque;
         asm("mret");
     }
 
@@ -170,6 +176,7 @@ class VirtualCPU {
     static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};
 
     static constexpr uintmax_t MIDELEG = SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
+
     static constexpr uintmax_t MEDELEG = 0          //
                                          | 1 << 4   // Load Address Misaligned
                                          | 1 << 6   // Store Address Misaligned

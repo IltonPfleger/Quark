@@ -1,6 +1,9 @@
-#pragma once
+#ifndef __QUARK_HYPERVISOR_GENERIC_VIRTUAL_MACHINE__
+#define __QUARK_HYPERVISOR_GENERIC_VIRTUAL_MACHINE__
 
 #include <Meta.hpp>
+#include <Semaphore.hpp>
+#include <Thread.hpp>
 #include <architecture/VirtualCPU.hpp>
 #include <hypervisor/VirtualInterruptController.hpp>
 #include <hypervisor/VirtualMachine.hpp>
@@ -8,45 +11,62 @@
 
 namespace QUARK {
 
-template <typename... Devices> class GenericVirtualMachine : public VirtualMachine {
+template <size_t CORES, typename... Devices> class GenericVirtualMachine : public VirtualMachine {
+
+    class Arguments {
+      public:
+        Arguments()
+            : cpu(nullptr),
+              semaphore(0),
+              core(0),
+              entry(nullptr),
+              opaque(nullptr) {}
+
+        VirtualCPU *cpu;
+        Semaphore semaphore;
+        size_t core;
+        void *entry;
+        void *opaque;
+    };
+
     template <typename... D> struct DeviceCollection {
-        DeviceCollection(VirtualMachine &, VirtualCPU &) {}
-        bool read(uintptr_t, unsigned int *) { return false; }
-        bool write(uintptr_t, unsigned int) { return false; }
-        void interrupt(unsigned int) {}
+        DeviceCollection(VirtualMachine &, VirtualCPU (&)[CORES]) {}
+        bool read(uintptr_t, uint32_t *) { return false; }
+        bool write(uintptr_t, uint32_t) { return false; }
+        void interrupt(uint32_t) {}
     };
 
     template <typename Head, typename... Tail> struct DeviceCollection<Head, Tail...> {
         Head _device;
         DeviceCollection<Tail...> _others;
 
-        DeviceCollection(VirtualMachine &machine, VirtualCPU &cpu)
-            : _device(create(machine, cpu)),
-              _others(machine, cpu) {}
+        DeviceCollection(VirtualMachine &machine, VirtualCPU (&cpus)[CORES])
+            : _device(create(machine, cpus)),
+              _others(machine, cpus) {}
 
-        static Head create(VirtualMachine &machine, VirtualCPU &cpu) {
+        static Head create(VirtualMachine &machine, VirtualCPU (&cpus)[CORES]) {
             if constexpr (Meta::IsBaseOf<VirtualInterruptController, Head>::Result) {
-                return Head(cpu);
+                return Head(cpus);
             } else {
                 return Head(machine);
             }
         }
 
-        bool read(uintptr_t target, unsigned int *destination) {
+        bool read(uintptr_t target, uint32_t *destination) {
             if (_device.read(target, destination)) {
                 return true;
             }
             return _others.read(target, destination);
         }
 
-        bool write(uintptr_t target, unsigned int source) {
+        bool write(uintptr_t target, uint32_t source) {
             if (_device.write(target, source)) {
                 return true;
             }
             return _others.write(target, source);
         }
 
-        void interrupt(unsigned int id) {
+        void interrupt(uint32_t id) {
             if constexpr (Meta::IsBaseOf<VirtualInterruptController, Head>::Result) {
                 _device.interrupt(id);
             } else {
@@ -58,17 +78,41 @@ template <typename... Devices> class GenericVirtualMachine : public VirtualMachi
   public:
     GenericVirtualMachine(void *entry, size_t size)
         : VirtualMachine(Chunk(entry, size)),
-          cpu_(this),
-          devices_(*this, cpu_) {}
+          cpus_(this, this),
+          devices_(*this, cpus_) {
+        for (size_t i = 0; i < CORES; i++) {
+            threads_[i] = new Thread(worker, &arguments[i]);
+        }
+    }
 
-    template <typename... Args> void boot(Args... args) { cpu_.boot(args...); }
-    bool read(uintptr_t target, unsigned int *destination) override { return devices_.read(target, destination); }
-    bool write(uintptr_t target, unsigned int source) override { return devices_.write(target, source); }
-    void interrupt(unsigned int id) override { devices_.interrupt(id); }
+    void boot(size_t core, void *entry, void *opaque) {
+        arguments[core].cpu    = &cpus_[core];
+        arguments[core].core   = core;
+        arguments[core].entry  = entry;
+        arguments[core].opaque = opaque;
+        arguments[core].semaphore.v();
+    }
+
+    bool read(uintptr_t target, uint32_t *destination) override { return devices_.read(target, destination); }
+
+    bool write(uintptr_t target, uint32_t source) override { return devices_.write(target, source); }
+
+    void interrupt(uint32_t id) override { devices_.interrupt(id); }
+
+    static void *worker(void *pointer) {
+        Arguments *arguments = reinterpret_cast<Arguments *>(pointer);
+        arguments->semaphore.p();
+        arguments->cpu->boot(arguments->core, arguments->entry, arguments->opaque);
+        return nullptr;
+    };
 
   private:
-    VirtualCPU cpu_;
+    Arguments arguments[CORES];
+    VirtualCPU cpus_[CORES];
+    Thread *threads_[CORES];
     DeviceCollection<Devices...> devices_;
 };
 
 } // namespace QUARK
+
+#endif
