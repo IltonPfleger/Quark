@@ -15,8 +15,8 @@ debug: $(IMAGE).img
 gdb:
 	$(GDB) -ex "file $(KERNEL_ELF)" -ex "target extended-remote:1234"
 
-$(IMAGE).bin: $(KERNEL_BINARY) $(PAYLOAD_ELF)
-	$(DD) bs=1M conv=notrunc if=$(KERNEL_BINARY) of=$@
+$(IMAGE).bin: $(KERNEL_BINARY) 
+	$(MV) $^ $@
 
 $(KERNEL_BINARY) : $(KERNEL_ELF) $(PAYLOAD_ELF)
 	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(KERNEL_ELF) $(KERNEL_BINARY)
