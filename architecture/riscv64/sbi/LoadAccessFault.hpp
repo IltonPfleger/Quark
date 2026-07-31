@@ -17,7 +17,7 @@ class LoadAccessFault {
     static constexpr uint32_t CODE = 5;
 
     static void dispatch(ContextFrame *c) {
-        if (((c->status >> 11) & 0x3) != 1) ExceptionHandler::esr(c);
+        if ((c->status & MachineMode::PP) == MachineMode::PP_M) ExceptionHandler::esr(c);
 
         uintptr_t address   = PageTable::virt2phys(csrr<MachineMode::TVAL>());
         uintptr_t pc        = PageTable::virt2phys(c->pc);

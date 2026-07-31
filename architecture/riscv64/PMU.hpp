@@ -194,7 +194,7 @@ class PMU {
 
     void save() {
         if constexpr (Traits<PMU>::Enable) {
-            asm volatile("csrr %0, mcountinhibit" : "=r"(mcountinhibit_));
+            mcountinhibit_ = csrr<MachineMode::MCOUNTINHIBIT>();
             for (size_t channel = 3; channel < 3 + Traits<PMU>::Programmable; ++channel) {
                 mhpmevent_[channel - 3]   = event(channel);
                 mhpmcounter_[channel - 3] = read(channel);
