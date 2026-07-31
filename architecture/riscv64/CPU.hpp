@@ -22,10 +22,15 @@ class CPU : public ArchitectureCommon::CPU {
     using Context              = Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
     static void tp(size_t tp) { asm("mv tp, %0" ::"r"(tp)); }
+
     static void halt() { asm("1: wfi; j 1b"); }
+
     static auto idle() { asm("wfi"); }
+
     static void syscall() { asm("ecall"); }
+
     static void mb() { asm("fence iorw, iorw" ::: "memory"); }
+
     static constexpr uint32_t hi32(uint64_t v) { return static_cast<uint32_t>(v >> 32); }
     static constexpr uint32_t lo32(uint64_t v) { return static_cast<uint32_t>(v); }
     static constexpr uint64_t htobe64(uint64_t x) { return Endian::le2be64(x); }

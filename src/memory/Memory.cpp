@@ -44,9 +44,9 @@ void *Memory::alloc(size_t size) {
 
     assert(chunk, "Out of Memory!");
 
-    spin_.release();
-
     TraceOut(chunk);
+
+    spin_.release();
 
     return chunk;
 }

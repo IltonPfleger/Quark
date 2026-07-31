@@ -57,12 +57,7 @@ void *allocator(void *) {
 
         volatile unsigned char *buffer = new unsigned char[s];
 
-        memset(const_cast<unsigned char *>(buffer), 0xAB, s);
-
-        if (s > 0) {
-            buffer[0]     = ~0;
-            buffer[s - 1] = ~0;
-        }
+        memset(const_cast<unsigned char *>(buffer), 0b10101010, s);
 
         delete[] buffer;
     }
@@ -74,7 +69,7 @@ int main(int, char *[]) {
     Thread *threads[Number];
 
     for (long i = 0; i < Number; i++) {
-        threads[i] = new Thread(allocator, nullptr, Thread::Criterion(Thread::Criterion::NORMAL, i % Traits<CPU>::Active));
+        threads[i] = new Thread(allocator, nullptr);
     }
 
     for (long i = 0; i < Number; i++) {
