@@ -7,7 +7,7 @@
 
 using namespace QUARK::ABI;
 
-static constexpr int Number     = 1000;
+static constexpr int Number     = 100;
 static constexpr int Iterations = 100;
 
 Semaphore *forks[Number];

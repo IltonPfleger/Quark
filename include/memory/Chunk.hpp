@@ -8,15 +8,15 @@ class Chunk {
   public:
     constexpr Chunk()
         : start_(0),
-          size_(0) {}
+          length_(0) {}
 
-    constexpr Chunk(uintptr_t start, size_t size)
+    constexpr Chunk(uintptr_t start, size_t length)
         : start_(start),
-          size_(size) {}
+          length_(length) {}
 
-    constexpr Chunk(const void *start, size_t size)
+    constexpr Chunk(const void *start, size_t length)
         : start_(reinterpret_cast<uintptr_t>(start)),
-          size_(size) {}
+          length_(length) {}
 
     [[nodiscard]]
     constexpr uintptr_t start() const {
@@ -24,13 +24,13 @@ class Chunk {
     }
 
     [[nodiscard]]
-    constexpr size_t size() const {
-        return size_;
+    constexpr size_t length() const {
+        return length_;
     }
 
     [[nodiscard]]
     constexpr uintptr_t end() const {
-        return start() + size();
+        return start() + length();
     }
 
     template <typename T = unsigned char>
@@ -41,7 +41,7 @@ class Chunk {
 
     [[nodiscard]]
     constexpr bool empty() const {
-        return size() == 0;
+        return length() == 0;
     }
 
     [[nodiscard]]
@@ -61,7 +61,7 @@ class Chunk {
 
     [[nodiscard]]
     constexpr bool operator==(const Chunk &other) const {
-        return start() == other.start() && size() == other.size();
+        return start() == other.start() && length() == other.length();
     }
 
     [[nodiscard]]
@@ -71,7 +71,7 @@ class Chunk {
 
   private:
     uintptr_t start_;
-    size_t size_;
+    size_t length_;
 };
 
 } // namespace QUARK

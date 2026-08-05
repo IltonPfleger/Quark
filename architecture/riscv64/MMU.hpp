@@ -107,26 +107,134 @@ class MMU {
             return l0->set(vpn0, reinterpret_cast<uintptr_t>(pa), flags);
         }
 
-        bool map(uintptr_t va, Flags flags) { return map(va, va, flags); }
-
         void map(uintptr_t va, uintptr_t pa, size_t size, Flags flags) {
-            if ((size % Giga == 0) && ((va % Giga == 0) && (pa % Giga == 0))) {
-                uintptr_t vpn2 = (va >> 30) & 0x1FF;
-                this->set(vpn2, pa, flags);
-            } else {
-                uintptr_t end = pa + size;
-                for (; pa < end;) {
-                    map(va, pa, flags);
-                    va += Size;
-                    pa += Size;
+            if ((size % Giga == 0) && (va % Giga == 0) && (pa % Giga == 0)) {
+                size_t pages = size / Giga;
+
+                for (size_t i = 0; i < pages; i++) {
+                    uintptr_t vpn2 = ((va + i * Giga) >> 30) & 0x1FF;
+                    set(vpn2, pa + i * Giga, flags);
+                }
+
+                return;
+            }
+
+            if ((size % Mega == 0) && (va % Mega == 0) && (pa % Mega == 0)) {
+                size_t pages = size / Mega;
+
+                for (size_t i = 0; i < pages; i++) {
+                    uintptr_t cva = va + i * Mega;
+                    uintptr_t cpa = pa + i * Mega;
+
+                    uintptr_t vpn2 = (cva >> 30) & 0x1FF;
+                    uintptr_t vpn1 = (cva >> 21) & 0x1FF;
+
+                    PageTable *l1;
+
+                    if (!entries_[vpn2]) {
+                        l1 = PageTable::alloc();
+                        set(vpn2, reinterpret_cast<uintptr_t>(l1), V);
+                    } else {
+                        l1 = walk(vpn2);
+                    }
+
+                    l1->set(vpn1, cpa, flags);
+                }
+
+                return;
+            }
+
+            uintptr_t end = pa + size;
+
+            while (pa < end) {
+                map(va, pa, flags);
+                va += Size;
+                pa += Size;
+            }
+        }
+
+        bool empty() {
+            for (size_t i = 0; i < EntriesNumber; i++) {
+                if (entries_[i] & V) return false;
+            }
+            return true;
+        }
+
+        void unmap(uintptr_t va, size_t size) {
+            if ((size % Giga == 0) && (va % Giga == 0)) {
+                size_t pages = size / Giga;
+
+                for (size_t i = 0; i < pages; i++) {
+                    uintptr_t vpn2 = ((va + i * Giga) >> 30) & 0x1FF;
+                    entries_[vpn2] = 0;
+                }
+
+                TLB::flush();
+                return;
+            }
+
+            if ((size % Mega == 0) && (va % Mega == 0)) {
+                size_t pages = size / Mega;
+
+                for (size_t i = 0; i < pages; i++) {
+                    uintptr_t cva = va + i * Mega;
+
+                    uintptr_t vpn2 = (cva >> 30) & 0x1FF;
+                    uintptr_t vpn1 = (cva >> 21) & 0x1FF;
+
+                    if (!(entries_[vpn2] & V)) continue;
+
+                    PageTable *l1 = walk(vpn2);
+
+                    l1->entries_[vpn1] = 0;
+
+                    if (l1->empty()) {
+                        Memory::free(l1, sizeof(PageTable));
+                        entries_[vpn2] = 0;
+                    }
+                }
+
+                TLB::flush();
+                return;
+            }
+
+            size_t pages = (size + Size - 1) / Size;
+
+            for (size_t i = 0; i < pages; i++) {
+                uintptr_t cva = va + i * Size;
+
+                uintptr_t vpn2 = (cva >> 30) & 0x1FF;
+                uintptr_t vpn1 = (cva >> 21) & 0x1FF;
+                uintptr_t vpn0 = (cva >> 12) & 0x1FF;
+
+                if (!(entries_[vpn2] & V)) continue;
+
+                PageTable *l1 = walk(vpn2);
+
+                if (!(l1->entries_[vpn1] & V)) continue;
+
+                PageTable *l0 = l1->walk(vpn1);
+
+                l0->entries_[vpn0] = 0;
+
+                if (l0->empty()) {
+                    Memory::free(l0, sizeof(PageTable));
+                    l1->entries_[vpn1] = 0;
+
+                    if (l1->empty()) {
+                        Memory::free(l1, sizeof(PageTable));
+                        entries_[vpn2] = 0;
+                    }
                 }
             }
+
+            TLB::flush();
         }
 
       private:
         bool set(int vpn, uintptr_t addr, Flags flags) {
             if (entries_[vpn]) return false;
-            entries_[vpn] = (addr >> 2) | flags;
+            entries_[vpn] = ((addr >> 12) << 10) | flags;
             return true;
         }
 
@@ -143,25 +251,28 @@ class MMU {
     };
 
   public:
-    static void init() {
-        auto mm = __amm.start();
+    static void prologue() {
+        base_ = PageTable();
 
-        if (CPU::id() == Traits<CPU>::BSP) {
-            s_kernel_page_table = PageTable();
-            s_kernel_page_table.map(Traits<MemoryMap>::RamStart, mm, Giga, PageTable::KernelRWX);
-            s_kernel_page_table.map(mm, mm, Giga, PageTable::KernelRWX);
-            s_kernel_page_table.map(Traits<MemoryMap>::MMIO, Traits<MemoryMap>::MMIO, Giga, PageTable::KernelRWX);
+        for (size_t i = 0; i < 256; i++) {
+            uintptr_t va = Traits<MemoryMap>::RamStart - i * Giga;
+            uintptr_t pa = __amm.start() + i * Giga;
+            base_.map(va, pa, Giga, PageTable::KernelRWX);
         }
 
-        CPU::barrier();
-
-        s_kernel_page_table.load();
+        base_.map(__amm.start(), __amm.start(), Giga, PageTable::KernelRWX);
+        base_.map(Traits<MemoryMap>::MMIO, Traits<MemoryMap>::MMIO, Giga, PageTable::KernelRWX);
     }
 
+    static void init() { base_.load(); }
+
+    static void epilogue() { base_.unmap(__amm.start(), Giga); }
+
   private:
-    static constexpr unsigned long Mode = 8UL << 60;
-    static constexpr unsigned long Giga = (1 << 30);
-    static inline PageTable s_kernel_page_table;
+    static constexpr uintmax_t Mode = 8UL << 60;
+    static constexpr size_t Mega    = 1024 * 1024;
+    static constexpr size_t Giga    = Mega * 1024;
+    static inline PageTable base_;
 };
 
 } // namespace QUARK

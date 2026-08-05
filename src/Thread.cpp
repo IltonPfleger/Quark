@@ -100,8 +100,8 @@ Thread::Thread(Function f, Argument a, Criterion c, Domain d)
 
 Thread::~Thread() {
     join();
-    Memory::free(stack_.data(), stack_.size());
-    Memory::free(kstack_.data(), kstack_.size());
+    Memory::free(stack_.data(), stack_.length());
+    Memory::free(kstack_.data(), kstack_.length());
 }
 
 void Thread::join() {

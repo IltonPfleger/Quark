@@ -20,7 +20,7 @@ void Memory::init() {
         if (page.overlaps(BootInformation::kernel())) continue;
         if (page.overlaps(__bmm)) continue;
         if (page.overlaps(__pmm)) continue;
-        allocator_.insert(reinterpret_cast<void *>(page.start()), page.size());
+        allocator_.insert(reinterpret_cast<void *>(page.start()), page.length());
     }
 
     TraceOut();

@@ -24,7 +24,7 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool Multitask = false;
+    static constexpr bool Multitask = true;
 };
 
 template <> struct Traits<Timer> {
@@ -62,7 +62,7 @@ template <> struct Traits<Thread> {
 };
 
 template <> struct Traits<Deferred> {
-    static constexpr bool Enable    = true;
+    static constexpr bool Enable    = false;
     static constexpr size_t Threads = Enable ? Traits<CPU>::Active : 0;
 };
 

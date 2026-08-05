@@ -82,15 +82,22 @@ extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _
     }
 
     if constexpr (Traits<RISCV>::Supervisor) {
-        CoreContext *context = CoreContextHandler<SupervisorMode>::init(core);
         sjump();
-        CoreContextHandler<SupervisorMode>::bind(context);
-        SIC::init();
-    }
 
-    if constexpr (Traits<Kernel>::Multitask) {
-        MMU::init();
-        jvirtual();
+        if constexpr (Traits<Kernel>::Multitask) {
+            if (core == Traits<CPU>::BSP) MMU::prologue();
+            CPU::barrier();
+            MMU::init();
+            jvirtual();
+            CPU::sp(Memory::phys2virt(CPU::sp()));
+            CPU::barrier();
+            if (core == Traits<CPU>::BSP) MMU::epilogue();
+        }
+
+        CoreContext *context = CoreContextHandler<SupervisorMode>::init(core);
+        CoreContextHandler<SupervisorMode>::bind(context);
+
+        SIC::init();
     }
 
     init();

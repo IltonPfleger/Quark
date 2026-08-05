@@ -11,7 +11,7 @@ class Elf64_Ehdr {
     }
 
   public:
-    unsigned char e_ident[16];
+    uint8_t e_ident[16];
 
     uint16_t e_type;
     uint16_t e_machine;

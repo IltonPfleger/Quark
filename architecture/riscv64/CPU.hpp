@@ -21,6 +21,20 @@ class CPU : public ArchitectureCommon::CPU {
     using NotSupervisorContext = Meta::IF<!Virtualization, QUARK::MachineContext<>, HypervisorContext>::Result;
     using Context              = Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
+    static uintptr_t pc() {
+        uintptr_t value;
+        asm volatile("auipc %0, 0" : "=r"(value));
+        return value;
+    }
+
+    static uintptr_t sp() {
+        uintptr_t value;
+        asm volatile("mv %0, sp" : "=r"(value));
+        return value;
+    }
+
+    static void sp(size_t sp) { asm("mv sp, %0" ::"r"(sp)); }
+
     static void tp(size_t tp) { asm("mv tp, %0" ::"r"(tp)); }
 
     static void halt() { asm("1: wfi; j 1b"); }
