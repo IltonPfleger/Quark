@@ -1,5 +1,3 @@
-#pragma once
-
 #include <architecture/riscv64/CPU.hpp>
 #include <architecture/riscv64/CoreContextHandler.hpp>
 #include <architecture/riscv64/HIC.hpp>
@@ -10,6 +8,8 @@
 #include <architecture/riscv64/PMP.hpp>
 #include <architecture/riscv64/SIC.hpp>
 #include <architecture/riscv64/TrapHandler.hpp>
+
+extern "C" void init();
 
 namespace QUARK::riscv64 {
 
@@ -31,7 +31,7 @@ __attribute__((naked)) static void jvirtual() {
     SupervisorMode::ret();
 }
 
-__attribute__((always_inline)) inline void init() {
+extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _init() {
     size_t core;
     uintptr_t position;
 
@@ -92,6 +92,8 @@ __attribute__((always_inline)) inline void init() {
         MMU::init();
         jvirtual();
     }
+
+    init();
 }
 
 } // namespace QUARK::riscv64
