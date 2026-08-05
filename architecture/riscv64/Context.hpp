@@ -38,9 +38,6 @@ template <typename T, bool ChangeStack> class ContextTemplate {
         csrs<T::STATUS>(FPU::INITIAL);
         next.fpu_.load(next.frame_->status);
         csrc<T::STATUS>(FPU::MASK);
-
-        previous.pmu_.save();
-        next.pmu_.load();
     }
 
     __attribute__((naked)) static void swtch(ContextTemplate &previous, ContextTemplate &next) {
@@ -240,7 +237,6 @@ template <typename T, bool ChangeStack> class ContextTemplate {
   protected:
     ContextFrame *frame_;
     FPU fpu_;
-    PMU pmu_;
 };
 
 template <bool ChangeStack = Traits<Thread>::UserStack> using MachineContext = ContextTemplate<MachineMode, ChangeStack>;

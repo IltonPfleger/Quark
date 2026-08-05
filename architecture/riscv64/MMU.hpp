@@ -47,8 +47,8 @@ class MMU {
         }
 
         void load() const {
-            TLB::flush();
             csrw<SupervisorMode::SATP>(Mode | reinterpret_cast<uintptr_t>(this) >> 12);
+            TLB::flush();
         }
 
         static uintptr_t virt2phys(uintptr_t va) {
@@ -63,21 +63,21 @@ class MMU {
             uintptr_t root     = satp & 0xFFFFFFFFFFF;
             PageTable *current = reinterpret_cast<PageTable *>(root << 12);
 
-            uintptr_t pte2 = current->m_entries[vpn2];
+            uintptr_t pte2 = current->entries_[vpn2];
             assert(pte2 & V);
             if (pte2 & (R | W | X)) {
                 return ((pte2 >> 10) << 12) | (va & 0x3FFFFFFF);
             }
 
             PageTable *l1  = reinterpret_cast<PageTable *>((pte2 >> 10) << 12);
-            uintptr_t pte1 = l1->m_entries[vpn1];
+            uintptr_t pte1 = l1->entries_[vpn1];
             assert(pte1 & V);
             if (pte1 & (R | W | X)) {
                 return ((pte1 >> 10) << 12) | (va & 0x1FFFFF);
             }
 
             PageTable *l0  = reinterpret_cast<PageTable *>((pte1 >> 10) << 12);
-            uintptr_t pte0 = l0->m_entries[vpn0];
+            uintptr_t pte0 = l0->entries_[vpn0];
             assert(pte0 & V);
 
             return ((pte0 >> 10) << 12) | (va & 0xFFF);
@@ -91,13 +91,13 @@ class MMU {
             PageTable *l1;
             PageTable *l0;
 
-            if (!m_entries[vpn2]) {
+            if (!entries_[vpn2]) {
                 l1 = PageTable::alloc();
                 set(vpn2, reinterpret_cast<uintptr_t>(l1), V);
             } else {
                 l1 = walk(vpn2);
             }
-            if (!l1->m_entries[vpn1]) {
+            if (!l1->entries_[vpn1]) {
                 l0 = PageTable::alloc();
                 l1->set(vpn1, reinterpret_cast<uintptr_t>(l0), V);
             } else {
@@ -125,13 +125,13 @@ class MMU {
 
       private:
         bool set(int vpn, uintptr_t addr, Flags flags) {
-            if (m_entries[vpn]) return false;
-            m_entries[vpn] = (addr >> 2) | flags;
+            if (entries_[vpn]) return false;
+            entries_[vpn] = (addr >> 2) | flags;
             return true;
         }
 
         PageTable *walk(int vpn) {
-            uintptr_t pte  = m_entries[vpn];
+            uintptr_t pte  = entries_[vpn];
             uintptr_t addr = (pte >> 10) << 12;
             return reinterpret_cast<PageTable *>(addr);
         }
@@ -139,7 +139,7 @@ class MMU {
       private:
         static constexpr auto Size          = 4096;
         static constexpr auto EntriesNumber = 512;
-        alignas(Size) uintptr_t m_entries[EntriesNumber];
+        alignas(Size) uintptr_t entries_[EntriesNumber];
     };
 
   public:

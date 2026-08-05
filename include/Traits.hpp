@@ -24,7 +24,7 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool Multitask = false;
+    static constexpr bool Multitask = true;
 };
 
 template <> struct Traits<Timer> {

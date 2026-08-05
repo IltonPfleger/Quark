@@ -40,7 +40,7 @@ MACHINE        ?= virt
 PAYLOAD        ?= HelloWorld
 
 CCFLAGS        := -std=c++23
-CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH) -I$(HERE)/machine/$(MACHINE)
+CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH) -I$(HERE)/machine/$(ARCH)/$(MACHINE)
 CCFLAGS        += -Wall -Wextra -Werror -pedantic
 CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -O3
 
@@ -59,4 +59,4 @@ $(CONFIG): $(HASH)
 	$(CONFIG).elf > $@
 
 -include $(CONFIG)
-include $(HERE)/machine/$(MACHINE)/Makedefs.mk
+include $(HERE)/machine/$(ARCH)/$(MACHINE)/Makedefs.mk
