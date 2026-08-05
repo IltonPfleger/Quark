@@ -32,11 +32,46 @@ __attribute__((naked)) static void jvirtual() {
 }
 
 __attribute__((always_inline)) inline void init() {
+    size_t core;
+    uintptr_t position;
+
+    // Disable Interruptions
+    asm("csrc mstatus, 0x8");
+
+    // Save Return Address
+    asm("csrw mscratch, ra");
+
+    // Found Which Core It's Running
+    asm("csrr %0, mhartid" : "=r"(core));
+
+    if (core < Traits<CPU>::Offset) {
+        asm("wfi");
+    }
+
+    core -= Traits<CPU>::Offset;
+
+    if (core >= Traits<CPU>::Active) {
+        asm("wfi");
+    }
+
+    // Get The Code Position For Position Independent Environments
+    asm("auipc %0, 0" : "=r"(position));
+    position &= ~((1ULL << 30) - 1);
+
+    // Get The Boot Stack
+    asm("mv sp, %0" ::"r"(position + Traits<Memory>::Size - (Traits<Memory>::StackSize * core)));
+
+    // Setup System Boot Info
+    if (core == Traits<CPU>::BSP) {
+        new (&__amm) decltype(__amm)(position, Traits<Memory>::Size);
+        new (&__bmm) decltype(__bmm)(Traits<MemoryMap>::RamEnd, Traits<Memory>::StackSize * Traits<CPU>::Active);
+    }
+
+    CPU::barrier();
+
     csrw<MachineMode::IE>(0);
 
     TrapHandler::init();
-
-    size_t core = CPU::id<true>();
 
     CoreContextHandler<MachineMode>::bind(CoreContextHandler<MachineMode>::init(core));
 
