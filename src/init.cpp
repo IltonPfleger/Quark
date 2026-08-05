@@ -9,8 +9,8 @@ using namespace QUARK;
 
 extern "C" void init() {
     if (CPU::id() == Traits<CPU>::BSP) {
-        Console::println('\n');
         TraceIn();
+        Machine::init();
         Payload::alloc();
         Memory::init();
         Thread::init();
