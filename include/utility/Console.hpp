@@ -80,6 +80,8 @@ class Console {
         print(static_cast<uintmax_t>(x));
     }
 
+    static void print(int x) { print(static_cast<intmax_t>(x)); }
+
     static void print(const void *p) {
         if (p == nullptr) {
             print("0x0");
@@ -128,8 +130,7 @@ class Console {
     }
     template <Meta::Integer T> static void print(Hex<T> x) { print(Hex(static_cast<uintmax_t>(x))); }
 
-    template <typename First, typename Second, typename... Others>
-    static void print(First &&first, Second &&second, Others &&...others) {
+    template <typename First, typename Second, typename... Others> static void print(First &&first, Second &&second, Others &&...others) {
         print(first);
         print(second, others...);
     }

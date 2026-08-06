@@ -21,27 +21,16 @@ class CPU : public ArchitectureCommon::CPU {
     using NotSupervisorContext = Meta::IF<!Virtualization, QUARK::MachineContext<>, HypervisorContext>::Result;
     using Context              = Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
-    static uintptr_t pc() {
-        uintptr_t value;
-        asm volatile("auipc %0, 0" : "=r"(value));
-        return value;
-    }
+    __attribute__((naked)) static uintptr_t sp() { asm("mv a0, sp; ret"); }
+    __attribute__((naked)) static void sp(uintptr_t) { asm("mv sp, a0; ret"); }
+    __attribute__((naked)) static uintptr_t tp() { asm("mv a0, tp; ret"); }
+    __attribute__((naked)) static void tp(uintptr_t) { asm("mv tp, a0; ret"); }
 
-    static uintptr_t sp() {
-        uintptr_t value;
-        asm volatile("mv %0, sp" : "=r"(value));
-        return value;
-    }
-
-    static void sp(size_t sp) { asm("mv sp, %0" ::"r"(sp)); }
-
-    static void tp(size_t tp) { asm("mv tp, %0" ::"r"(tp)); }
+    __attribute__((always_inline)) static void syscall() { asm("ecall"); }
 
     static void halt() { asm("1: wfi; j 1b"); }
 
     static auto idle() { asm("wfi"); }
-
-    static void syscall() { asm("ecall"); }
 
     static void mb() { asm("fence iorw, iorw" ::: "memory"); }
 

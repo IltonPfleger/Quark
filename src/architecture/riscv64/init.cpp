@@ -31,11 +31,47 @@ __attribute__((naked)) static void jvirtual() {
     SupervisorMode::ret();
 }
 
-extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _init() {
+__attribute__((naked)) void epilogue() {
+    CPU::tp(mhartid() - Traits<CPU>::Offset);
+
+    TrapHandler::init();
+
+    CoreContextHandler<MachineMode>::bind(CoreContextHandler<MachineMode>::init(CPU::tp()));
+
+    if constexpr (Traits<RISCV>::Hypervisor) {
+        HIC::init();
+    } else {
+        MIC::init();
+    }
+
+    if constexpr (Traits<RISCV>::Supervisor) {
+        sjump();
+
+        if constexpr (Traits<Kernel>::Multitask) {
+            if (CPU::tp() == Traits<CPU>::BSP) MMU::prologue();
+            CPU::barrier();
+            MMU::init();
+            jvirtual();
+            CPU::sp(Memory::phys2virt(CPU::sp()));
+            CPU::barrier();
+            if (CPU::tp() == Traits<CPU>::BSP) MMU::epilogue();
+        }
+
+        CoreContext *context = CoreContextHandler<SupervisorMode>::init(CPU::tp());
+        CoreContextHandler<SupervisorMode>::bind(context);
+
+        SIC::init();
+    }
+
+    init();
+}
+
+extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void prologue() {
     size_t core;
     uintptr_t position;
 
     // Disable Interruptions
+    asm("csrw mie, zero");
     asm("csrc mstatus, 0x8");
 
     // Save Return Address
@@ -69,38 +105,9 @@ extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _
 
     CPU::barrier();
 
-    csrw<MachineMode::IE>(0);
-
-    TrapHandler::init();
-
-    CoreContextHandler<MachineMode>::bind(CoreContextHandler<MachineMode>::init(core));
-
-    if constexpr (Traits<RISCV>::Hypervisor) {
-        HIC::init();
-    } else {
-        MIC::init();
-    }
-
-    if constexpr (Traits<RISCV>::Supervisor) {
-        sjump();
-
-        if constexpr (Traits<Kernel>::Multitask) {
-            if (core == Traits<CPU>::BSP) MMU::prologue();
-            CPU::barrier();
-            MMU::init();
-            jvirtual();
-            CPU::sp(Memory::phys2virt(CPU::sp()));
-            CPU::barrier();
-            if (core == Traits<CPU>::BSP) MMU::epilogue();
-        }
-
-        CoreContext *context = CoreContextHandler<SupervisorMode>::init(core);
-        CoreContextHandler<SupervisorMode>::bind(context);
-
-        SIC::init();
-    }
-
-    init();
+    epilogue();
 }
+
+extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _init() { prologue(); }
 
 } // namespace QUARK::riscv64

@@ -29,6 +29,7 @@ class MIC {
                 TrapHandler::install(7, forward);
                 TrapHandler::install(9, sbi, TrapHandler::Exception);
             }
+
             return;
         }
 
