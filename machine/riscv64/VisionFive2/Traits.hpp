@@ -1,6 +1,5 @@
-#pragma once
-
-#include <Traits.hpp>
+#ifndef __QUARK_MACHINE_RISCV64_VISIONFIVE2__
+#define __QUARK_MACHINE_RISCV64_VISIONFIVE2__
 
 namespace QUARK {
 
@@ -24,6 +23,8 @@ class DVFS;
 class CacheController0;
 class CacheController;
 class Ethernet;
+class PMU;
+class FPU;
 
 template <typename> class DesignWare_I2C_Controller;
 template <typename> class AXP15060_Controller;
@@ -116,6 +117,18 @@ template <> struct Traits<PLIC> {
     };
 };
 
+/* ********** PMU ********** */
+template <> struct Traits<PMU> {
+    static constexpr size_t Fixed        = 2;
+    static constexpr size_t Programmable = 0;
+    static constexpr bool Enable         = false;
+};
+
+/* ********** FPU ********** */
+template <> struct Traits<FPU> {
+    static constexpr bool Enable = false;
+};
+
 /* ********** UART ********** */
 template <> struct Traits<UART0> {
     static constexpr unsigned long Address = Traits<MemoryMap>::UART0;
@@ -173,3 +186,5 @@ template <> struct Traits<PMIC> {
 };
 
 } // namespace QUARK
+
+#endif

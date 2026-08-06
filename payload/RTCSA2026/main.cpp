@@ -86,8 +86,8 @@ class LinuxLauncher {
   public:
     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
     using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
-    using InterruptController = VirtualPLIC<0xc000000>;
-    using LinuxMachine        = GenericVirtualMachine<InterruptController, Serial>;
+    using InterruptController = VirtualPLIC<1, 0xc000000>;
+    using LinuxMachine        = GenericVirtualMachine<1, InterruptController, Serial>;
 
     LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs, Thread::Criterion criterion)
         : size_(size),
@@ -116,7 +116,7 @@ class LinuxLauncher {
         LinuxLauncher *self = reinterpret_cast<LinuxLauncher *>(pointer);
         Console::println("\n *** Linux is at core ", CPU::id(), " ***");
         LinuxMachine *vm = new LinuxMachine(self->start_, self->size_);
-        vm->boot(0, self->dtb_);
+        vm->boot(0, self->start_, self->dtb_);
         return nullptr;
     }
 
@@ -244,8 +244,8 @@ class EPOS_Launcher {
     using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
     using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
-    using InterruptController = VirtualPLIC<0xc000000>;
-    using EPOS_Machine        = GenericVirtualMachine<InterruptController, Serial, Network>;
+    using InterruptController = VirtualPLIC<1, 0xc000000>;
+    using EPOS_Machine        = GenericVirtualMachine<1, InterruptController, Serial, Network>;
 
   public:
     EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, Thread::Criterion criterion)
@@ -260,7 +260,7 @@ class EPOS_Launcher {
         auto *self = reinterpret_cast<EPOS_Launcher *>(pointer);
         memset(self->buffer_.data(), 0, self->buffer_.length());
         memcpy(self->buffer_.data(), self->epos_.data(), self->epos_.length());
-        self->machine_.boot(1);
+        self->machine_.boot(0, self->buffer_.data(), 0);
         return nullptr;
     }
 
@@ -358,17 +358,13 @@ void smartdata() {
 
     new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), EXPIRY, 5'000, SmartData::SINGLE, SmartData::ANY, 16);
 
-    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), EXPIRY, 40'000, SmartData::SINGLE,
-                         SmartData::ANY, 23);
+    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), EXPIRY, 40'000, SmartData::SINGLE, SmartData::ANY, 23);
 
-    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), EXPIRY, 150'000, SmartData::SINGLE,
-                          SmartData::ANY, 20);
+    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), EXPIRY, 150'000, SmartData::SINGLE, SmartData::ANY, 20);
 
-    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), EXPIRY, 100'000, SmartData::SINGLE,
-                         SmartData::ANY, 21);
+    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), EXPIRY, 100'000, SmartData::SINGLE, SmartData::ANY, 21);
 
-    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), EXPIRY, 40'000, SmartData::SINGLE,
-                         SmartData::ANY, 22);
+    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), EXPIRY, 40'000, SmartData::SINGLE, SmartData::ANY, 22);
 }
 
 int main() {

@@ -246,12 +246,12 @@ template <> struct Traits<Network> : public Traits<Build> {
     static const bool enabled = (Traits<Build>::NODES > 1) && (NETWORKS::Length > 0);
 };
 
-template <> struct Traits<Only_Data_UDP_Wrpayloader> : public Traits<Build> {
+template <> struct Traits<Only_Data_UDP_Wrapper> : public Traits<Build> {
     static const unsigned short UNDERLYING_PROTOCOL = 0x8401; // TSTP
 };
 
 template <> struct Traits<TSTP> : public Traits<Network> {
-    typedef Only_Data_UDP_Wrpayloader NIC_Family;
+    typedef Only_Data_UDP_Wrapper NIC_Family;
     static constexpr unsigned int NICS[] = {0}; // relative to NIC_Family (i.e. Traits<Ethernet>::DEVICES[NICS[i]]
     static const unsigned int UNITS      = COUNTOF(NICS);
 

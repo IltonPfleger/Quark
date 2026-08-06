@@ -2,6 +2,7 @@
 
 #include <Meta.hpp>
 #include <Mutex.hpp>
+#include <Traits.hpp>
 #include <architecture/Timer.hpp>
 #include <hypervisor/VirtualSwitch.hpp>
 #include <machine/Machine.hpp>
@@ -18,9 +19,9 @@ typedef QUARK::Meta::GetFromTypeList<QUARK::Traits<QUARK::Ethernet>::Devices, 0>
 typedef QUARK::VirtualSwitch<Device> LocalNetwork;
 typedef QUARK::NetworkBuffer NetworkBuffer;
 
-class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Observer {
+class UDPNIC : public NIC<Only_Data_UDP_Wrapper>, public LocalNetwork::Observer {
     static const UInt32 KEY_SIZE = Traits<TSTP>::KEY_SIZE;
-    static const UInt32 MTU      = NIC<Only_Data_UDP_Wrpayloader>::MTU;
+    static const UInt32 MTU      = NIC<Only_Data_UDP_Wrapper>::MTU;
 
     typedef AES<KEY_SIZE> _AES;
     static _AES _aes;
@@ -57,8 +58,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrpayloader>, public LocalNetwork::Obser
     }
 
     Buffer *alloc(const Address &dst, const Protocol &prot, UInt32 once, UInt32 always, UInt32 payload) override {
-        db<UDPNIC>(TRC) << "UDPNIC::alloc(s=" << address() << ",d=" << dst << ",p=" << hex << prot << dec << ",on=" << once
-                        << ",al=" << always << ",ld=" << payload << ")" << endl;
+        db<UDPNIC>(TRC) << "UDPNIC::alloc(s=" << address() << ",d=" << dst << ",p=" << hex << prot << dec << ",on=" << once << ",al=" << always << ",ld=" << payload << ")" << endl;
 
         auto *node = sx_free_.remove();
         assert(node);

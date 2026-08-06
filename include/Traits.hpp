@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_TRAITS__
+#define __QUARK_TRAITS__
 
 #include <macros.hpp>
 #include <types.hpp>
@@ -24,7 +25,7 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool Multitask = true;
+    static constexpr bool Multitask = false;
 };
 
 template <> struct Traits<Timer> {
@@ -61,9 +62,6 @@ template <> struct Traits<Thread> {
     static constexpr size_t UserStackSize   = UserStack ? Traits<Memory>::StackSize : 0;
 };
 
-template <> struct Traits<Deferred> {
-    static constexpr bool Enable    = false;
-    static constexpr size_t Threads = Enable ? Traits<CPU>::Active : 0;
-};
-
 } // namespace QUARK
+
+#endif

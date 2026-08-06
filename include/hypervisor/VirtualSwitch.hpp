@@ -20,10 +20,10 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
 
     void free(NetworkBuffer *buffer) { device_.free(buffer); }
 
-    int send(NetworkBuffer *buffer, typename DEVICE::Observer *sender = nullptr) {
+    int send(NetworkBuffer *buffer) {
         lock_.acquire();
 
-        this->notify(buffer, sender);
+        this->notify(buffer);
 
         lock_.release();
 
@@ -36,19 +36,13 @@ template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public
         lock_.release();
     }
 
-    void notify(NetworkBuffer *buffer, DEVICE::Observer *excludes) override {
-        for (auto *l = this->observers_.head(); l; l = l->next) {
-            if (l != excludes) l->value->update(buffer);
-        }
-    }
-
     static auto instance() {
         static VirtualSwitch instance;
         return &instance;
     }
 
   private:
-    DEVICE *device_;
+    DEVICE &device_;
     Mutex lock_;
 };
 

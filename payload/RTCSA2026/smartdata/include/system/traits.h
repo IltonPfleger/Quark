@@ -3,8 +3,8 @@
 #include <system/meta.h>
 
 // Utilities
-template<unsigned int KEY_SIZE> class SWAES;
-template<typename T, unsigned int LENGHT> class Array;
+template <unsigned int KEY_SIZE> class SWAES;
+template <typename T, unsigned int LENGHT> class Array;
 class Bitmaps;
 class Ciphers;
 class CRC;
@@ -22,7 +22,7 @@ class Spin;
 class SREC;
 class Vectors;
 class FANN;
-template<typename> class Scheduler;
+template <typename> class Scheduler;
 
 // System parts
 class Build;
@@ -59,12 +59,12 @@ class GPIO;
 class I2C;
 class ADC;
 class FPGA;
-template<unsigned int KEY_SIZE> class HWAES;
+template <unsigned int KEY_SIZE> class HWAES;
 class Ethernet;
-class Only_Data_UDP_Wrpayloader;
+class Only_Data_UDP_Wrapper;
 class IEEE802_15_4;
 class Modem;
-template<typename Family> class NIC;
+template <typename Family> class NIC;
 class PCNet32;
 class RTL8139;
 class C905;
@@ -125,14 +125,14 @@ class Chronometer;
 class Alarm;
 class Delay;
 
-template<typename T> class Clerk;
+template <typename T> class Clerk;
 class Monitor;
 
 class Network;
 class ELP;
 class TSTPOE;
 class TSTP;
-template<typename NIC, typename Network, unsigned int HTYPE> class ARP;
+template <typename NIC, typename Network, unsigned int HTYPE> class ARP;
 class IP;
 class ICMP;
 class UDP;
@@ -140,12 +140,12 @@ class TCP;
 class DHCP;
 class HTTP;
 class IPC;
-template<typename Channel, bool connectionless = Channel::connectionless> class Link;
-template<typename Channel, bool connectionless = Channel::connectionless> class Port;
+template <typename Channel, bool connectionless = Channel::connectionless> class Link;
+template <typename Channel, bool connectionless = Channel::connectionless> class Port;
 
 class SmartData;
-template<typename Transducer, typename Network = TSTP> class Responsive_SmartData;
-template<typename Transducer, typename Network = TSTP> class Interested_SmartData;
+template <typename Transducer, typename Network = TSTP> class Responsive_SmartData;
+template <typename Transducer, typename Network = TSTP> class Interested_SmartData;
 class Verifiable_SmartData;
 class Unit_Dev;
 class Boolean_Filter;
@@ -159,48 +159,47 @@ class Object_Classes;
 
 // Framework
 class Framework;
-template<typename Component> class Handle;
-template<typename Component, bool remote> class Stub;
-template<typename Component> class Proxy;
-template<typename Component> class Adapter;
-template<typename Component> class Scenario;
+template <typename Component> class Handle;
+template <typename Component, bool remote> class Stub;
+template <typename Component> class Proxy;
+template <typename Component> class Adapter;
+template <typename Component> class Scenario;
 class Agent;
 
 // Aspects
 class Aspect;
-template<typename Component> class Authenticated;
-template<typename Component> class Shared;
-template<typename Component> class Remote;
+template <typename Component> class Authenticated;
+template <typename Component> class Shared;
+template <typename Component> class Remote;
 
 // Configuration Tokens
-struct Traits_Tokens
-{
+struct Traits_Tokens {
     // EPOS software architecture (aka mode)
-    enum {LIBRARY, BUILTIN, KERNEL};
+    enum { LIBRARY, BUILTIN, KERNEL };
 
     // CPU hardware architectures
-    enum {AVR8, H8, ARMv4, ARMv7, ARMv8, IA32, X86_64, SPARCv8, PPC32, RV32, RV64};
+    enum { AVR8, H8, ARMv4, ARMv7, ARMv8, IA32, X86_64, SPARCv8, PPC32, RV32, RV64 };
 
     // Machines
-    enum {eMote1, eMote2, STK500, RCX, Cortex, PC, Leon, Virtex, RISCV};
+    enum { eMote1, eMote2, STK500, RCX, Cortex, PC, Leon, Virtex, RISCV };
 
     // Machine models
-    enum {Unique, Legacy_PC, eMote3, LM3S811, Zynq, Realview_PBX, Raspberry_Pi3, SiFive_E, SiFive_U};
+    enum { Unique, Legacy_PC, eMote3, LM3S811, Zynq, Realview_PBX, Raspberry_Pi3, SiFive_E, SiFive_U };
 
     // Architecture endianness
-    enum {LITTLE, BIG};
+    enum { LITTLE, BIG };
 
     // Serial display engines
-    enum {UART, USB};
+    enum { UART, USB };
 
     // Life span multipliers
-    enum {FOREVER = 0, SECOND = 1, MINUTE = 60, HOUR = 3600, DAY = 86400, WEEK = 604800, MONTH = 2592000, YEAR = 31536000};
+    enum { FOREVER = 0, SECOND = 1, MINUTE = 60, HOUR = 3600, DAY = 86400, WEEK = 604800, MONTH = 2592000, YEAR = 31536000 };
 
     // IP configuration strategies
-    enum {STATIC, MAC, INFO, RARP, DHCP};
+    enum { STATIC, MAC, INFO, RARP, DHCP };
 
     // SmartData predictors
-    enum :unsigned char {NONE, LVP, DBP};
+    enum : unsigned char { NONE, LVP, DBP };
 
     // Monitor events (Transducers)
     enum Transducer_Event {
@@ -208,7 +207,7 @@ struct Traits_Tokens
         CPU_VOLTAGE,
     };
 
-   // Monitor events (System)
+    // Monitor events (System)
     enum System_Event {
         ELAPSED_TIME,
         DEADLINE_MISSES,
@@ -220,29 +219,29 @@ struct Traits_Tokens
     // Monitor events (PMU)
     enum PMU_Event {
         // SB == Sandy_Bridge; CA = Cortex-A; CA53 = Cortex-A53; CA9 = Cortex-A9;
-        COMMITED_INSTRUCTIONS                           = 0,
-        CPU_CYCLES                                      = 2,
-        BRANCHES                                        = 3,
-        BRANCH_MISSES                                   = 4,
-        L1_CACHE_HITS                                   = 5, // L1D ACCESS in ARM
-        L2_CACHE_HITS                                   = 6, // L2D ACCESS in ARM
-        L3_CACHE_MISSES                                 = 8, // not present in ARM using DATA MEMORY ACCESS
-        LAST_LEVEL_CACHE_MISSES                         = L3_CACHE_MISSES, // DATA_MEMORY_ACCESS in ARM
-        CACHE_MISSES                                    = LAST_LEVEL_CACHE_MISSES,
-        L1I_CACHE_MISS                                  = 9,
-        L1I_TLB_MISS                                    = 10,
-        PREDICTABLE_BRANCHES                            = 11,
-        L1D_WRITEBACK                                   = 12,
-        L2D_WRITEBACK                                   = 13,
+        COMMITED_INSTRUCTIONS   = 0,
+        CPU_CYCLES              = 2,
+        BRANCHES                = 3,
+        BRANCH_MISSES           = 4,
+        L1_CACHE_HITS           = 5,               // L1D ACCESS in ARM
+        L2_CACHE_HITS           = 6,               // L2D ACCESS in ARM
+        L3_CACHE_MISSES         = 8,               // not present in ARM using DATA MEMORY ACCESS
+        LAST_LEVEL_CACHE_MISSES = L3_CACHE_MISSES, // DATA_MEMORY_ACCESS in ARM
+        CACHE_MISSES            = LAST_LEVEL_CACHE_MISSES,
+        L1I_CACHE_MISS          = 9,
+        L1I_TLB_MISS            = 10,
+        PREDICTABLE_BRANCHES    = 11,
+        L1D_WRITEBACK           = 12,
+        L2D_WRITEBACK           = 13,
         // BRANCH_HITS                                 = -1, // not in ARM neither Intel
 
         // ARM Cortex-A specific events
-        IMMEDIATE_BRANCHES_CA                           = 1, // NOT Intel
-        DATA_MEMORY_ACCESS_CA                           = LAST_LEVEL_CACHE_MISSES,
-        L1_CACHE_MISSES_CA                              = 7,  // L1D REFILL in ARM
-        L2_CACHE_MISSES_CA                              = 14, // L2D REFILL in ARM
+        IMMEDIATE_BRANCHES_CA = 1, // NOT Intel
+        DATA_MEMORY_ACCESS_CA = LAST_LEVEL_CACHE_MISSES,
+        L1_CACHE_MISSES_CA    = 7,  // L1D REFILL in ARM
+        L2_CACHE_MISSES_CA    = 14, // L2D REFILL in ARM
         UNALIGNED_LOAD_STORES_CA,
-        L1I_HIT_CA, // L1I_ACCESS
+        L1I_HIT_CA,      // L1I_ACCESS
         L1D_TLB_MISS_CA, // L1D_TLB_REFILL
         EXCEPTION_TAKEN_CA,
         BUS_ACCESS_CA,
@@ -354,11 +353,11 @@ struct Traits_Tokens
         INTERLOCK_CYCLE_WR_STAGE_STALL_BC_STR_CA53_v8,
 
         // Intel Sandy Bridge specific events
-        UNHALTED_REFERENCE_CYCLES_SB                    = 1,
-        L3_CACHE_HITS_SB                                = 7, // not in ARM
-        LAST_LEVEL_CACHE_HITS_SB                        = L3_CACHE_HITS_SB, // not in ARM
-        CACHE_HITS_SB                                   = LAST_LEVEL_CACHE_HITS_SB, //not in ARM
-        MEM_UOP_RETIRED_ALL_SB                          = 14,
+        UNHALTED_REFERENCE_CYCLES_SB = 1,
+        L3_CACHE_HITS_SB             = 7,                        // not in ARM
+        LAST_LEVEL_CACHE_HITS_SB     = L3_CACHE_HITS_SB,         // not in ARM
+        CACHE_HITS_SB                = LAST_LEVEL_CACHE_HITS_SB, // not in ARM
+        MEM_UOP_RETIRED_ALL_SB       = 14,
         L1D_EVICTION_SB,
         IDQ_UOPS_NOT_DELIVERED_CORE_SB,
         IDQ_EMPTY_SB,
@@ -560,29 +559,25 @@ struct Traits_Tokens
     };
 };
 
-template<typename T>
-struct Traits {
+template <typename T> struct Traits {
     // Traits for components that do not declare any
-    static const bool enabled = true;
-    static const bool monitored = false;
-    static const bool debugged = true;
+    static const bool enabled               = true;
+    static const bool monitored             = false;
+    static const bool debugged              = true;
     static const bool hysterically_debugged = false;
 
     typedef ALIST<> ASPECTS;
 };
 
-
-template<> struct Traits<CARLA_Project> : public Traits_Tokens
-{
-    static const unsigned int on = 0;
+template <> struct Traits<CARLA_Project> : public Traits_Tokens {
+    static const unsigned int on            = 0;
     static const unsigned int CAMERA_Pixels = 61440; // JPEG 60KB
 };
 
-template<> struct Traits<AV_AMPERA_Project> : public Traits_Tokens
-{
-    static const unsigned int UNDEFINED       = 61440;
-    static const unsigned int off             = 16;
-    static const unsigned int CAMERA_Pixels   = off; // 640x640p --> Overflow of SmartData Lenght... what should we do?
-    static const unsigned int LIDAR_Points    = off;
-    static const unsigned int RADAR_Points    = off;
+template <> struct Traits<AV_AMPERA_Project> : public Traits_Tokens {
+    static const unsigned int UNDEFINED     = 61440;
+    static const unsigned int off           = 16;
+    static const unsigned int CAMERA_Pixels = off; // 640x640p --> Overflow of SmartData Lenght... what should we do?
+    static const unsigned int LIDAR_Points  = off;
+    static const unsigned int RADAR_Points  = off;
 };

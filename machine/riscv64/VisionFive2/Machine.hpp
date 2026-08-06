@@ -1,11 +1,10 @@
 #pragma once
 
 #include <Traits.hpp>
-#include <architecture/riscv64/init.hpp>
 #include <drivers/cache/SiFiveU74_L2_CacheController.hpp>
 #include <drivers/clock/JH7110_Clock_Controller.hpp>
 #include <drivers/dvfs/JH7110_DVFS_Controller.hpp>
-#include <machine/VisionFive2/GPIO.hpp>
+#include <machine/GPIO.hpp>
 
 namespace QUARK {
 
@@ -14,7 +13,6 @@ class Machine : Driver {
 
   public:
     static void init() {
-        riscv64::init();
 
         if (CPU::id() == Traits<CPU>::BSP) {
             JH7110_DVFS_Controller dvfs;

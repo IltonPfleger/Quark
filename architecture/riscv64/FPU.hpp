@@ -31,7 +31,7 @@ class FPU {
                 return;
             }
 
-            uint64_t *base = &registers_.f[0];
+            uint64_t *base = registers(registers_);
             asm("fsd f0,   0(%0)\n"
                 "fsd f1,   8(%0)\n"
                 "fsd f2,  16(%0)\n"
@@ -79,7 +79,7 @@ class FPU {
                 return;
             }
 
-            uint64_t *base = &registers_.f[0];
+            uint64_t *base = registers(registers_);
             asm("fld f0,   0(%0)\n"
                 "fld f1,   8(%0)\n"
                 "fld f2,  16(%0)\n"
@@ -117,6 +117,15 @@ class FPU {
                 :
                 : "r"(base)
                 : "t0", "memory");
+        }
+    }
+
+  private:
+    template <typename T> __attribute__((always_inline)) static inline uint64_t *registers(T &registers) {
+        if constexpr (Traits<FPU>::Enable) {
+            return &registers.f[0];
+        } else {
+            return nullptr;
         }
     }
 

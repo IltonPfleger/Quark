@@ -157,13 +157,15 @@ class PMU {
         return value;
     }
 
-    template <size_t... Is> void load(Meta::IndexSequence<Is...>) {
-        ((csrw<MachineMode::MHPMEVENT3 + Is>(mhpmevent_[Is]), csrw<MachineMode::MHPMCOUNTER3 + Is>(mhpmcounter_[Is])), ...);
-        (((mcountinhibit_ & (1ULL << (Is + 3))) ? disable(Is + 3) : enable(Is + 3)), ...);
+    template <size_t... Is> void load(this auto &self, Meta::IndexSequence<Is...>) {
+        csrw<MachineMode::MCOUNTINHIBIT>(self.mcountinhibit_);
+        ((csrw<MachineMode::MHPMEVENT3 + Is>(self.mhpmevent_[Is]), csrw<MachineMode::MHPMCOUNTER3 + Is>(self.mhpmcounter_[Is])), ...);
+        (((self.mcountinhibit_ & (1ULL << (Is + 3))) ? disable(Is + 3) : enable(Is + 3)), ...);
     }
 
-    template <size_t... Is> void save(Meta::IndexSequence<Is...>) {
-        ((mhpmevent_[Is] = csrr<MachineMode::MHPMEVENT3 + Is>(), mhpmcounter_[Is] = csrr<MachineMode::MHPMCOUNTER3 + Is>()), ...);
+    template <size_t... Is> void save(this auto &&self, Meta::IndexSequence<Is...>) {
+        self.mcountinhibit_ = csrr<MachineMode::MCOUNTINHIBIT>();
+        ((self.mhpmevent_[Is] = csrr<MachineMode::MHPMEVENT3 + Is>(), self.mhpmcounter_[Is] = csrr<MachineMode::MHPMCOUNTER3 + Is>()), ...);
     }
 
   public:
@@ -188,15 +190,16 @@ class PMU {
 
     void save() {
         if constexpr (Traits<PMU>::Enable) {
-            mcountinhibit_ = csrr<MachineMode::MCOUNTINHIBIT>();
             save(Meta::MakeIndexSequence<Traits<PMU>::Programmable>{});
         }
     }
 
   private:
+    Meta::Array<Traits<PMU>::Enable ? Traits<PMU>::Programmable : 0, uint64_t> mhpmevent_;
+    Meta::Array<Traits<PMU>::Enable ? Traits<PMU>::Programmable : 0, uint64_t> mhpmcounter_;
     Meta::IF<Traits<PMU>::Enable, uint64_t, Meta::Empty>::Result mcountinhibit_;
-    Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmevent_;
-    Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmcounter_;
+    // Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmevent_;
+    // Meta::IF<Traits<PMU>::Enable, Meta::Array<Traits<PMU>::Programmable, uint64_t>, Meta::Empty>::Result mhpmcounter_;
 };
 
 } // namespace QUARK

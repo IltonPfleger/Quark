@@ -10,7 +10,7 @@
 #include <utility/list.h>
 #include <utility/observer.h>
 
-class Only_Data_UDP_Wrpayloader : public NIC_Common {
+class Only_Data_UDP_Wrapper : public NIC_Common {
   protected:
     static const UInt32 IPV4_HEADER_SIZE = 20;
     static const UInt32 UDP_HEADER_SIZE  = 8;
@@ -61,7 +61,7 @@ class Only_Data_UDP_Wrpayloader : public NIC_Common {
     typedef NIC_Common::CRC32 CRC;
     typedef CRC Trailer;
 
-    // The Wrpayloader Frame (only data)
+    // The Wrapper Frame (only data)
     class Frame : public Header {
       public:
         Frame() {}
@@ -91,7 +91,7 @@ class Only_Data_UDP_Wrpayloader : public NIC_Common {
 
     // Buffers used to hold frames across a zero-copy network stack
 #define _UTIL
-    typedef _UTIL::Buffer<NIC<Only_Data_UDP_Wrpayloader>, Frame, void, Metadata> Buffer;
+    typedef _UTIL::Buffer<NIC<Only_Data_UDP_Wrapper>, Frame, void, Metadata> Buffer;
 
     // Observers of a protocol get a also a pointer to the received buffer
     typedef Data_Observer<Buffer, Protocol> Observer;
@@ -140,7 +140,7 @@ class Only_Data_UDP_Wrpayloader : public NIC_Common {
     };
 
   protected:
-    Only_Data_UDP_Wrpayloader() {}
+    Only_Data_UDP_Wrapper() {}
 
   public:
     static const UInt32 mtu() { return MTU; }
