@@ -1,8 +1,9 @@
-#ifndef __QUARK_DEFERRED__
-#define __QUARK_DEFERRED__
+#ifndef __QUARK_UTILITY_DEFERRED__
+#define __QUARK_UTILITY_DEFERRED__
 
 #include <Semaphore.hpp>
 #include <Spin.hpp>
+#include <Traits.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/collections/MPSC.hpp>
 

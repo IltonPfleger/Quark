@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_MACROS__
+#define __QUARK_MACROS__
 
 #define __CONCATENATE(X, Y) X##Y
 #define ___STRINGIFY(X) #X
@@ -11,4 +12,6 @@
 /* Payload */
 #ifdef __PAYLOAD
 #define __PAYLOAD_TRAITS_HEADER __HEADER_PAYLOAD(Traits)
+#endif
+
 #endif

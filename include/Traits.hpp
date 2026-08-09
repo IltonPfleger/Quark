@@ -1,11 +1,10 @@
-#ifndef __QUARK_TRAITS__
-#define __QUARK_TRAITS__
+#pragma once
 
-#include <macros.hpp>
 #include <types.hpp>
 
 namespace QUARK {
 
+class Payload;
 class Thread;
 class Machine;
 class Timer;
@@ -63,5 +62,3 @@ template <> struct Traits<Thread> {
 };
 
 } // namespace QUARK
-
-#endif

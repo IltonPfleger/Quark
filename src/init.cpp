@@ -18,8 +18,6 @@ extern "C" void init() {
         Deferred::init();
     }
 
-    CPU::barrier();
-
     if constexpr (Traits<Timer>::Enable) Timer::init();
 
     if (CPU::id() == Traits<CPU>::BSP) TraceOut();

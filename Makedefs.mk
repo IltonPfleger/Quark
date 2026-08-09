@@ -42,7 +42,7 @@ PAYLOAD        ?= HelloWorld
 CCFLAGS        := -std=c++23
 CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH) -I$(HERE)/machine/$(ARCH)/$(MACHINE)
 CCFLAGS        += -Wall -Wextra -Werror -pedantic
-CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -g -O3
+CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -O3
 
 build: $(IMAGE).img
 

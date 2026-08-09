@@ -146,8 +146,7 @@ template <uintptr_t Base> class DWC_Ether_QoS_PHY {
         MDIO::set(Phy, BASIC_CONTROL, BASIC_CONTROL_AUTO_NEGOTIATION_ENABLE | BASIC_CONTROL_RE_AUTO_NEGOTIATION);
         while (!(MDIO::read(Phy, BASIC_STATUS) & BASIC_STATUS_AUTO_NEGOTIATION_COMPLETE))
             ;
-        while (!((MDIO::read(Phy, MASTER_SLAVE_STATUS_REGISTER) & LOCAL_RECEIVER_STATUS) &&
-                 (MDIO::read(Phy, MASTER_SLAVE_STATUS_REGISTER) & REMOTE_RECEIVER)))
+        while (!((MDIO::read(Phy, MASTER_SLAVE_STATUS_REGISTER) & LOCAL_RECEIVER_STATUS) && (MDIO::read(Phy, MASTER_SLAVE_STATUS_REGISTER) & REMOTE_RECEIVER)))
             ;
         return true;
     }

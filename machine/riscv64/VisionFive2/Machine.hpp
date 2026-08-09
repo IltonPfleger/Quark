@@ -13,7 +13,6 @@ class Machine : Driver {
 
   public:
     static void init() {
-
         if (CPU::id() == Traits<CPU>::BSP) {
             JH7110_DVFS_Controller dvfs;
 
@@ -29,8 +28,6 @@ class Machine : Driver {
 
             dvfs.set(dvfs.available()[dvfs.available().length() - 1]);
         }
-
-        CPU::barrier();
 
         if (CPU::id() == Traits<CPU>::BSP) {
             /* ---***--- GMAC0 ---***--- */
@@ -64,7 +61,6 @@ class Machine : Driver {
 
         Meta::forEach(Traits<CacheController>::Devices{}, []<typename T>() { T::init(); });
         Meta::forEach(Traits<UART>::Devices{}, []<typename T>() { T::init(); });
-        CPU::barrier();
     }
 
     static void shutdown() { CPU::halt(); }
@@ -72,6 +68,5 @@ class Machine : Driver {
 
 } // namespace QUARK
 
-// #include <drivers/can/IPMSCANFD.hpp>
 #include <drivers/ethernet/DWC_Ether_QoS.hpp>
 #include <drivers/uart/UART16550.hpp>
