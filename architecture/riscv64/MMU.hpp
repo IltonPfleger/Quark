@@ -52,16 +52,16 @@ class MMU {
         }
 
         static uintptr_t virt2phys(uintptr_t va) {
+            uintptr_t satp = csrr<SupervisorMode::SATP>();
+
+            if ((satp >> 60) == 0) return va;
+
             uintptr_t vpn2 = (va >> 30) & 0x1FF;
             uintptr_t vpn1 = (va >> 21) & 0x1FF;
             uintptr_t vpn0 = (va >> 12) & 0x1FF;
 
-            uintptr_t satp = csrr<SupervisorMode::SATP>();
-
-            if (satp == 0) return va;
-
-            uintptr_t root     = satp & 0xFFFFFFFFFFF;
-            PageTable *current = reinterpret_cast<PageTable *>(root << 12);
+            uintptr_t root     = (satp & 0xFFFFFFFFFFF) << 12;
+            PageTable *current = reinterpret_cast<PageTable *>(root);
 
             uintptr_t pte2 = current->entries_[vpn2];
             assert(pte2 & V);

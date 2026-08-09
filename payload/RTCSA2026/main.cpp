@@ -75,7 +75,7 @@ class Receiver {
   private:
     TFTP &tftp_;
     Span<uint8_t> buffer_;
-    unsigned char *current_;
+    uint8_t *current_;
     size_t remaining_;
     Span<const uint8_t> linux_;
     Span<const uint8_t> initramfs_;
@@ -89,50 +89,36 @@ class LinuxLauncher {
     using InterruptController = VirtualPLIC<1, 0xc000000>;
     using LinuxMachine        = GenericVirtualMachine<1, InterruptController, Serial>;
 
-    LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs, Thread::Criterion criterion)
+    LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs, size_t core)
         : size_(size),
-          start_(nullptr),
-          initramfs_(initramfs),
-          dtb_(nullptr),
-          vm_(nullptr) {
-        start_ = static_cast<unsigned char *>(Memory::alloc(size_));
+          buffer_(new uint8_t[size_]) {
 
-        uint8_t *current = align(start_, 4 * MB);
-        memcpy(current, kernel, kernel.length());
+        uint8_t *current = align(buffer_, 4 * MB);
+
+        uint8_t *image = current;
+        memcpy(image, kernel, kernel.length());
         current += kernel.length();
 
-        current = align(current, 4 * MB);
+        current               = align(current, 4 * MB);
+        const uint8_t *initrd = current;
         memcpy(current, initramfs, initramfs.length());
-        initramfs_ = Span<const uint8_t>(current, initramfs.length());
         current += initramfs.length();
 
         current = align(current, 4 * MB);
-        dtb(current, size_ - initramfs.length() - kernel.length());
+        dtb(current, size_ - initramfs.length() - kernel.length(), Span(initrd, initramfs.length()));
 
-        new Thread(worker, this, criterion);
+        LinuxMachine *vm = new LinuxMachine(buffer_, size_, core);
+        vm->boot(0, image, current);
     }
 
-    static void *worker(void *pointer) {
-        LinuxLauncher *self = reinterpret_cast<LinuxLauncher *>(pointer);
-        Console::println("\n *** Linux is at core ", CPU::id(), " ***");
-        LinuxMachine *vm = new LinuxMachine(self->start_, self->size_);
-        vm->boot(0, self->start_, self->dtb_);
-        return nullptr;
-    }
-
-    static unsigned char *align(unsigned char *pointer, long alignment) {
+    static uint8_t *align(uint8_t *pointer, long alignment) {
         uintptr_t address = reinterpret_cast<long>(pointer);
         address           = (address + alignment - 1) & ~(alignment - 1);
-        return reinterpret_cast<unsigned char *>(address);
+        return reinterpret_cast<uint8_t *>(address);
     }
 
-    size_t dtb(void *buffer, size_t capacity) {
+    void dtb(void *buffer, size_t capacity, Span<const uint8_t> initramfs) {
         FDT_Builder fdt(buffer, capacity);
-
-        dtb_                  = static_cast<unsigned char *>(buffer);
-        uint64_t base         = reinterpret_cast<uint64_t>(start_);
-        uint64_t initrd_start = reinterpret_cast<uint64_t>(initramfs_.data());
-        uint64_t initrd_end   = initrd_start + initramfs_.length();
 
         fdt.begin("");
         {
@@ -143,10 +129,12 @@ class LinuxLauncher {
 
             fdt.begin("chosen");
             {
+                uint64_t start   = reinterpret_cast<uint64_t>(initramfs.data());
+                uint64_t end     = start + initramfs.length();
+                uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
+                uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
                 fdt.add("bootargs", "console=hvc0 loglevel=8");
-                uint32_t regs0[] = {CPU::hi32(initrd_start), CPU::lo32(initrd_start)};
                 fdt.add("linux,initrd-start", regs0, 2);
-                uint32_t regs1[] = {CPU::hi32(initrd_end), CPU::lo32(initrd_end)};
                 fdt.add("linux,initrd-end", regs1, 2);
             }
             fdt.end();
@@ -179,8 +167,9 @@ class LinuxLauncher {
 
             fdt.begin("memory");
             {
-                fdt.add("device_type", "memory");
+                uint64_t base   = reinterpret_cast<uint64_t>(buffer_);
                 uint32_t regs[] = {CPU::hi32(base), CPU::lo32(base), CPU::hi32(size_), CPU::lo32(size_)};
+                fdt.add("device_type", "memory");
                 fdt.add("reg", regs, 4);
             }
             fdt.end();
@@ -225,7 +214,7 @@ class LinuxLauncher {
         }
         fdt.end();
 
-        return fdt.finish();
+        fdt.finish();
     }
 
   private:
@@ -233,43 +222,40 @@ class LinuxLauncher {
 
   private:
     size_t size_;
-    unsigned char *start_;
-    Span<const uint8_t> initramfs_;
-    unsigned char *dtb_;
-    LinuxMachine *vm_;
+    uint8_t *buffer_;
 };
 
-class EPOS_Launcher {
-    using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
-    using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
-    using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
-    using InterruptController = VirtualPLIC<1, 0xc000000>;
-    using EPOS_Machine        = GenericVirtualMachine<1, InterruptController, Serial, Network>;
-
-  public:
-    EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, Thread::Criterion criterion)
-        : epos_(epos),
-          buffer_(static_cast<unsigned char *>(Memory::alloc(size)), size),
-          machine_(buffer_.data(), buffer_.length()),
-          thread_(worker, this, criterion) {}
-
-  private:
-    static void *worker(void *pointer) {
-        TraceIn(Thread::running());
-        auto *self = reinterpret_cast<EPOS_Launcher *>(pointer);
-        memset(self->buffer_.data(), 0, self->buffer_.length());
-        memcpy(self->buffer_.data(), self->epos_.data(), self->epos_.length());
-        self->machine_.boot(0, self->buffer_.data(), 0);
-        return nullptr;
-    }
-
-  private:
-    const Span<const uint8_t> &epos_;
-    Span<uint8_t> buffer_;
-    EPOS_Machine machine_;
-    Thread thread_;
-};
+// class EPOS_Launcher {
+//     using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
+//     using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
+//     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+//     using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
+//     using InterruptController = VirtualPLIC<1, 0xc000000>;
+//     using EPOS_Machine        = GenericVirtualMachine<1, InterruptController, Serial, Network>;
+//
+//   public:
+//     EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, Thread::Criterion criterion)
+//         : epos_(epos),
+//           buffer_(static_cast<uint8_t *>(Memory::alloc(size)), size),
+//           machine_(buffer_.data(), buffer_.length()),
+//           thread_(worker, this, criterion) {}
+//
+//   private:
+//     static void *worker(void *pointer) {
+//         TraceIn(Thread::running());
+//         auto *self = reinterpret_cast<EPOS_Launcher *>(pointer);
+//         memset(self->buffer_.data(), 0, self->buffer_.length());
+//         memcpy(self->buffer_.data(), self->epos_.data(), self->epos_.length());
+//         self->machine_.boot(0, self->buffer_.data(), 0);
+//         return nullptr;
+//     }
+//
+//   private:
+//     const Span<const uint8_t> &epos_;
+//     Span<uint8_t> buffer_;
+//     EPOS_Machine machine_;
+//     Thread thread_;
+// };
 
 } // namespace QUARK
 
@@ -380,48 +366,48 @@ int main() {
 
     const size_t MemorySize = 1024 * 1024 * 128;
 
-    new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 3));
+    new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 3);
 
-    // DYNAMICS STATE
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    while (QUARK::sbi::Counter::counter_ != 1)
-        ;
+    //// DYNAMICS STATE
+    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    // while (QUARK::sbi::Counter::counter_ != 1)
+    //     ;
 
-    // Fuser
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    while (QUARK::sbi::Counter::counter_ != 2)
-        ;
+    //// Fuser
+    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    // while (QUARK::sbi::Counter::counter_ != 2)
+    //     ;
 
-    // RADAR
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    while (QUARK::sbi::Counter::counter_ != 3)
-        ;
+    //// RADAR
+    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    // while (QUARK::sbi::Counter::counter_ != 3)
+    //     ;
 
-    // LiDAR
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    while (QUARK::sbi::Counter::counter_ != 4)
-        ;
+    //// LiDAR
+    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
+    // while (QUARK::sbi::Counter::counter_ != 4)
+    //     ;
 
-    // Camera
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    while (QUARK::sbi::Counter::counter_ != 5)
-        ;
+    //// Camera
+    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
+    // while (QUARK::sbi::Counter::counter_ != 5)
+    //     ;
 
-    QUARK::Delay(QUARK::Microsecond(5'000'000));
+    // QUARK::Delay(QUARK::Microsecond(5'000'000));
 
-    delete receiver;
-    delete tftp;
-    delete udp;
-    delete ipv4;
-    delete link;
+    // delete receiver;
+    // delete tftp;
+    // delete udp;
+    // delete ipv4;
+    // delete link;
 
-    smartdata();
+    // smartdata();
 
-    // new NetworkVampire<VirtualSwitch<Device>>();
+    //// new NetworkVampire<VirtualSwitch<Device>>();
 
-    while (1) {
-        QUARK::Delay(QUARK::Microsecond(100'000'000));
-    }
+    // while (1) {
+    //     QUARK::Delay(QUARK::Microsecond(100'000'000));
+    // }
 
     // for (int i = 0; i < 10; i++) {
     //     new Responsive_SmartData<Overhead>(i, 5'000, SmartData::ADVERTISED);

@@ -76,14 +76,17 @@ template <size_t CORES, typename... Devices> class GenericVirtualMachine : publi
     };
 
   public:
-    GenericVirtualMachine(void *entry, size_t size)
+    GenericVirtualMachine(void *entry, size_t size, size_t offset)
         : VirtualMachine(Chunk(entry, size)),
           cpus_(cpus(Meta::MakeIndexSequence<CORES>{})),
           devices_(*this, cpus_),
-          threads_(threads(Meta::MakeIndexSequence<CORES>{})) {}
+          threads_(threads(Meta::MakeIndexSequence<CORES>{}, offset)) {}
 
     template <size_t... Is> Meta::Array<CORES, VirtualCPU> cpus(Meta::IndexSequence<Is...>) { return {((void)Is, VirtualCPU(this))...}; }
-    template <size_t... Is> Meta::Array<CORES, Thread> threads(Meta::IndexSequence<Is...>) { return {(Thread(worker, &arguments[Is]))...}; }
+
+    template <size_t... Is> Meta::Array<CORES, Thread> threads(Meta::IndexSequence<Is...>, size_t offset) {
+        return {Thread(worker, &arguments[Is], Thread::Criterion(Thread::Criterion::NORMAL, offset + Is))...};
+    }
 
     void boot(size_t core, void *entry, void *opaque) {
         arguments[core].cpu    = &cpus_[core];
