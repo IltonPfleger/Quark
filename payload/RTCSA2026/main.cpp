@@ -225,37 +225,27 @@ class LinuxLauncher {
     uint8_t *buffer_;
 };
 
-// class EPOS_Launcher {
-//     using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
-//     using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
-//     using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-//     using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
-//     using InterruptController = VirtualPLIC<1, 0xc000000>;
-//     using EPOS_Machine        = GenericVirtualMachine<1, InterruptController, Serial, Network>;
-//
-//   public:
-//     EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, Thread::Criterion criterion)
-//         : epos_(epos),
-//           buffer_(static_cast<uint8_t *>(Memory::alloc(size)), size),
-//           machine_(buffer_.data(), buffer_.length()),
-//           thread_(worker, this, criterion) {}
-//
-//   private:
-//     static void *worker(void *pointer) {
-//         TraceIn(Thread::running());
-//         auto *self = reinterpret_cast<EPOS_Launcher *>(pointer);
-//         memset(self->buffer_.data(), 0, self->buffer_.length());
-//         memcpy(self->buffer_.data(), self->epos_.data(), self->epos_.length());
-//         self->machine_.boot(0, self->buffer_.data(), 0);
-//         return nullptr;
-//     }
-//
-//   private:
-//     const Span<const uint8_t> &epos_;
-//     Span<uint8_t> buffer_;
-//     EPOS_Machine machine_;
-//     Thread thread_;
-// };
+class EPOS_Launcher {
+    using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
+    using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
+    using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
+    using InterruptController = VirtualPLIC<1, 0xc000000>;
+    using EPOS_Machine        = GenericVirtualMachine<1, InterruptController, Serial, Network>;
+
+  public:
+    EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, size_t core)
+        : buffer_(static_cast<uint8_t *>(Memory::alloc(size)), size),
+          machine_(buffer_.data(), buffer_.length(), core) {
+        memset(buffer_.data(), 0, buffer_.length());
+        memcpy(buffer_.data(), epos.data(), epos.length());
+        machine_.boot(0, buffer_.data(), (void *)1ULL);
+    }
+
+  private:
+    Span<uint8_t> buffer_;
+    EPOS_Machine machine_;
+};
 
 } // namespace QUARK
 
@@ -294,53 +284,54 @@ class LinuxLauncher {
 
 void smartdata() {
     TSTP::init();
+
     static constexpr int EXPIRY = 150'000;
 
-    // SEU_SmartData *seu = new SEU_SmartData();
+    SEU_SmartData *seu = new SEU_SmartData();
 
-    // Unit_Dev_Expiry::List *ud_list;
-    // ud_list  = new Unit_Dev_Expiry::List();
-    // auto *mu = new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
-    // seu->add_boolean_filter(mu);
+    Unit_Dev_Expiry::List *ud_list;
+    ud_list  = new Unit_Dev_Expiry::List();
+    auto *mu = new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
+    seu->add_boolean_filter(mu);
 
-    //// MONITOR
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, EXPIRY))->link());
-    // auto *monitor = new Monitoring(ud_list);
-    // seu->add_boolean_filter(monitor);
+    // MONITOR
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, EXPIRY))->link());
+    auto *monitor = new Monitoring(ud_list);
+    seu->add_boolean_filter(monitor);
 
-    //// CAMERA
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // auto *obrtc = new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, EXPIRY, 100000);
-    // seu->add_boolean_filter(obrtc);
+    // CAMERA
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    auto *obrtc = new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, EXPIRY, 100000);
+    seu->add_boolean_filter(obrtc);
 
-    //// LIDAR
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // auto *obrtl = new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY, 100000);
-    // seu->add_boolean_filter(obrtl);
+    // LIDAR
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    auto *obrtl = new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY, 100000);
+    seu->add_boolean_filter(obrtl);
 
-    //// FUSER
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
-    // auto *obrtf = new MU_Arrival_Dep(ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, EXPIRY, 100000);
-    // seu->add_boolean_filter(obrtf);
+    // FUSER
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
+    auto *obrtf = new MU_Arrival_Dep(ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, EXPIRY, 100000);
+    seu->add_boolean_filter(obrtf);
 
-    //// RSS
-    // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
-    // rp->set_default();
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, EXPIRY))->link());
-    // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, EXPIRY);
-    // seu->add_boolean_filter(rss);
+    // RSS
+    Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
+    rp->set_default();
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, EXPIRY))->link());
+    RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, EXPIRY);
+    seu->add_boolean_filter(rss);
 
-    // QUARK::Delay(QUARK::Microsecond(1'000));
+    QUARK::Delay(QUARK::Microsecond(1'000));
 
     new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), EXPIRY, 5'000, SmartData::SINGLE, SmartData::ANY, 16);
 
@@ -368,40 +359,34 @@ int main() {
 
     new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 3);
 
-    //// DYNAMICS STATE
-    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    // while (QUARK::sbi::Counter::counter_ != 1)
-    //     ;
+    // DYNAMICS STATE
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+    while (QUARK::sbi::Counter::counter_ != 1)
+        ;
 
-    //// Fuser
-    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    // while (QUARK::sbi::Counter::counter_ != 2)
-    //     ;
+    // Fuser
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+    while (QUARK::sbi::Counter::counter_ != 2)
+        ;
 
-    //// RADAR
-    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    // while (QUARK::sbi::Counter::counter_ != 3)
-    //     ;
+    // RADAR
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
+    while (QUARK::sbi::Counter::counter_ != 3)
+        ;
 
-    //// LiDAR
-    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 2));
-    // while (QUARK::sbi::Counter::counter_ != 4)
-    //     ;
+    // LiDAR
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
+    while (QUARK::sbi::Counter::counter_ != 4)
+        ;
 
-    //// Camera
-    // new EPOS_Launcher(MemorySize / 2, receiver->epos(), QUARK::Thread::Criterion(QUARK::Thread::Criterion::NORMAL, 1));
-    // while (QUARK::sbi::Counter::counter_ != 5)
-    //     ;
+    // Camera
+    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+    while (QUARK::sbi::Counter::counter_ != 5)
+        ;
 
-    // QUARK::Delay(QUARK::Microsecond(5'000'000));
+    QUARK::Delay(QUARK::Microsecond(5'000'000));
 
-    // delete receiver;
-    // delete tftp;
-    // delete udp;
-    // delete ipv4;
-    // delete link;
-
-    // smartdata();
+    smartdata();
 
     //// new NetworkVampire<VirtualSwitch<Device>>();
 

@@ -35,7 +35,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrapper>, public LocalNetwork::Observer 
             sx_free_.insert(&sx_buffers_[i]);
         }
 
-        // new QUARK::Thread(worker, this);
+        new QUARK::Thread(worker, this);
 
         m_network->attach(this);
     }
@@ -154,40 +154,42 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrapper>, public LocalNetwork::Observer 
 
         b.fill(length, address(), address(), PROTO_TSTP, data, length);
 
-        static int counter = 0;
-        if (counter++ > 30) {
-            for (int i = 0; i < 1; i++) {
-                notify(PROTO_TSTP, &b);
-            }
-        } else {
-            notify(PROTO_TSTP, &b);
-        }
+        // static int counter = 0;
+        // if (counter++ > 30) {
+        //     for (int i = 0; i < 1; i++) {
+        // notify(PROTO_TSTP, &b);
+        //     }
+        // } else {
+        //     notify(PROTO_TSTP, &b);
+        // }
 
-        // if (!rx_.insert(b)) QUARK::Console::println("LOST");
+        for (int i = 0; i < 4; i++) {
+            if (!rx_.insert(b)) QUARK::Console::println("LOST");
+        }
     }
 
-    // static void *worker(void *pointer) {
-    //     auto *self = reinterpret_cast<UDPNIC *>(pointer);
+    static void *worker(void *pointer) {
+        auto *self = reinterpret_cast<UDPNIC *>(pointer);
 
-    //    while (1) {
-    //        while (true) {
-    //            Buffer b(self, 0);
-    //            if (!self->rx_.remove(b)) break;
-    //            self->notify(PROTO_TSTP, &b);
-    //        }
-    //        QUARK::Delay(QUARK::Microsecond(100'000));
-    //    }
-    //    return nullptr;
-    //}
+        while (1) {
+            for (int i = 0; i < NumberOfBuffers; i++) {
+                Buffer b(self, 0);
+                if (!self->rx_.remove(b)) break;
+                self->notify(PROTO_TSTP, &b);
+            }
+            QUARK::Delay(QUARK::Microsecond(150'000));
+        }
+        return nullptr;
+    }
 
   private:
     static unsigned char GRP_KEY[16];
 
   private:
-    static constexpr int NumberOfBuffers = 32;
+    static constexpr int NumberOfBuffers = 128;
     QUARK::collections::Node<Buffer> sx_buffers_[NumberOfBuffers];
     QUARK::collections::FIFO<QUARK::collections::Node<Buffer>, QUARK::Mutex> sx_free_;
-    //  QUARK::collections::CircularBuffer<Buffer, NumberOfBuffers, QUARK::Mutex> rx_{};
+    QUARK::collections::CircularBuffer<Buffer, NumberOfBuffers, QUARK::Mutex> rx_{};
 
     LocalNetwork *m_network;
     Configuration m_configuration;
