@@ -163,7 +163,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrapper>, public LocalNetwork::Observer 
         //     notify(PROTO_TSTP, &b);
         // }
 
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2; i++) {
             if (!rx_.insert(b)) QUARK::Console::println("LOST");
         }
     }

@@ -24,11 +24,11 @@ class Timer : public ArchitectureCommon::Timer {
 
     static void init() {
         if constexpr (!Traits<RISCV>::Supervisor) {
-            TrapHandler::install(7, dispatch);
+            TrapHandler<MachineMode>::install(7, dispatch);
             csrs<MachineMode::IE>(MachineMode::TI);
             CLINT::write();
         } else {
-            TrapHandler::install(5, dispatch);
+            TrapHandler<SupervisorMode>::install(5, dispatch);
             csrs<SupervisorMode::IE>(SupervisorMode::TI);
         }
     }

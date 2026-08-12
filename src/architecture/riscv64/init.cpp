@@ -14,13 +14,36 @@ extern "C" void init();
 namespace QUARK::riscv64 {
 
 __attribute__((naked)) static void sjump() {
-    csrw<SupervisorMode::SATP>(0);
-    PMP::NAPOT<2>(0, 0, PMP::R | PMP::W | PMP::X);
-    csrw<MachineMode::MIDELEG>(0x1666);
+    static constexpr uint64_t MEDELEG = (1 << 0) |  // Instruction Address Misaligned
+                                        (1 << 1) |  // Instruction Access Fault
+                                        (1 << 2) |  // Illegal Instruction
+                                        (1 << 3) |  // Breakpoint
+                                        (1 << 4) |  // Load Address Misaligned
+                                        (1 << 5) |  // Load Access Fault
+                                        (1 << 6) |  // Store Address Misaligned
+                                        (1 << 7) |  // Store Access Fault
+                                        (1 << 8) |  // Ecall From U
+                                        (1 << 12) | // Instruction Page Fault
+                                        (1 << 13) | // Load Page Fault
+                                        (1 << 15);  // Store Page Fault
+
+    static constexpr uint64_t MIDELEG = (1 << 1) | // Supervisor Software Interrupt
+                                        (1 << 5) | // Supervisor Timer Interrupt
+                                        (1 << 9);  // Supervisor External Interrupt
+
+    csrw<MachineMode::MEDELEG>(MEDELEG);
+    csrw<MachineMode::MIDELEG>(MIDELEG);
+
     csrc<MachineMode::STATUS>(MachineMode::PP);
     csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE);
     csrs<MachineMode::STATUS>(MachineMode::PP_S | MachineMode::PIRQE);
+
+    csrw<SupervisorMode::SATP>(0);
+
+    PMP::NAPOT<2>(0, 0, PMP::R | PMP::W | PMP::X);
+
     csrw<MachineMode::EPC>(__builtin_return_address(0));
+
     MachineMode::ret();
 }
 
@@ -31,10 +54,15 @@ __attribute__((naked)) static void jvirtual() {
     SupervisorMode::ret();
 }
 
+__attribute__((naked)) static void supervisor() {
+    CoreContext *context = CoreContextHandler<SupervisorMode>::init(CPU::tp());
+    CoreContextHandler<SupervisorMode>::bind(context);
+    SIC::init();
+    init();
+}
+
 __attribute__((naked)) void epilogue() {
     CPU::tp(mhartid() - Traits<CPU>::Offset);
-
-    TrapHandler::init();
 
     CoreContextHandler<MachineMode>::bind(CoreContextHandler<MachineMode>::init(CPU::tp()));
 
@@ -52,15 +80,11 @@ __attribute__((naked)) void epilogue() {
             CPU::barrier();
             MMU::init();
             jvirtual();
-            CPU::sp(Memory::phys2virt(CPU::sp()));
+            CPU::stack(Memory::phys2virt(CPU::stack()));
             CPU::barrier();
             if (CPU::tp() == Traits<CPU>::BSP) MMU::epilogue();
         }
-
-        CoreContext *context = CoreContextHandler<SupervisorMode>::init(CPU::tp());
-        CoreContextHandler<SupervisorMode>::bind(context);
-
-        SIC::init();
+        supervisor();
     }
 
     init();
@@ -73,9 +97,6 @@ extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void p
     // Disable Interruptions
     asm("csrw mie, zero");
     asm("csrc mstatus, 0x8");
-
-    // Save Return Address
-    asm("csrw mscratch, ra");
 
     // Found Which Core It's Running
     asm("csrr %0, mhartid" : "=r"(core));

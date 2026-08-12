@@ -8,14 +8,15 @@ namespace QUARK {
 
 class ExceptionHandler {
   public:
-    static void esr(ContextFrame *c) {
+    static void esr(ContextFrame *context) {
         Console::panic();
-        Console::println("\n<", CPU::id(), "> Ohh, It's a Trap!");
-        Console::println("context: ", c);
-        Console::println("pc: ", Console::Hex(c->pc));
-        Console::println("cause: ", Console::Hex(c->cause));
-        Console::println("status: ", Console::Hex(c->status));
-        Console::println("tval: ", Console::Hex(c->value));
+        Console::print('\n');
+        Console::println("Ohh, It's a Trap! <", CPU::id(), ">");
+        Console::println("context: ", context);
+        Console::println("pc: ", Console::Hex(context->pc));
+        Console::println("cause: ", Console::Hex(context->cause));
+        Console::println("status: ", Console::Hex(context->status));
+        Console::println("tval: ", Console::Hex(context->value));
         CPU::halt();
     }
 };

@@ -14,6 +14,8 @@
 namespace QUARK {
 
 class SBI {
+    using TrapHandler = QUARK::TrapHandler<MachineMode>;
+
   public:
     static void init() {
         TrapHandler::install(sbi::Syscall::CODE, sbi::Syscall::dispatch, TrapHandler::Exception);

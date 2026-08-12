@@ -12,8 +12,7 @@ template <> struct Traits<Payload> {
 };
 
 template <> struct Traits<Deferred> {
-    static constexpr bool Enable    = false;
-    static constexpr size_t Threads = 1;
+    static constexpr size_t Threads = 0;
 };
 
 } // namespace QUARK

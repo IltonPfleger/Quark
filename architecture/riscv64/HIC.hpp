@@ -12,11 +12,11 @@ namespace QUARK {
 class HIC {
   public:
     static void init() {
-        TrapHandler::init<MachineMode, true>();
+        TrapHandler<MachineMode>::init<true>();
         SBI::init();
         PLIC::init();
-        TrapHandler::install(11, IC::isr);
-        TrapHandler::install(3, IPI::onTrap);
+        TrapHandler<MachineMode>::install(11, IC::isr);
+        TrapHandler<MachineMode>::install(3, IPI::onTrap);
         csrs<MachineMode::IE>(MachineMode::EI);
         csrs<MachineMode::IE>(MachineMode::SI);
     }

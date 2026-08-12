@@ -144,7 +144,7 @@ class Console {
     }
 
   private:
-    static volatile inline void *panic_ = 0;
+    static volatile inline uintmax_t panic_ = 0;
 };
 
 } // namespace QUARK

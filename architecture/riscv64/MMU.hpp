@@ -11,7 +11,7 @@ class MMU {
   public:
     class TLB {
       public:
-        static auto flush() { asm("sfence.vma zero, zero"); }
+        static auto flush() { asm volatile("sfence.vma zero, zero" ::: "memory"); }
     };
 
     class PageTable {

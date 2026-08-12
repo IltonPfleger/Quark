@@ -21,8 +21,8 @@ class CPU : public ArchitectureCommon::CPU {
     using NotSupervisorContext = Meta::IF<!Virtualization, QUARK::MachineContext<>, HypervisorContext>::Result;
     using Context              = Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
-    __attribute__((naked)) static uintptr_t sp() { asm("mv a0, sp; ret"); }
-    __attribute__((naked)) static void sp(uintptr_t) { asm("mv sp, a0; ret"); }
+    __attribute__((naked)) static uintptr_t stack() { asm("mv a0, sp; ret"); }
+    __attribute__((naked)) static void stack(uintptr_t) { asm("mv sp, a0; ret"); }
     __attribute__((naked)) static uintptr_t tp() { asm("mv a0, tp; ret"); }
     __attribute__((naked)) static void tp(uintptr_t) { asm("mv tp, a0; ret"); }
 

@@ -15,11 +15,12 @@ class MIC {
     static constexpr bool IsMachineMode = !Traits<RISCV>::Supervisor;
     static constexpr bool IsTimerEnable = Traits<QUARK::Timer>::Enable;
     static constexpr bool ChangeStack   = (IsMachineMode && Traits<Thread>::UserStack) || !IsMachineMode;
-    using MachineContextHandler         = MachineContext<ChangeStack>;
+    using MachineContext                = QUARK::MachineContext<ChangeStack>;
+    using TrapHandler                   = QUARK::TrapHandler<MachineMode>;
 
   public:
     static void init() {
-        TrapHandler::init<MachineMode, ChangeStack>();
+        TrapHandler::init<ChangeStack>();
 
         if constexpr (Traits<RISCV>::Supervisor) {
             CoreContextHandler<MachineMode>::stack(__amm.end() - Traits<Memory>::PageSize * CPU::id<true>());

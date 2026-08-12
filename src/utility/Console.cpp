@@ -17,8 +17,8 @@ void Console::print(char c) {
     device->write(c);
 }
 
-void Console::panic() { CPU::Atomic::cas(panic_, 0, Thread::running()); }
+void Console::panic() { CPU::Atomic::cas(panic_, 0, CPU::id()); }
 
-bool Console::panicked() { return (panic_ && panic_ != Thread::running()); }
+bool Console::panicked() { return (panic_ && panic_ != CPU::id()); }
 
 } // namespace QUARK

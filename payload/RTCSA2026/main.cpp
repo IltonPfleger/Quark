@@ -287,49 +287,49 @@ void smartdata() {
 
     static constexpr int EXPIRY = 150'000;
 
-    // SEU_SmartData *seu = new SEU_SmartData();
+    SEU_SmartData *seu = new SEU_SmartData();
 
-    // Unit_Dev_Expiry::List *ud_list;
-    // ud_list  = new Unit_Dev_Expiry::List();
-    // auto *mu = new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
-    // seu->add_boolean_filter(mu);
+    Unit_Dev_Expiry::List *ud_list;
+    ud_list  = new Unit_Dev_Expiry::List();
+    auto *mu = new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
+    seu->add_boolean_filter(mu);
 
-    //// MONITOR
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, EXPIRY))->link());
-    // auto *monitor = new Monitoring(ud_list);
-    // seu->add_boolean_filter(monitor);
+    // MONITOR
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, EXPIRY))->link());
+    auto *monitor = new Monitoring(ud_list);
+    seu->add_boolean_filter(monitor);
 
-    //// CAMERA
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // auto *obrtc = new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, EXPIRY, 100000);
-    // seu->add_boolean_filter(obrtc);
+    // CAMERA
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    auto *obrtc = new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, EXPIRY, 100000);
+    seu->add_boolean_filter(obrtc);
 
-    //// LIDAR
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // auto *obrtl = new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY, 100000);
-    // seu->add_boolean_filter(obrtl);
+    // LIDAR
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    auto *obrtl = new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY, 100000);
+    seu->add_boolean_filter(obrtl);
 
-    //// FUSER
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
-    // auto *obrtf = new MU_Arrival_Dep(ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, EXPIRY, 100000);
-    // seu->add_boolean_filter(obrtf);
+    // FUSER
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
+    auto *obrtf = new MU_Arrival_Dep(ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, EXPIRY, 100000);
+    seu->add_boolean_filter(obrtf);
 
-    //// RSS
-    // Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
-    // rp->set_default();
-    // ud_list = new Unit_Dev_Expiry::List();
-    // ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    // ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, EXPIRY))->link());
-    // RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, EXPIRY);
-    // seu->add_boolean_filter(rss);
+    // RSS
+    Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
+    rp->set_default();
+    ud_list = new Unit_Dev_Expiry::List();
+    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, EXPIRY))->link());
+    RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, EXPIRY);
+    seu->add_boolean_filter(rss);
 
     QUARK::Delay(QUARK::Microsecond(1'000));
 

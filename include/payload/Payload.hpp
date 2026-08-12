@@ -11,7 +11,7 @@
 
 namespace QUARK {
 
-class Payload : Traits<Payload> {
+class Payload {
   public:
     static void reserve() {
         Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
