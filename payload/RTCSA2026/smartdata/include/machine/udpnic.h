@@ -179,6 +179,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrapper>, public LocalNetwork::Observer 
             }
             QUARK::Delay(QUARK::Microsecond(150'000));
         }
+
         return nullptr;
     }
 

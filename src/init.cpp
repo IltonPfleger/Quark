@@ -11,7 +11,7 @@ extern "C" void init() {
     if (CPU::id() == Traits<CPU>::BSP) {
         TraceIn();
         Machine::init();
-        Payload::alloc();
+        Payload::reserve();
         Memory::init();
         Thread::init();
         Payload::init();

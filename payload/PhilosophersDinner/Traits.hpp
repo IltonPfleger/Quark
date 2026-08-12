@@ -10,4 +10,9 @@ template <> struct Traits<Payload> {
     static constexpr bool Unprivileged   = false;
 };
 
+template <> struct Traits<Deferred> {
+    static constexpr size_t Threads = 0;
+    static constexpr bool Enable    = Threads > 0;
+};
+
 } // namespace QUARK

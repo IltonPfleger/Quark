@@ -5,7 +5,12 @@ namespace QUARK {
 
 class Process {
   public:
-    Process() pt_() {}
+    Process(const Chunk &&rw, const Chunk &&rx) {
+        (void)rw;
+        (void)rx;
+        // pt_.map(rw.data(), 0, rw.length(), MMU::PageTable::UserRW);
+        // pt_.map(rx.data(), 0, rx.length(), MMU::PageTable::UserRX);
+    }
 
   private:
     MMU::PageTable pt_;

@@ -11,10 +11,8 @@ template <typename Tag> class SiFiveU74_L2_CacheController {
         int mmio;
         int prefetcher;
     } Masters[] = {
-        {.fetch = 1, .dcache = {-1, -1}, .mmio = 2, .prefetcher = -1},
-        {.fetch = 3, .dcache = {4, 5}, .mmio = 6, .prefetcher = 7},
-        {.fetch = 8, .dcache = {9, 10}, .mmio = 11, .prefetcher = 12},
-        {.fetch = 13, .dcache = {14, 15}, .mmio = 16, .prefetcher = 17},
+        {.fetch = 1, .dcache = {-1, -1}, .mmio = 2, .prefetcher = -1},   {.fetch = 3, .dcache = {4, 5}, .mmio = 6, .prefetcher = 7},
+        {.fetch = 8, .dcache = {9, 10}, .mmio = 11, .prefetcher = 12},   {.fetch = 13, .dcache = {14, 15}, .mmio = 16, .prefetcher = 17},
         {.fetch = 18, .dcache = {19, 20}, .mmio = 21, .prefetcher = 22},
     };
 
@@ -49,11 +47,15 @@ template <typename Tag> class SiFiveU74_L2_CacheController {
             *WayEnable |= 0xFF;
         }
 
+        if (CPU::id() == Traits<CPU>::BSP) {
+            color(0, 0);
+        }
+
         if constexpr (Traits<Tag>::Isolation) {
             size_t core        = CPU::id();
             size_t ways        = Traits<Tag>::NumberOfWays / Traits<CPU>::Active;
             uint64_t activated = (((1ULL << ways) - 1) << (core * ways));
-            color(activated, core + Traits<CPU>::Offset);
+            color(activated, core);
         }
 
         if constexpr (Traits<Tag>::Prefetcher) {

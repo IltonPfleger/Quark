@@ -42,6 +42,7 @@ inline Chunk kernel() { return make(__kernel_start, __kernel_end); }
 
 } // namespace BootInformation
 
+__attribute__((section(".init.data"), used)) inline Chunk __emm;
 __attribute__((section(".init.data"), used)) inline Chunk __pmm;
 __attribute__((section(".init.data"), used)) inline Chunk __amm;
 __attribute__((section(".init.data"), used)) inline Chunk __bmm;

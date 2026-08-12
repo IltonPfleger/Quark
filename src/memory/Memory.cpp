@@ -19,6 +19,7 @@ void Memory::init() {
         Chunk page(c, PageSize);
         if (page.overlaps(BootInformation::kernel())) continue;
         if (page.overlaps(__bmm)) continue;
+        if (page.overlaps(__emm)) continue;
         if (page.overlaps(__pmm)) continue;
         allocator_.insert(reinterpret_cast<void *>(page.start()), page.length());
     }

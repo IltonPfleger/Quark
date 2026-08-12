@@ -13,17 +13,14 @@ namespace QUARK {
 
 class Payload : Traits<Payload> {
   public:
-    static void alloc() {
+    static void reserve() {
         Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
-        bool valid       = validate(header);
-        assert(valid);
-        entry_ = header->e_entry;
-        load(header);
+        assert(header->valid());
+        new (&__emm) Chunk(header, header->length());
+        reserve(header);
     }
 
-    static bool validate(Elf_Ehdr *header) {
-        if (!header->valid()) return false;
-
+    static void reserve(Elf_Ehdr *header) {
         Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(image() + header->e_phoff);
 
         uintptr_t start = ~0ULL;
@@ -40,7 +37,7 @@ class Payload : Traits<Payload> {
 
         new (&__pmm) Chunk(reinterpret_cast<void *>(start), size);
 
-        return !__pmm.overlaps(BootInformation::kernel());
+        assert(!__pmm.overlaps(BootInformation::kernel()));
     }
 
     static void load(Elf_Ehdr *header) {
@@ -65,12 +62,11 @@ class Payload : Traits<Payload> {
     static uint8_t *image() { return reinterpret_cast<uint8_t *>(BootInformation::kernel().end()); }
 
     static void init() {
-        auto main = reinterpret_cast<Thread::Return (*)(Thread::Argument)>(entry_);
+        Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
+        load(header);
+        auto main = reinterpret_cast<Thread::Return (*)(Thread::Argument)>(header->e_entry);
         new Thread(main, 0, Thread::Criterion::NORMAL);
     };
-
-  private:
-    static inline uintptr_t entry_;
 };
 
 } // namespace QUARK
