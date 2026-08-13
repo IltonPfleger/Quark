@@ -12,7 +12,7 @@ all: $(PAYLOAD_TARGET)
 
 $(PAYLOAD_TARGET): $(PAYLOAD_OBJECTS)
 	@mkdir -p $(dir $@)
-	$(LD) -e main --just-symbols $(SYSTEM).elf -Ttext=$(Payload_Address) --image-base=$(Payload_Address) -o $@ $^
+	$(LD) -e main --just-symbols $(SYSTEM).elf -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $^
 	$(OBJCOPY) --update-section .__linux__=$(LINUX) $@
 	$(OBJCOPY) --update-section .__initrd__=$(INITRD) $@
 
