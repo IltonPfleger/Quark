@@ -8,7 +8,7 @@ all: $(PAYLOAD_TARGET)
 
 $(PAYLOAD_TARGET): $(PAYLOAD_OBJECTS)
 	@mkdir -p $(dir $@)
-	$(LD) -e main --just-symbols $(SYSTEM).elf -Ttext=$(Payload_Address) --image-base=$(Payload_Address) -o $@ $^
+	$(LD) -e main --just-symbols $(SYSTEM).elf -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $^
 
 $(PAYLOAD_BUILD)/%.cpp.o: %.cpp $(CONFIG)
 	@mkdir -p $(dir $@)

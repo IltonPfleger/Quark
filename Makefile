@@ -27,7 +27,7 @@ $(PAYLOAD_ELF): $(KERNEL_ELF)
 	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
 
 $(KERNEL_ELF): $(KERNEL_OBJECTS)
-	$(LD) -T Linker.ld --defsym=__BOOT__=$(MemoryMap_BootStart) -o $@ $^
+	$(LD) -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $^
 
 $(BUILD)/%.o: src/%.cpp 
 	$(MKDIR) -p $(dir $@)

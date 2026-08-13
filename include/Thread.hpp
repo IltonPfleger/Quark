@@ -38,10 +38,10 @@ class Thread {
     static void reschedule();
     static void onTick();
     static void exit();
-    static Thread *running();
     void join();
 
   private:
+    static Thread *running();
     static void entry(Function, Argument);
     static void dispatch(Thread *, Thread *, Spin * = 0);
     static Return idle(Argument);

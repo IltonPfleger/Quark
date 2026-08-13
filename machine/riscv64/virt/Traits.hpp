@@ -1,7 +1,7 @@
-#pragma once
+#ifndef __QUARK_MACHINE_RISCV64_VIRT_TRAITS__
+#define __QUARK_MACHINE_RISCV64_VIRT_TRAITS__
 
 #include <Meta.hpp>
-#include <Traits.hpp>
 #include <monitor/events.hpp>
 
 namespace QUARK {
@@ -19,7 +19,7 @@ class IC;
 class PMU;
 class FPU;
 
-template <typename> class UART16550;
+template <typename> class NS16550;
 
 template <> struct Traits<Machine> {
     static constexpr const char NAME[] = "virt";
@@ -27,7 +27,7 @@ template <> struct Traits<Machine> {
 
 template <> struct Traits<CPU> {
     static constexpr const char Architecture[] = "riscv64";
-    static constexpr int Count                 = 1;
+    static constexpr int Count                 = 5;
     static constexpr int Active                = Count;
     static constexpr int Offset                = 0;
     static constexpr int BSP                   = 0;
@@ -50,8 +50,8 @@ template <> struct Traits<MemoryMap> {
     static constexpr unsigned long RamStart = Traits<Kernel>::Multitask ? VirtualRamStart : PhysicalRamStart;
     static constexpr unsigned long RamEnd   = Traits<Kernel>::Multitask ? VirtualRamEnd : PhysicalRamEnd;
 
-    static constexpr unsigned long BootStart     = RamStart;
-    static constexpr unsigned long KernelAddress = RamStart;
+    static constexpr unsigned long Boot        = RamStart;
+    static constexpr unsigned long Application = Traits<Kernel>::Multitask ? 0x400000 : RamStart + 1 * 1024 * 1024;
 
     static constexpr unsigned long MMIO  = 0x00000000;
     static constexpr unsigned long UART0 = 0x10000000;
@@ -68,7 +68,7 @@ template <> struct Traits<UART0> {
 };
 
 template <> struct Traits<UART> {
-    typedef Meta::TypeList<UART16550<UART0>> Devices;
+    typedef Meta::TypeList<NS16550<UART0>> Devices;
     static constexpr unsigned int NumberOfDevices = Devices::Length;
 };
 
@@ -93,14 +93,16 @@ template <> struct Traits<PLIC> {
 };
 
 template <> struct Traits<PMU> {
+    static constexpr bool Enable                                        = false;
     static constexpr size_t Fixed                                       = 2;
     static constexpr size_t Programmable                                = 0;
-    static constexpr bool Enable                                        = true;
     static constexpr Meta::Array<2, Meta::Pair<Event, uint64_t>> Events = {{{CPU_CYCLES, 0x00001}, {INSTRUCTIONS, 0x00002}}};
 };
 
 template <> struct Traits<FPU> {
-    static constexpr bool Enable = true;
+    static constexpr bool Enable = false;
 };
 
 } // namespace QUARK
+
+#endif

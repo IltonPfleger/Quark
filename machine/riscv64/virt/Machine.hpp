@@ -2,7 +2,7 @@
 #define __QUARK_MACHINE_RISCV64_VIRT__
 
 #include <Traits.hpp>
-#include <drivers/uart/UART16550.hpp>
+#include <machine/UART.hpp>
 
 namespace QUARK {
 

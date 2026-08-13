@@ -48,20 +48,19 @@ __attribute__((naked)) static void sjump() {
 }
 
 __attribute__((naked)) static void jvirtual() {
-    csrs<SupervisorMode::STATUS>(SupervisorMode::PP_S);
-    csrc<SupervisorMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE);
-    csrw<SupervisorMode::EPC>(Memory::phys2virt(reinterpret_cast<uintptr_t>(__builtin_return_address(0))));
-    SupervisorMode::ret();
+    uintptr_t ra;
+    asm("mv %0, ra" : "=r"(ra));
+    asm("jr %0 " ::"r"(Memory::phys2virt(ra)));
 }
 
-__attribute__((naked)) static void supervisor() {
+[[noreturn]] __attribute__((naked)) static void supervisor() {
     CoreContext *context = CoreContextHandler<SupervisorMode>::init(CPU::tp());
     CoreContextHandler<SupervisorMode>::bind(context);
     SIC::init();
     init();
 }
 
-__attribute__((naked)) void epilogue() {
+[[noreturn]] __attribute__((naked)) void epilogue() {
     CPU::tp(mhartid() - Traits<CPU>::Offset);
 
     CoreContextHandler<MachineMode>::bind(CoreContextHandler<MachineMode>::init(CPU::tp()));
@@ -90,7 +89,7 @@ __attribute__((naked)) void epilogue() {
     init();
 }
 
-extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void prologue() {
+extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _init() {
     size_t core;
     uintptr_t position;
 
@@ -128,7 +127,5 @@ extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void p
 
     epilogue();
 }
-
-extern "C" __attribute__((optimize("O0"), naked, used, section(".init"))) void _init() { prologue(); }
 
 } // namespace QUARK::riscv64

@@ -15,12 +15,9 @@ class Payload {
   public:
     static void reserve() {
         Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
-        assert(header->valid());
-        new (&__emm) Chunk(header, header->length());
-        reserve(header);
-    }
 
-    static void reserve(Elf_Ehdr *header) {
+        assert(header->valid());
+
         Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(image() + header->e_phoff);
 
         uintptr_t start = ~0ULL;
@@ -35,7 +32,8 @@ class Payload {
 
         size_t size = end - start;
 
-        new (&__pmm) Chunk(reinterpret_cast<void *>(start), size);
+        new (&__emm) Chunk(header, header->length());
+        new (&__pmm) Chunk(start, size);
 
         assert(!__pmm.overlaps(BootInformation::kernel()));
     }

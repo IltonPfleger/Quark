@@ -111,11 +111,8 @@ class Deferred {
 
   private:
     volatile bool running_;
-
     Semaphore pending_;
-
     List workers_;
-
     Thread thread_;
 
   private:

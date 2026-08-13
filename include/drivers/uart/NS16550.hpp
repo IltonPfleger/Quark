@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_DRIVERS_UART_NS16550__
+#define __QUARK_DRIVERS_UART_NS16550__
 
 #include <architecture/IC.hpp>
 #include <utility/Atomic.hpp>
@@ -8,7 +9,7 @@
 
 namespace QUARK {
 
-template <typename Tag> class UART16550 : public Observed<const char *, size_t> {
+template <typename Tag> class NS16550 : public Observed<const char *, size_t> {
     using Traits = QUARK::Traits<Tag>;
 
     static constexpr unsigned int Clock       = Traits::Clock;
@@ -16,7 +17,7 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
     static constexpr unsigned int BaudDivisor = Clock / (16 * BaudRate);
 
   private:
-    UART16550()
+    NS16550()
         : deferred_(worker, this) {
         Address[IER] = 0x00;
         Address[IER] = 0x00;
@@ -55,13 +56,13 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
     };
 
     static void isr(size_t) {
-        auto *self = reinterpret_cast<UART16550 *>(instance());
+        auto *self = reinterpret_cast<NS16550 *>(instance());
         Deferred::schedule(self->deferred_);
         Address[IER] = 0;
     }
 
     static void worker(void *pointer) {
-        auto *self = reinterpret_cast<UART16550 *>(pointer);
+        auto *self = reinterpret_cast<NS16550 *>(pointer);
 
         char buffer[32];
 
@@ -84,8 +85,8 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
             IC::install(i, isr);
     }
 
-    static UART16550 *instance() {
-        static UART16550 instance;
+    static NS16550 *instance() {
+        static NS16550 instance;
         return &instance;
     }
 
@@ -109,3 +110,5 @@ template <typename Tag> class UART16550 : public Observed<const char *, size_t> 
 };
 
 } // namespace QUARK
+
+#endif
