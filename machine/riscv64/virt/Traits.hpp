@@ -27,7 +27,7 @@ template <> struct Traits<Machine> {
 
 template <> struct Traits<CPU> {
   static constexpr const char Architecture[] = "riscv64";
-  static constexpr int Count = 5;
+  static constexpr int Count = 1;
   static constexpr int Active = Count;
   static constexpr int Offset = 0;
   static constexpr int BSP = 0;
@@ -36,7 +36,7 @@ template <> struct Traits<CPU> {
 template <> struct Traits<Memory> {
   static constexpr unsigned Order = 30;
   static constexpr unsigned Size = (1 << Order);
-  static constexpr unsigned PageSize = 4096 * 4;
+  static constexpr unsigned PageSize = 4096;
   static constexpr unsigned StackSize = PageSize;
 };
 
@@ -56,7 +56,7 @@ template <> struct Traits<MemoryMap> {
 
   static constexpr unsigned long Boot = RamStart;
   static constexpr unsigned long Application =
-      Traits<Kernel>::Multitask ? 0x400000
+      Traits<Kernel>::Multitask ? 0x800000000
                                 : (RamStart + Traits<Memory>::Size / 2);
 
   static constexpr unsigned long MMIO = 0x00000000;

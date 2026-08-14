@@ -1,6 +1,7 @@
 #pragma once
 
 #include <BootInformation.hpp>
+#include <Process.hpp>
 #include <Thread.hpp>
 #include <Traits.hpp>
 #include <libraries/libc/string.h>
@@ -41,7 +42,7 @@ public:
     assert(!__pmm.overlaps(BootInformation::kernel()));
   }
 
-  static void load(Elf_Ehdr *header) {
+  static void direct(Elf_Ehdr *header) {
     Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(image() + header->e_phoff);
     for (size_t i = 0; i < header->e_phnum; ++i) {
       Elf_Phdr &phdr = list[i];
@@ -61,16 +62,64 @@ public:
     }
   }
 
+  static void indirect(Process *process) {
+    Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
+    Elf_Phdr *list = reinterpret_cast<Elf_Phdr *>(image() + header->e_phoff);
+
+    for (size_t i = 0; i < header->e_phnum; ++i) {
+      Elf_Phdr &phdr = list[i];
+
+      if (!(phdr.p_type == Elf_Phdr::PT_LOAD))
+        continue;
+
+      if (phdr.p_filesz <= 0)
+        continue;
+
+      size_t pagesize = Traits<Memory>::PageSize;
+      size_t length = phdr.p_memsz;
+      length = (length + pagesize - 1) & ~(pagesize - 1);
+
+      const uint8_t *source = image() + phdr.p_offset;
+      const uint8_t *ua = reinterpret_cast<const uint8_t *>(phdr.p_vaddr);
+      uint8_t *ka = reinterpret_cast<uint8_t *>(Memory::alloc(length));
+      uintptr_t pa = Memory::virt2phys(reinterpret_cast<uintptr_t>(ka));
+
+      memcpy(ka, source, phdr.p_filesz);
+
+      if (phdr.p_memsz > phdr.p_filesz)
+        memset(ka + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+
+      Console::println("MAP: ", ua, " ", ka, " ", (void *)pa, " ", length);
+
+      process->attach(Chunk(ua, length), Chunk(pa, length));
+    }
+  }
+
   static uint8_t *image() {
     return reinterpret_cast<uint8_t *>(BootInformation::kernel().end());
   }
 
   static void init() {
+    TraceIn();
+
+    using Function = Thread::Return (*)(Thread::Argument);
+
     Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
-    load(header);
-    auto main =
-        reinterpret_cast<Thread::Return (*)(Thread::Argument)>(header->e_entry);
-    new Thread(main, 0, Thread::Criterion::NORMAL);
+
+    if constexpr (!Traits<Kernel>::Multitask) {
+      direct(header);
+      auto main = reinterpret_cast<Function>(header->e_entry);
+      new Thread(main, 0, Thread::Criterion::NORMAL);
+    } else {
+      Process *process = new Process();
+      indirect(process);
+      process->activate();
+      auto main = reinterpret_cast<Function>(header->e_entry);
+      new Thread(main, 0, Thread::Criterion::NORMAL);
+      //  indirect(new Process());
+    }
+
+    TraceOut();
   };
 };
 

@@ -12,247 +12,269 @@
 namespace QUARK {
 
 template <typename T, bool ChangeStack> class ContextTemplate {
-  public:
-    ContextTemplate(const Chunk &ksp, const Chunk &usp, auto pc, auto a0, auto a1) {
-        frame_         = reinterpret_cast<ContextFrame *>(ksp.end()) - 1;
-        frame_->pc     = reinterpret_cast<uint64_t>(pc);
-        frame_->a0     = reinterpret_cast<uint64_t>(a0);
-        frame_->a1     = reinterpret_cast<uint64_t>(a1);
-        frame_->ksp    = usp.end();
-        frame_->status = 0;
+public:
+  ContextTemplate(const Chunk &ksp, const Chunk &usp, auto pc, auto a0,
+                  auto a1) {
+    frame_ = reinterpret_cast<ContextFrame *>(ksp.end()) - 1;
+    frame_->pc = reinterpret_cast<uint64_t>(pc);
+    frame_->a0 = reinterpret_cast<uint64_t>(a0);
+    frame_->a1 = reinterpret_cast<uint64_t>(a1);
+    frame_->ksp = usp.end();
+    frame_->status = 0;
+  }
+
+  __attribute__((naked)) static void demote(const Chunk &ksp, const Chunk &usp,
+                                            auto pc, auto ra, auto a0) {
+    asm("csrr t0, %0; sd %1, %2(t0)" ::"i"(T::SCRATCH), "r"(ksp.end()),
+        "i"(__builtin_offsetof(CoreContext, ksp))
+        : "t0");
+    asm("csrw %0, %1" ::"i"(T::STATUS), "r"(T::PP_U | T::PIRQE));
+    asm("csrw %0, %1" ::"i"(T::EPC), "r"(pc));
+    asm("mv ra, %0; mv a0, %1; mv sp, %2" ::"r"(ra), "r"(a0), "r"(usp.end()));
+    T::ret();
+  }
+
+  static void load(ContextTemplate &next) {
+    asm volatile("mv sp, %0; jr %1"
+                 :
+                 : "r"(next.frame_),
+                   "r"(static_cast<void (*)()>(&ContextTemplate::load)));
+  }
+
+  static void epilogue(ContextTemplate &previous, ContextTemplate &next) {
+    previous.fpu_.save(previous.frame_->status);
+
+    csrs<T::STATUS>(FPU::INITIAL);
+    next.fpu_.load(next.frame_->status);
+    csrc<T::STATUS>(FPU::MASK);
+  }
+
+  __attribute__((naked)) static void swtch(ContextTemplate &previous,
+                                           ContextTemplate &next) {
+    save();
+
+    asm("sd sp, 0(%0)" ::"r"(&previous.frame_));
+    asm("mv sp, %0" ::"r"(next.frame_));
+
+    epilogue(previous, next);
+
+    load();
+  }
+
+  __attribute__((naked)) static void load() {
+    if constexpr (ChangeStack) {
+      asm("csrr t0, %0" ::"i"(T::SCRATCH));
+      asm("ld t1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ksp)));
+      asm("sd t1, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
     }
 
-    __attribute__((naked)) static void demote(const Chunk &ksp, const Chunk &usp, auto pc, auto ra, auto a0) {
-        asm("csrr t0, %0; sd %1, %2(t0)" ::"i"(T::SCRATCH), "r"(ksp.end()), "i"(__builtin_offsetof(CoreContext, ksp)) : "t0");
-        asm("csrw %0, %1" ::"i"(T::STATUS), "r"(T::PP_U | T::PIRQE));
-        asm("csrw %0, %1" ::"i"(T::EPC), "r"(pc));
-        asm("mv ra, %0; mv a0, %1; mv sp, %2" ::"r"(ra), "r"(a0), "r"(usp.end()));
-        T::ret();
+    asm("ld t0, %0(sp); csrw %1, t0" ::"i"(
+            __builtin_offsetof(ContextFrame, status)),
+        "i"(T::STATUS));
+
+    asm("ld s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
+    asm("ld s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
+    asm("ld s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
+    asm("ld s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
+    asm("ld s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
+    asm("ld s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
+    asm("ld s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
+    asm("ld s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
+    asm("ld s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
+    asm("ld s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
+    asm("ld s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
+    asm("ld s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
+
+    asm("ld ra,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ra)));
+    asm("ld a0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a0)));
+    asm("ld a1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a1)));
+
+    asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, pc)));
+
+    asm("addi sp, sp, %0" ::"i"(sizeof(ContextFrame)));
+
+    asm("jr t0");
+  }
+
+  __attribute__((always_inline)) static void save() {
+    asm("addi sp, sp, %0" ::"i"(-sizeof(ContextFrame)));
+
+    asm("sd s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
+    asm("sd s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
+    asm("sd s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
+    asm("sd s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
+    asm("sd s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
+    asm("sd s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
+    asm("sd s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
+    asm("sd s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
+    asm("sd s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
+    asm("sd s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
+    asm("sd s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
+    asm("sd s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
+    asm("sd ra,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, pc)));
+
+    asm("csrr t0, %0" ::"i"(T::STATUS));
+    asm("or   t0, t0, %0" ::"r"(T::PP_SELF));
+    asm("and  t0, t0, %0" ::"r"(~T::PIRQE));
+    asm("sd   t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, status)));
+
+    if constexpr (ChangeStack) {
+      asm("csrr t0, %0" ::"i"(T::SCRATCH));
+      asm("ld t1, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
+      asm("sd t1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ksp)));
+    }
+  }
+
+  __attribute__((always_inline)) static inline ContextFrame *push() {
+    if constexpr (ChangeStack) {
+      asm("csrrw t0, %0, t0" ::"i"(T::SCRATCH));
+      asm("sd a0, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch0)));
+      asm("sd sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch1)));
+      asm("csrr a0, %0" ::"i"(T::STATUS));
+      asm("li sp, %0" ::"i"(T::PP));
+      asm("and a0, a0, sp" ::: "a0");
+      asm("li sp, %0" ::"i"(T::PP_SELF));
+      asm("beq a0, sp, 1f");
+      asm("ld sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
+      asm("j 2f");
+      asm("1:");
+      asm("ld sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch1)));
+      asm("2:");
+      asm("mv a0, t0");
+      asm("csrrw t0, %0, t0" ::"i"(T::SCRATCH));
     }
 
-    static void load(ContextTemplate &next) { asm volatile("mv sp, %0; jr %1" : : "r"(next.frame_), "r"(static_cast<void (*)()>(&ContextTemplate::load))); }
+    asm("addi sp, sp, %0" ::"i"(-sizeof(ContextFrame)));
 
-    static void epilogue(ContextTemplate &previous, ContextTemplate &next) {
-        previous.fpu_.save(previous.frame_->status);
+    asm("sd ra, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, ra)));
+    asm("sd gp, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, gp)));
+    asm("sd tp, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, tp)));
+    asm("sd t0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t0)));
+    asm("sd t1, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t1)));
+    asm("sd t2, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t2)));
+    asm("sd t3, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t3)));
+    asm("sd t4, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t4)));
+    asm("sd t5, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t5)));
+    asm("sd t6, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t6)));
 
-        csrs<T::STATUS>(FPU::INITIAL);
-        next.fpu_.load(next.frame_->status);
-        csrc<T::STATUS>(FPU::MASK);
+    if constexpr (ChangeStack) {
+      asm("ld t0, %0(a0)" : : "i"(__builtin_offsetof(CoreContext, scratch0)));
+      asm("sd t0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a0)));
+      asm("ld t0, %0(a0)" : : "i"(__builtin_offsetof(CoreContext, scratch1)));
+      asm("sd t0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, sp)));
+    } else {
+      asm("sd a0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a0)));
     }
 
-    __attribute__((naked)) static void swtch(ContextTemplate &previous, ContextTemplate &next) {
-        save();
+    asm("sd a1, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a1)));
+    asm("sd a2, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a2)));
+    asm("sd a3, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a3)));
+    asm("sd a4, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a4)));
+    asm("sd a5, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a5)));
+    asm("sd a6, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a6)));
+    asm("sd a7, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a7)));
 
-        asm("sd sp, 0(%0)" ::"r"(&previous.frame_));
-        asm("mv sp, %0" ::"r"(next.frame_));
+    asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::CAUSE),
+        "i"(__builtin_offsetof(ContextFrame, cause)));
+    asm("blt t0, zero, 1f");
+    asm("sd s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
+    asm("sd s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
+    asm("sd s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
+    asm("sd s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
+    asm("sd s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
+    asm("sd s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
+    asm("sd s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
+    asm("sd s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
+    asm("sd s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
+    asm("sd s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
+    asm("sd s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
+    asm("sd s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
+    asm("1:");
 
-        epilogue(previous, next);
+    asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::STATUS),
+        "i"(__builtin_offsetof(ContextFrame, status)));
+    asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::EPC),
+        "i"(__builtin_offsetof(ContextFrame, pc)));
+    asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::TVAL),
+        "i"(__builtin_offsetof(ContextFrame, value)));
 
-        load();
+    register ContextFrame *sp asm("sp");
+    return sp;
+  }
+
+  __attribute__((always_inline)) static void pop() {
+    asm("ld t0, %0(sp); csrw %1, t0" ::"i"(
+            __builtin_offsetof(ContextFrame, status)),
+        "i"(T::STATUS));
+    asm("ld t0, %0(sp); csrw %1, t0" ::"i"(
+            __builtin_offsetof(ContextFrame, pc)),
+        "i"(T::EPC));
+
+    asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, cause)));
+    asm("blt t0, zero, 1f");
+    asm("ld s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
+    asm("ld s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
+    asm("ld s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
+    asm("ld s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
+    asm("ld s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
+    asm("ld s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
+    asm("ld s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
+    asm("ld s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
+    asm("ld s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
+    asm("ld s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
+    asm("ld s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
+    asm("ld s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
+    asm("1:");
+
+    asm("ld ra, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ra)));
+    asm("ld gp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, gp)));
+    asm("ld tp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, tp)));
+    asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t0)));
+    asm("ld t1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t1)));
+    asm("ld t2, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t2)));
+    asm("ld t3, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t3)));
+    asm("ld t4, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t4)));
+    asm("ld t5, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t5)));
+    asm("ld t6, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t6)));
+    asm("ld a0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a0)));
+    asm("ld a1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a1)));
+    asm("ld a2, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a2)));
+    asm("ld a3, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a3)));
+    asm("ld a4, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a4)));
+    asm("ld a5, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a5)));
+    asm("ld a6, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a6)));
+    asm("ld a7, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a7)));
+
+    if constexpr (ChangeStack) {
+      asm("ld sp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, sp)));
+    } else {
+      asm("addi sp, sp, %0" ::"i"(sizeof(ContextFrame)));
     }
 
-    __attribute__((naked)) static void load() {
-        if constexpr (ChangeStack) {
-            asm("csrr t0, %0" ::"i"(T::SCRATCH));
-            asm("ld t1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ksp)));
-            asm("sd t1, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
-        }
+    T::ret();
+  }
 
-        asm("ld t0, %0(sp); csrw %1, t0" ::"i"(__builtin_offsetof(ContextFrame, status)), "i"(T::STATUS));
-
-        asm("ld s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
-        asm("ld s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
-        asm("ld s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
-        asm("ld s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
-        asm("ld s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
-        asm("ld s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
-        asm("ld s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
-        asm("ld s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
-        asm("ld s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
-        asm("ld s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
-        asm("ld s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
-        asm("ld s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
-
-        asm("ld ra,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ra)));
-        asm("ld a0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a0)));
-        asm("ld a1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a1)));
-
-        asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, pc)));
-
-        asm("addi sp, sp, %0" ::"i"(sizeof(ContextFrame)));
-
-        asm("jr t0");
-    }
-
-    __attribute__((always_inline)) static void save() {
-        asm("addi sp, sp, %0" ::"i"(-sizeof(ContextFrame)));
-
-        asm("sd s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
-        asm("sd s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
-        asm("sd s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
-        asm("sd s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
-        asm("sd s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
-        asm("sd s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
-        asm("sd s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
-        asm("sd s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
-        asm("sd s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
-        asm("sd s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
-        asm("sd s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
-        asm("sd s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
-        asm("sd ra,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, pc)));
-
-        asm("csrr t0, %0" ::"i"(T::STATUS));
-        asm("or   t0, t0, %0" ::"r"(T::PP_SELF));
-        asm("and  t0, t0, %0" ::"r"(~T::PIRQE));
-        asm("sd   t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, status)));
-
-        if constexpr (ChangeStack) {
-            asm("csrr t0, %0" ::"i"(T::SCRATCH));
-            asm("ld t1, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
-            asm("sd t1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ksp)));
-        }
-    }
-
-    __attribute__((always_inline)) static inline ContextFrame *push() {
-        if constexpr (ChangeStack) {
-            asm("csrrw t0, %0, t0" ::"i"(T::SCRATCH));
-            asm("sd a0, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch0)));
-            asm("sd sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch1)));
-            asm("csrr a0, %0" ::"i"(T::STATUS));
-            asm("li sp, %0" ::"i"(T::PP));
-            asm("and a0, a0, sp" ::: "a0");
-            asm("li sp, %0" ::"i"(T::PP_SELF));
-            asm("beq a0, sp, 1f");
-            asm("ld sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, ksp)));
-            asm("j 2f");
-            asm("1:");
-            asm("ld sp, %0(t0)" ::"i"(__builtin_offsetof(CoreContext, scratch1)));
-            asm("2:");
-            asm("mv a0, t0");
-            asm("csrrw t0, %0, t0" ::"i"(T::SCRATCH));
-        }
-
-        asm("addi sp, sp, %0" ::"i"(-sizeof(ContextFrame)));
-
-        asm("sd ra, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, ra)));
-        asm("sd gp, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, gp)));
-        asm("sd tp, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, tp)));
-        asm("sd t0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t0)));
-        asm("sd t1, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t1)));
-        asm("sd t2, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t2)));
-        asm("sd t3, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t3)));
-        asm("sd t4, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t4)));
-        asm("sd t5, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t5)));
-        asm("sd t6, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, t6)));
-
-        if constexpr (ChangeStack) {
-            asm("ld t0, %0(a0)" : : "i"(__builtin_offsetof(CoreContext, scratch0)));
-            asm("sd t0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a0)));
-            asm("ld t0, %0(a0)" : : "i"(__builtin_offsetof(CoreContext, scratch1)));
-            asm("sd t0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, sp)));
-        } else {
-            asm("sd a0, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a0)));
-        }
-
-        asm("sd a1, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a1)));
-        asm("sd a2, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a2)));
-        asm("sd a3, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a3)));
-        asm("sd a4, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a4)));
-        asm("sd a5, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a5)));
-        asm("sd a6, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a6)));
-        asm("sd a7, %0(sp)" : : "i"(__builtin_offsetof(ContextFrame, a7)));
-
-        asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::CAUSE), "i"(__builtin_offsetof(ContextFrame, cause)));
-        asm("blt t0, zero, 1f");
-        asm("sd s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
-        asm("sd s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
-        asm("sd s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
-        asm("sd s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
-        asm("sd s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
-        asm("sd s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
-        asm("sd s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
-        asm("sd s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
-        asm("sd s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
-        asm("sd s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
-        asm("sd s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
-        asm("sd s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
-        asm("1:");
-
-        asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::STATUS), "i"(__builtin_offsetof(ContextFrame, status)));
-        asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::EPC), "i"(__builtin_offsetof(ContextFrame, pc)));
-        asm("csrr t0, %0; sd t0, %1(sp)" ::"i"(T::TVAL), "i"(__builtin_offsetof(ContextFrame, value)));
-
-        register ContextFrame *sp asm("sp");
-        return sp;
-    }
-
-    __attribute__((always_inline)) static void pop() {
-        asm("ld t0, %0(sp); csrw %1, t0" ::"i"(__builtin_offsetof(ContextFrame, status)), "i"(T::STATUS));
-        asm("ld t0, %0(sp); csrw %1, t0" ::"i"(__builtin_offsetof(ContextFrame, pc)), "i"(T::EPC));
-
-        asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, cause)));
-        asm("blt t0, zero, 1f");
-        asm("ld s0,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s0)));
-        asm("ld s1,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s1)));
-        asm("ld s2,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s2)));
-        asm("ld s3,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s3)));
-        asm("ld s4,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s4)));
-        asm("ld s5,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s5)));
-        asm("ld s6,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s6)));
-        asm("ld s7,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s7)));
-        asm("ld s8,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s8)));
-        asm("ld s9,  %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s9)));
-        asm("ld s10, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s10)));
-        asm("ld s11, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, s11)));
-        asm("1:");
-
-        asm("ld ra, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, ra)));
-        asm("ld gp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, gp)));
-        asm("ld tp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, tp)));
-        asm("ld t0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t0)));
-        asm("ld t1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t1)));
-        asm("ld t2, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t2)));
-        asm("ld t3, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t3)));
-        asm("ld t4, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t4)));
-        asm("ld t5, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t5)));
-        asm("ld t6, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, t6)));
-        asm("ld a0, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a0)));
-        asm("ld a1, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a1)));
-        asm("ld a2, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a2)));
-        asm("ld a3, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a3)));
-        asm("ld a4, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a4)));
-        asm("ld a5, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a5)));
-        asm("ld a6, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a6)));
-        asm("ld a7, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, a7)));
-
-        if constexpr (ChangeStack) {
-            asm("ld sp, %0(sp)" ::"i"(__builtin_offsetof(ContextFrame, sp)));
-        } else {
-            asm("addi sp, sp, %0" ::"i"(sizeof(ContextFrame)));
-        }
-
-        T::ret();
-    }
-
-  protected:
-    ContextFrame *frame_;
-    FPU fpu_;
+protected:
+  ContextFrame *frame_;
+  FPU fpu_;
 };
 
-template <bool ChangeStack = Traits<Thread>::UserStack> using MachineContext = ContextTemplate<MachineMode, ChangeStack>;
+template <bool ChangeStack = Traits<Thread>::UserStack>
+using MachineContext = ContextTemplate<MachineMode, ChangeStack>;
 
-template <bool ChangeStack = Traits<Thread>::UserStack> using SupervisorContext = ContextTemplate<SupervisorMode, ChangeStack>;
+template <bool ChangeStack = Traits<Thread>::UserStack>
+using SupervisorContext = ContextTemplate<SupervisorMode, ChangeStack>;
 
 class VirtualCPU;
 class HypervisorContext : public MachineContext<true> {
-  public:
-    using Father = MachineContext<true>;
-    using Father::Father;
+public:
+  using Father = MachineContext<true>;
+  using Father::Father;
 
-    static void swtch(HypervisorContext &, HypervisorContext &);
+  static void swtch(HypervisorContext &, HypervisorContext &);
 
-  private:
-    VirtualCPU *cpu_ = nullptr;
+private:
+  VirtualCPU *cpu_ = nullptr;
 };
 
 } // namespace QUARK

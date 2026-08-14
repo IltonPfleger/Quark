@@ -24,27 +24,27 @@ class Deferred;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-    static constexpr bool Multitask = false;
+  static constexpr bool Multitask = false;
 };
 
 template <> struct Traits<Timer> {
-    static constexpr Hz Frequency = 10'000;
-    static constexpr bool Enable  = true;
+  static constexpr Hz Frequency = 10'000;
+  static constexpr bool Enable = true;
 };
 
 template <> struct Traits<Alarm> {
-    static constexpr Hz Frequency = Traits<Timer>::Frequency;
-    static constexpr bool Enable  = true;
+  static constexpr Hz Frequency = Traits<Timer>::Frequency;
+  static constexpr bool Enable = true;
 };
 
 template <> struct Traits<Debug> {
-    static constexpr bool Enable = true;
-    static constexpr bool Error  = Enable && true;
-    static constexpr bool Trace  = Enable && true;
+  static constexpr bool Enable = true;
+  static constexpr bool Error = Enable && true;
+  static constexpr bool Trace = Enable && true;
 };
 
 template <> struct Traits<Scheduler> {
-    typedef FixedCore Criterion;
+  typedef FixedCore Criterion;
 };
 
 } // namespace QUARK
@@ -55,10 +55,12 @@ template <> struct Traits<Scheduler> {
 namespace QUARK {
 
 template <> struct Traits<Thread> {
-    static constexpr Hz Frequency           = Traits<Timer>::Frequency;
-    static constexpr bool UserStack         = Traits<Payload>::Virtualization || Traits<Payload>::Unprivileged;
-    static constexpr size_t KernelStackSize = Traits<Memory>::StackSize;
-    static constexpr size_t UserStackSize   = UserStack ? Traits<Memory>::StackSize : 0;
+  static constexpr Hz Frequency = Traits<Timer>::Frequency;
+  static constexpr bool UserStack =
+      Traits<Payload>::Virtualization || Traits<Payload>::Unprivileged;
+  static constexpr size_t KernelStackSize = Traits<Memory>::StackSize;
+  static constexpr size_t UserStackSize =
+      UserStack ? Traits<Memory>::StackSize : 0;
 };
 
 } // namespace QUARK

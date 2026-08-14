@@ -4,16 +4,26 @@
 namespace QUARK {
 
 class Process {
-  public:
-    Process(const Chunk &&rw, const Chunk &&rx) {
-        (void)rw;
-        (void)rx;
-        // pt_.map(rw.data(), 0, rw.length(), MMU::PageTable::UserRW);
-        // pt_.map(rx.data(), 0, rx.length(), MMU::PageTable::UserRX);
-    }
+public:
+  Process() : pt_(MMU::PageTable::clone()) {};
+  ~Process() {}
 
-  private:
-    MMU::PageTable pt_;
+  void attach(const Chunk &va, const Chunk &pa) {
+    assert(va.length() == pa.length(), va.length(), " != ", pa.length());
+    size_t length = va.length();
+    pt_->map(va.start(), pa.start(), length, MMU::PageTable::UserRWX);
+  }
+
+  Chunk attach(const Chunk &pa) {
+    uintptr_t va = pt_->find(pa.length());
+    pt_->map(va, pa.start(), pa.length(), MMU::PageTable::UserRWX);
+    return Chunk(va, pa.length());
+  }
+
+  void activate() { pt_->activate(); }
+
+private:
+  MMU::PageTable *pt_;
 };
 
 } // namespace QUARK
