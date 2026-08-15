@@ -20,6 +20,7 @@ class IPv4;
 class Scheduler;
 class Monitor;
 class Deferred;
+class Process;
 
 template <typename T> struct Traits;
 

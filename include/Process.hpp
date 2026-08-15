@@ -1,6 +1,10 @@
 #ifndef __QUARK_PROCESS__
 #define __QUARK_PROCESS__
 
+#include <Thread.hpp>
+#include <architecture/MMU.hpp>
+#include <memory/Chunk.hpp>
+
 namespace QUARK {
 
 class Process {

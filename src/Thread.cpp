@@ -86,7 +86,7 @@ void Thread::epilogue() {
   }
 }
 
-Thread::Thread(Function f, Argument a, Criterion c, Domain d)
+Thread::Thread(Function f, Argument a, Criterion c, Domain d, Process *p)
     : stack_(
           Memory::alloc(d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
           d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
@@ -96,11 +96,18 @@ Thread::Thread(Function f, Argument a, Criterion c, Domain d)
       context_(kstack_, stack_, entry, f, a), domain_(d) {
   TraceIn(this);
 
-  if constexpr (Traits<Kernel>::Multitask) {
-  }
+  [&](auto *self) {
+    if constexpr (Traits<Kernel>::Multitask) {
+      self->owner_ = p;
+      if (self->owner_) {
+        uintptr_t spa = Memory::virt2phys(self->stack_.start());
+        self->stack_ = self->owner_->attach(Chunk(spa, self->stack_.length()));
+      }
+    }
+  }(this);
 
   {
-    CPU::IRQ::Guard irqg;
+    CPU::IRQ::Guard irq;
     CPU::Atomic::finc(s_count);
     s_scheduler.insert(&node_);
   }
@@ -150,7 +157,7 @@ void Thread::run() {
 void Thread::yield() { Thread::reschedule(); }
 
 void Thread::reschedule() {
-  CPU::IRQ::Guard irqg;
+  CPU::IRQ::Guard irq;
 
   Thread *previous = running();
 
@@ -167,7 +174,7 @@ void Thread::sleep(List *list, Spin *lock) {
   list->insert(&previous->node_);
 
   {
-    CPU::IRQ::Guard irqg;
+    CPU::IRQ::Guard irq;
     previous->state_ = State::WAITING;
     Node *next = s_scheduler.remove();
     dispatch(previous, next->value, lock);
@@ -181,7 +188,7 @@ void Thread::wakeup(List *list) {
   node->value->state_ = State::READY;
 
   {
-    CPU::IRQ::Guard irqg;
+    CPU::IRQ::Guard irq;
     s_scheduler.insert(node);
   }
 }

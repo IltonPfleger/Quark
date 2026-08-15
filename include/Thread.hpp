@@ -28,7 +28,7 @@ public:
   Thread &operator=(Thread &&) = delete;
   Thread &operator=(const Thread &) = delete;
   Thread(Function, Argument = 0, Criterion = Criterion::NORMAL,
-         Domain = Domain::USER);
+         Domain = Domain::USER, Process * = nullptr);
   ~Thread();
 
   static void init();
@@ -55,6 +55,7 @@ private:
   volatile State state_;
   Context context_;
   Domain domain_;
+  Meta::IF<Traits<Kernel>::Multitask, Process *, Meta::Empty>::Result owner_;
 
 private:
   static constinit inline Scheduler s_scheduler;

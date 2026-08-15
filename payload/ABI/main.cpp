@@ -8,54 +8,55 @@
 
 using namespace QUARK::ABI;
 
-static constexpr int Number = 100;
-static constexpr int Iterations = 100;
-
-Semaphore *forks[Number];
-Semaphore *console;
-Semaphore *finish;
-// Thread *threads[Number];
+// static constexpr int Number = 100;
+// static constexpr int Iterations = 100;
 //
-//  void *philosopher(void *p) {
-//    unsigned int id = (unsigned int)(unsigned long)p;
+// Semaphore *forks[Number];
+// Semaphore *console;
+// Semaphore *finish;
+//  Thread *threads[Number];
 //
-//    int iterations = Iterations;
-//    int left = id;
-//    int right = (id + 1) % Number;
+//   void *philosopher(void *p) {
+//     unsigned int id = (unsigned int)(unsigned long)p;
 //
-//    while (iterations--) {
-//      console->p();
-//      QUARK::Console::println("Filósofo ", id, " está pensando! <",
-//      iterations,
-//                              ">");
-//      console->v();
+//     int iterations = Iterations;
+//     int left = id;
+//     int right = (id + 1) % Number;
 //
-//      if (id == Number - 1) {
-//        forks[right]->p();
-//        forks[left]->p();
-//      } else {
-//        forks[left]->p();
-//        forks[right]->p();
-//      }
+//     while (iterations--) {
+//       console->p();
+//       QUARK::Console::println("Filósofo ", id, " está pensando! <",
+//       iterations,
+//                               ">");
+//       console->v();
 //
-//      console->p();
-//      QUARK::Console::println("Filósofo ", id, " está comendo! <", iterations,
-//                              ">");
-//      console->v();
+//       if (id == Number - 1) {
+//         forks[right]->p();
+//         forks[left]->p();
+//       } else {
+//         forks[left]->p();
+//         forks[right]->p();
+//       }
 //
-//      forks[right]->v();
-//      forks[left]->v();
-//    }
+//       console->p();
+//       QUARK::Console::println("Filósofo ", id, " está comendo! <",
+//       iterations,
+//                               ">");
+//       console->v();
 //
-//    return 0;
-//  }
+//       forks[right]->v();
+//       forks[left]->v();
+//     }
+//
+//     return 0;
+//   }
 //
 int main(int, char *[]) {
-  console = new Semaphore(0);
-  finish = new Semaphore(0);
+  // console = new Semaphore(0);
+  //  finish = new Semaphore(0);
 
-  for (long i = 0; i < Number; i++)
-    forks[i] = new Semaphore(1);
+  // for (long i = 0; i < Number; i++)
+  //   forks[i] = new Semaphore(1);
 
   //
   //   for (long i = 0; i < Number; i++)
@@ -65,4 +66,5 @@ int main(int, char *[]) {
   //
   //   for (long i = 0; i < Number; i++)
   //     threads[i]->join();
+  return 0;
 }
