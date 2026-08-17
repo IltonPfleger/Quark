@@ -19,10 +19,13 @@ private:
 
 public:
   class Work : public Element {
+    friend Deferred;
+
   public:
     Work(void (*function)(void *), void *argument)
         : Node(this), function_(function), argument_(argument), pending_(0) {}
 
+  private:
     void increment(List &list, Semaphore &semaphore) {
       assert(pending_ >= 0);
 
@@ -75,6 +78,8 @@ public:
   static bool schedule(Work &work) {
     for (size_t i = 0; i < Threads; i++) {
       Deferred *manager = managers_[id()];
+      if (!manager)
+        continue;
       if (manager->enqueue(work))
         return true;
     }
@@ -94,8 +99,9 @@ private:
   }
 
   bool enqueue(Work &work) {
-    if (!running_)
+    if (!running_ || ussing_ == 0)
       return false;
+
     work.increment(workers_, pending_);
     return true;
   }
@@ -132,8 +138,8 @@ private:
   static constexpr size_t Threads = Traits<Deferred>::Threads;
 
 private:
-  static inline Atomic<size_t> next_ = 0;
-  static inline Atomic<size_t> ussing_ = 0;
+  static constinit inline Atomic<size_t> next_ = 0;
+  static constinit inline Atomic<size_t> ussing_ = 0;
   static inline Meta::Array<Threads, Deferred *> managers_;
 };
 

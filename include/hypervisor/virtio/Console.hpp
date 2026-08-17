@@ -12,96 +12,103 @@
 
 namespace QUARK::virtio {
 
-template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ> class Console : public Handler, public Observer<const char *, size_t> {
-    friend Handler;
+template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ>
+class Console : public Handler, public Observer<const char *, size_t> {
+  friend Handler;
 
-    static_assert(Traits<Deferred>::Threads > 0);
+  static_assert(Traits<Deferred>::Threads > 0);
 
-  public:
-    Console(VirtualMachine &owner)
-        : Handler(3, 1 << 27, N),
-          device_(*DEVICE::instance()),
-          owner_(owner),
-          deferred_(worker, this) {
-        device_.attach(this);
+public:
+  Console(VirtualMachine &owner)
+      : Handler(3, 1 << 27, N), device_(*DEVICE::instance()), owner_(owner),
+        deferred_(worker, this) {
+    device_.attach(this);
+    Deferred::init();
+  }
+
+  ~Console() {
+    device_.detach(this);
+    Deferred::destroy();
+  }
+
+  uint32_t configuration(uint32_t) { return 0; }
+
+  void notify(uint32_t source) {
+    if (source == 1)
+      Deferred::schedule(deferred_);
+  }
+
+  static void worker(void *pointer) {
+    auto *self = reinterpret_cast<Console *>(pointer);
+    while (self->tx_.available()) {
+      int head = self->tx_.alloc();
+      size_t length = self->process(head);
+      self->tx_.free(head, length);
+    }
+  }
+
+  void update(const char *buffer, size_t size) override {
+    if (!rx_.available())
+      return;
+
+    int id = rx_.alloc();
+    auto *descriptor = rx_.descriptor(id);
+    auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
+
+    descriptor->length = size;
+    descriptor->flags = 0;
+
+    memcpy(destination, buffer, size);
+
+    rx_.free(id, size);
+
+    if (rx_.notifiable()) {
+      this->interrupt();
+      owner_.interrupt(IRQ);
+    }
+  }
+
+  size_t process(int head) {
+    size_t total = 0;
+    size_t count = 0;
+    int current = head;
+
+    RingDescriptor *descriptor = tx_.descriptor(current);
+
+    total += print(descriptor);
+
+    while (descriptor->flags & VRING_DESC_F_NEXT) {
+      assert(count < N);
+      current = descriptor->next;
+      descriptor = tx_.descriptor(current);
+      total += print(descriptor);
+      count++;
     }
 
-    uint32_t configuration(uint32_t) { return 0; }
+    return total;
+  }
 
-    void notify(uint32_t source) {
-        if (source == 1) Deferred::schedule(deferred_);
-    }
+  size_t print(RingDescriptor *descriptor) {
+    char *data = reinterpret_cast<char *>(descriptor->address);
+    uint32_t length = descriptor->length;
+    for (uint32_t j = 0; j < descriptor->length; j++)
+      device_.write(data[j]);
+    return length;
+  }
 
-    static void worker(void *pointer) {
-        auto *self = reinterpret_cast<Console *>(pointer);
-        while (self->tx_.available()) {
-            int head      = self->tx_.alloc();
-            size_t length = self->process(head);
-            self->tx_.free(head, length);
-        }
-    }
+public:
+  static constexpr uintptr_t Address = ADDRESS;
+  static constexpr size_t N = 32;
 
-    void update(const char *buffer, size_t size) override {
-        if (!rx_.available()) return;
+private:
+  DEVICE &device_;
+  VirtualMachine &owner_;
 
-        int id            = rx_.alloc();
-        auto *descriptor  = rx_.descriptor(id);
-        auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
+  Deferred::Work deferred_;
 
-        descriptor->length = size;
-        descriptor->flags  = 0;
-
-        memcpy(destination, buffer, size);
-
-        rx_.free(id, size);
-
-        if (rx_.notifiable()) {
-            this->interrupt();
-            owner_.interrupt(IRQ);
-        }
-    }
-
-    size_t process(int head) {
-        size_t total = 0;
-        size_t count = 0;
-        int current  = head;
-
-        RingDescriptor *descriptor = tx_.descriptor(current);
-
-        total += print(descriptor);
-
-        while (descriptor->flags & VRING_DESC_F_NEXT) {
-            assert(count < N);
-            current    = descriptor->next;
-            descriptor = tx_.descriptor(current);
-            total += print(descriptor);
-            count++;
-        }
-
-        return total;
-    }
-
-    size_t print(RingDescriptor *descriptor) {
-        char *data      = reinterpret_cast<char *>(descriptor->address);
-        uint32_t length = descriptor->length;
-        for (uint32_t j = 0; j < descriptor->length; j++)
-            device_.write(data[j]);
-        return length;
-    }
-
-  public:
-    static constexpr uintptr_t Address = ADDRESS;
-    static constexpr size_t N          = 32;
-
-  private:
-    DEVICE &device_;
-    VirtualMachine &owner_;
-
-    Deferred::Work deferred_;
-
-    Queue tx_;
-    Queue rx_;
-    Queue *queues_[2] = {&rx_, &tx_};
+  Queue tx_;
+  Queue rx_;
+  Queue *queues_[2] = {&rx_, &tx_};
 };
 
 } // namespace QUARK::virtio
