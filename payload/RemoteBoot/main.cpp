@@ -4,75 +4,83 @@
 #include <machine/Machine.hpp>
 #include <network/link/LinkIPv4ToEthernet.hpp>
 #include <network/protocols/TFTP.hpp>
+#include <utility/Deferred.hpp>
 
 using namespace QUARK;
 
-static constexpr size_t k_kb               = 1024;
-static constexpr size_t k_mb               = 1024 * k_kb;
-static constexpr size_t k_size             = 128 * k_mb;
-static volatile constinit size_t g_counter = 0;
-static size_t g_size;
-static uint8_t g_buffer[k_size];
+static constexpr size_t KB = 1024;
+static constexpr size_t MB = 1024 * KB;
+static constexpr size_t BufferSize = 128 * MB;
 
-class Receiver {
-  public:
-    Receiver(TFTP &tftp) {
-        IPv4::Address server(192, 168, 1, 100);
-        int result = -1;
-        while (result < 0) {
-            result = tftp.request(server, "QUARK-OS-Remote-Boot-Image", g_buffer, k_size);
-        }
-        g_size = result;
+constinit volatile size_t created = 0;
+constinit volatile size_t counter = 0;
+size_t size;
+uint8_t buffer[BufferSize];
+uint8_t stack[1024];
+
+void receive(TFTP &tftp) {
+  IPv4::Address server(192, 168, 1, 100);
+  int result = -1;
+  int retries = 0;
+  while (result < 0) {
+    if (retries++ > 0) {
+      Console::println("Failed To Retrieve The Image...");
     }
-};
-
-static void barrier() {
-    static constinit volatile bool gsense = true;
-    static constinit volatile int ready   = Traits<QUARK::CPU>::Active;
-
-    bool sense   = !__atomic_load_n(&gsense, __ATOMIC_ACQUIRE);
-    int position = __atomic_fetch_sub(&ready, 1, __ATOMIC_ACQ_REL);
-
-    if (position == 1) {
-        __atomic_store_n(&ready, Traits<QUARK::CPU>::Active, __ATOMIC_RELEASE);
-        __atomic_store_n(&gsense, sense, __ATOMIC_RELEASE);
-    } else {
-        while (__atomic_load_n(&gsense, __ATOMIC_ACQUIRE) != sense) {
-        }
-    }
+    result = tftp.request(server, "Q-U-A-R-K", buffer, BufferSize);
+  }
+  size = result;
 }
 
-__attribute__((naked)) static void jumper() {
-    barrier();
-    for (size_t i = 0; i < g_size; i++)
-        reinterpret_cast<uint8_t *>(Traits<MemoryMap>::BootStart)[i] = g_buffer[i];
-    barrier();
-    reinterpret_cast<void (*)()>(Traits<MemoryMap>::BootStart)();
-}
+void *worker(void *) {
+  static constexpr uintptr_t Address = Traits<MemoryMap>::Boot;
 
-static void *worker(void *) {
-    CPU::IRQ::disable();
+  while (created != Traits<CPU>::Active)
+    ;
 
-    CPU::Atomic::finc(g_counter);
+  CPU::IRQ::disable();
 
-    while (g_counter != Traits<CPU>::Active)
-        Thread::yield();
+  size_t local = __atomic_fetch_add(&counter, 1, __ATOMIC_SEQ_CST);
 
-    jumper();
-    return nullptr;
+  while (counter != Traits<CPU>::Active)
+    ;
+
+  if (local == Traits<CPU>::Active - 1) {
+    for (size_t i = 0; i < size; i++)
+      reinterpret_cast<uint8_t *>(Address)[i] = buffer[i];
+  }
+
+  __atomic_fetch_sub(&created, 1, __ATOMIC_SEQ_CST);
+
+  while (created != 0)
+    ;
+
+  reinterpret_cast<void (*)()>(Address)();
+
+  return nullptr;
 }
 
 int main() {
-    typedef Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result Device;
+  typedef Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result Device;
 
-    auto *link = new QUARK::LinkIPv4ToEthernet(*Device::instance());
-    auto *ipv4 = new QUARK::IPv4(IPv4::Address(192, 168, 1, 101), *link);
-    auto *udp  = new QUARK::UDP(*ipv4);
-    auto *tftp = new QUARK::TFTP(*udp);
+  Device::init();
 
-    Receiver receiver(*tftp);
+  auto *link = new LinkIPv4ToEthernet(*Device::instance());
+  auto *ipv4 = new IPv4(IPv4::Address(192, 168, 1, 101), *link);
+  auto *udp = new UDP(*ipv4);
+  auto *tftp = new TFTP(*udp);
 
-    for (size_t i = 0; i < Traits<CPU>::Active; i++) {
-        new Thread(worker, nullptr, Thread::Criterion(Thread::Criterion::NORMAL, i));
-    }
+  receive(*tftp);
+
+  // delete link;
+  // delete ipv4;
+  // delete udp;
+  // delete tftp;
+
+  Device::destroy();
+
+  for (size_t i = 0; i < Traits<CPU>::Active; i++) {
+    Thread::Criterion critetion(Thread::Criterion::NORMAL, i);
+    new Thread(worker, nullptr, critetion);
+    created = created + 1;
+  }
 }

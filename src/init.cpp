@@ -15,7 +15,6 @@ extern "C" void init() {
     Memory::init();
     Thread::init();
     Payload::init();
-    Deferred::init();
   }
 
   if constexpr (Traits<Timer>::Enable)

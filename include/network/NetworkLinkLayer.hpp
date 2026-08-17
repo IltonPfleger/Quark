@@ -8,11 +8,11 @@
 namespace QUARK {
 
 class NetworkLinkLayer : public Observed<const NetworkBuffer *> {
-  public:
-    virtual ~NetworkLinkLayer()                               = default;
-    virtual void bind(const NetworkAddress &)                 = 0;
-    virtual NetworkBuffer *alloc(size_t)                      = 0;
-    virtual int send(const NetworkAddress &, NetworkBuffer *) = 0;
+public:
+  virtual ~NetworkLinkLayer() = default;
+  virtual void address(const NetworkAddress &) = 0;
+  virtual NetworkBuffer *alloc(size_t) = 0;
+  virtual int send(const NetworkAddress &, NetworkBuffer *) = 0;
 };
 
 } // namespace QUARK

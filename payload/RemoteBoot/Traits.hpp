@@ -1,14 +1,15 @@
 #pragma once
 
-#include <Traits.hpp>
-
 namespace QUARK {
 
-class Payload;
 template <> struct Traits<Payload> {
-    static constexpr size_t Size           = 1024 * 128;
-    static constexpr unsigned long Address = Traits<MemoryMap>::RamStart + 512 * 1024 * 1024;
-    static constexpr bool Virtualized      = false;
+  static constexpr bool Virtualization = false;
+  static constexpr bool Unprivileged = false;
+};
+
+template <> struct Traits<Deferred> {
+  static constexpr bool Enable = true;
+  static constexpr size_t Threads = 1;
 };
 
 } // namespace QUARK

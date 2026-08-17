@@ -46,7 +46,9 @@ public:
 
     static PageTable *clone() {
       PageTable *pt = alloc();
-      *pt = base_;
+
+      Meta::Execute(base_, [&](auto &base) { *pt = base; });
+
       return pt;
     }
 
@@ -263,28 +265,33 @@ public:
 
 public:
   static void prologue() {
-    new (&base_) PageTable();
+    Meta::Execute(base_, [](auto &base) {
+      new (&base) PageTable();
 
-    for (size_t i = 0; i < 256; i++) {
-      uintptr_t va = Traits<MemoryMap>::RamStart - i * Giga;
-      uintptr_t pa = __amm.start() + i * Giga;
-      base_.gigapage(va, pa, PageTable::KernelRWX);
-    }
+      for (size_t i = 0; i < 256; i++) {
+        uintptr_t va = Traits<MemoryMap>::RamStart - i * Giga;
+        uintptr_t pa = __amm.start() + i * Giga;
+        base.gigapage(va, pa, PageTable::KernelRWX);
+      }
 
-    uintptr_t mmio = Traits<MemoryMap>::MMIO;
-    base_.gigapage(mmio, mmio, PageTable::KernelRWX);
-    base_.gigapage(__amm.start(), __amm.start(), PageTable::KernelRWX);
+      uintptr_t mmio = Traits<MemoryMap>::MMIO;
+      base.gigapage(mmio, mmio, PageTable::KernelRWX);
+      base.gigapage(__amm.start(), __amm.start(), PageTable::KernelRWX);
+    });
   }
 
   static void init() { load(reinterpret_cast<uintptr_t>(&base_)); }
 
-  static void epilogue() { base_.ungiga(__amm.start()); }
+  static void epilogue() {
+    Meta::Execute(base_, [](auto &base) { base.ungiga(__amm.start()); });
+  }
 
 private:
+  static constexpr bool Enable = Traits<Kernel>::Multitask;
   static constexpr uintmax_t Mode = 8UL << 60;
   static constexpr size_t Mega = 1024 * 1024;
   static constexpr size_t Giga = Mega * 1024;
-  static inline PageTable base_;
+  static inline Meta::IF<Enable, PageTable, Meta::Empty>::Result base_;
 };
 
 } // namespace QUARK

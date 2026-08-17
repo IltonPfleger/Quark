@@ -7,11 +7,7 @@
 
 namespace QUARK::Meta {
 
-struct Empty {
-  template <typename T> constexpr Empty &operator=(T &&) { return *this; }
-  constexpr explicit operator bool() const { return false; }
-  constexpr Empty *operator->() { return nullptr; }
-};
+struct Empty {};
 
 template <bool B, typename True, typename False> struct IF {
   using Result = True;
@@ -81,9 +77,30 @@ template <typename T> struct Remove<const volatile T> {
   using Result = T;
 };
 
-/* ------------------------------------------------------------------------- */
-/*                              Type Traits                                  */
-/* ------------------------------------------------------------------------- */
+template <typename T> struct Remove<T &> {
+  using Result = T;
+};
+
+template <typename T> struct Remove<T &&> {
+  using Result = T;
+};
+
+template <typename T, typename L> struct Execute {
+  constexpr Execute(T &&t, L &&l) {
+    using Removed = typename Remove<T>::Result;
+    if constexpr (!Same<Removed, Meta::Empty>::Result) {
+      l(t);
+    }
+  }
+};
+
+template <typename T, typename L> Execute(T &&, L &&) -> Execute<T, L>;
+
+/* -------------------------------------------------------------------------
+ */
+/*                              Type Traits */
+/* -------------------------------------------------------------------------
+ */
 
 template <typename T> struct IsInteger {
   static constexpr bool Result = false;
