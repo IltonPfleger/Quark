@@ -45,7 +45,7 @@ public:
 
     dtb(current, size_ - initramfs.length() - kernel.length());
 
-    Console::println("\n *** Linux is at core ", CPU::id(), " ***");
+    Console::println("*** Linux is at core ", CPU::id(), " ***");
 
     (new LinuxMachine(start_, size_, 0))->boot(0, start_, dtb_);
   }
@@ -110,6 +110,7 @@ public:
               name[length++] = temporary[--digits];
             }
           }
+
           name[length] = '\0';
 
           fdt.begin(name);

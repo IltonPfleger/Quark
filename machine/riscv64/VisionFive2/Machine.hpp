@@ -67,9 +67,9 @@ public:
       GPIO::map(GPIO::OutputSignal::GPO_SYS_IOMUX_U0_CAN_CTRL_STB, 47);
     }
 
-    Meta::forEach(Traits<CacheController>::Devices{},
-                  []<typename T>() { T::init(); });
-    Meta::forEach(Traits<UART>::Devices{}, []<typename T>() { T::init(); });
+    auto initializer = []<typename T>() { return T::init(); };
+    Meta::forEach(Traits<CacheController>::Devices{}, initializer);
+    Meta::forEach(Traits<UART>::Devices{}, initializer);
   }
 
   static void shutdown() { CPU::halt(); }

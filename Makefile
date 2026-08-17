@@ -1,10 +1,17 @@
 include Makedefs.mk
 
-KERNEL_SOURCES       := $(shell find src -name '*.cpp' | grep -v '*architecture*' | grep -v '*machine*')
+KERNEL_SOURCES       := $(shell find src -name '*.cpp' | grep -v -E 'architecture|machine|abi')
 KERNEL_SOURCES 	     += $(shell find src/architecture/$(ARCH) -name '*.cpp')
 KERNEL_SOURCES 	     += $(shell find src/machine/$(ARCH)/$(MACHINE) -name '*.cpp')
+
+#ifeq ($(Payload_Unprivileged),true)
+#KERNEL_SOURCES += $(shell find src/abi -name '*.cpp')
+#endif
+
 KERNEL_OBJECTS       := $(patsubst src/%.cpp,$(BUILD)/%.o,$(KERNEL_SOURCES))
+
 KERNEL_DEPENDENCIES  := $(KERNEL_OBJECTS:.o=.d)
+
 PAYLOAD_ELF          := $(BUILD)/$(PAYLOAD).elf
 
 run: $(IMAGE).img

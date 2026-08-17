@@ -10,20 +10,33 @@
 namespace QUARK::sbi {
 
 class Syscall {
-  public:
-    static constexpr unsigned int CODE = 9;
-    static void dispatch(ContextFrame *context) {
-        switch (context->a7) {
-            case Base::EID: Base::handler(context); break;
-            case Time::EID: Time::handler(context); break;
-            case Counter::EID: Counter::handler(context); break;
-            case FWFT::EID: FWFT::handler(context); break;
-            case HSM::EID: HSM::handler(context); break;
-            case RFNC::EID: RFNC::handler(context); break;
-            default: ExceptionHandler::esr(context);
-        }
-        context->pc += 4;
+public:
+  static constexpr unsigned int CODE = 9;
+  static void dispatch(ContextFrame *context) {
+    switch (context->a7) {
+    case Base::EID:
+      Base::handler(context);
+      break;
+    case Time::EID:
+      Time::handler(context);
+      break;
+    case Counter::EID:
+      Counter::handler(context);
+      break;
+    case FWFT::EID:
+      FWFT::handler(context);
+      break;
+    case HSM::EID:
+      HSM::handler(context);
+      break;
+    case RFNC::EID:
+      RFNC::handler(context);
+      break;
+    default:
+      ExceptionHandler::esr(context);
     }
+    context->pc += 4;
+  }
 };
 
 } // namespace QUARK::sbi
