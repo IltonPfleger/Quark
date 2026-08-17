@@ -7,27 +7,27 @@
 namespace QUARK {
 
 class Alarm {
-    using Node   = collections::Node<Alarm *, Microsecond, true>;
-    using Alarms = collections::OrderedList<Node, Spin>;
+  using Node = collections::Node<Alarm *, Microsecond, true>;
+  using Alarms = collections::OrderedList<Node, Spin>;
 
-  public:
-    Alarm(Microsecond);
-    Alarm(Microsecond, Semaphore &);
-    ~Alarm();
+public:
+  Alarm(Microsecond);
+  Alarm(Microsecond, Semaphore &);
+  ~Alarm();
 
-    static void handler();
+  static void handler();
 
-  private:
-    operator bool();
+private:
+  operator bool();
 
-  private:
-    static constinit inline Alarms alarms_[Traits<CPU>::Active];
+private:
+  static constinit inline Alarms alarms_[Traits<CPU>::Active];
 
-  private:
-    Node node_;
-    size_t core_;
-    Semaphore local_;
-    Semaphore &handler_;
+private:
+  Node node_;
+  size_t core_;
+  Semaphore local_;
+  Semaphore &handler_;
 };
 
 } // namespace QUARK

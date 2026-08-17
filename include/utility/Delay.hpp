@@ -7,8 +7,12 @@
 namespace QUARK {
 
 class Delay {
-  public:
-    template <typename T> Delay(T delta) { Alarm(Timer::now() + delta); }
+public:
+  template <typename Unit> Delay(Unit delta) { Alarm(Timer::now() + delta); }
+
+  template <typename Unit> Delay(Unit delta, Semaphore &semaphore) {
+    Alarm(Timer::now() + delta, semaphore);
+  }
 };
 
 } // namespace QUARK

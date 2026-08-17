@@ -14,9 +14,30 @@ static constexpr size_t BufferSize = 128 * MB;
 
 constinit volatile size_t created = 0;
 constinit volatile size_t counter = 0;
+
 size_t size;
 uint8_t buffer[BufferSize];
-uint8_t stack[1024];
+
+class Barrier {
+public:
+  __attribute__((always_inline)) static void
+  wait(size_t count = Traits<CPU>::Active) {
+    const size_t generation = __atomic_load_n(&generation_, __ATOMIC_ACQUIRE);
+
+    if (__atomic_fetch_add(&arrived_, 1, __ATOMIC_ACQ_REL) + 1 == count) {
+      __atomic_store_n(&arrived_, 0, __ATOMIC_RELEASE);
+      __atomic_fetch_add(&generation_, 1, __ATOMIC_RELEASE);
+      return;
+    }
+
+    while (__atomic_load_n(&generation_, __ATOMIC_ACQUIRE) == generation)
+      ;
+  }
+
+private:
+  static volatile inline size_t arrived_;
+  static volatile inline size_t generation_;
+};
 
 void receive(TFTP &tftp) {
   IPv4::Address server(192, 168, 1, 100);
@@ -31,7 +52,7 @@ void receive(TFTP &tftp) {
   size = result;
 }
 
-void *worker(void *) {
+__attribute__((naked)) void *worker(void *) {
   static constexpr uintptr_t Address = Traits<MemoryMap>::Boot;
 
   while (created != Traits<CPU>::Active)
@@ -39,20 +60,12 @@ void *worker(void *) {
 
   CPU::IRQ::disable();
 
-  size_t local = __atomic_fetch_add(&counter, 1, __ATOMIC_SEQ_CST);
+  Barrier::wait();
 
-  while (counter != Traits<CPU>::Active)
-    ;
+  for (size_t i = 0; i < size; i++)
+    reinterpret_cast<uint8_t *>(Address)[i] = buffer[i];
 
-  if (local == Traits<CPU>::Active - 1) {
-    for (size_t i = 0; i < size; i++)
-      reinterpret_cast<uint8_t *>(Address)[i] = buffer[i];
-  }
-
-  __atomic_fetch_sub(&created, 1, __ATOMIC_SEQ_CST);
-
-  while (created != 0)
-    ;
+  Barrier::wait();
 
   reinterpret_cast<void (*)()>(Address)();
 

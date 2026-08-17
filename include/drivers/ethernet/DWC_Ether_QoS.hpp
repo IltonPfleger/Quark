@@ -583,6 +583,7 @@ public:
     TraceIn();
 
     Reg32(CH0_INTERRUPT_ENABLE) = 0;
+
     Deferred::destroy();
 
     // TODO: Stop DMA

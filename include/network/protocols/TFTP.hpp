@@ -2,6 +2,7 @@
 
 #include <Semaphore.hpp>
 #include <network/protocols/UDP.hpp>
+#include <utility/Delay.hpp>
 
 namespace QUARK {
 
@@ -42,7 +43,17 @@ public:
 
     request(filename);
 
-    handler_.p();
+    while (1) {
+      size_t received = received_;
+
+      Delay timeout(TimeoutDelay, handler_);
+
+      if (state_ == State::DONE || state_ == State::ERROR)
+        break;
+
+      if (received_ <= received)
+        break;
+    }
 
     TraceOut(received_);
 
@@ -151,7 +162,6 @@ public:
 private:
   static constexpr const char BlockSizeString[] = "1468";
   static constexpr uint32_t BlockSize = 1468;
-  static constexpr uint32_t MaxRetry = 5;
   static constexpr Microsecond TimeoutDelay = 1'000'000;
 
 private:

@@ -3,6 +3,7 @@
 
 #include <Mutex.hpp>
 #include <Thread.hpp>
+#include <utility/Delay.hpp>
 #include <utility/collections/Hash.hpp>
 
 namespace QUARK {
@@ -70,7 +71,7 @@ public:
       request(pa, solver);
       entry.mutex.release();
 
-      Alarm _(TimeoutDelay, entry.handler);
+      Delay timeout(TimeoutDelay, entry.handler);
     }
   }
 

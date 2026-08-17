@@ -1,5 +1,5 @@
-#ifndef __QUARK_VIRTIO_CONSOLE__
-#define __QUARK_VIRTIO_CONSOLE__
+#ifndef __QUARK_HYPERVISOR_VIRTIO_CONSOLE__
+#define __QUARK_HYPERVISOR_VIRTIO_CONSOLE__
 
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
