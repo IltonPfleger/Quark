@@ -31,11 +31,14 @@ public:
 
   __attribute__((always_inline)) static void syscall() { asm("ecall"); }
 
-  static void halt() { asm("1: wfi; j 1b"); }
+  __attribute__((always_inline)) static void mb() {
+    asm("fence iorw, iorw" ::: "memory");
+    asm("fence.i" ::: "memory");
+  }
 
-  static auto idle() { asm("wfi"); }
+  __attribute__((always_inline)) static void halt() { asm("1: wfi; j 1b"); }
 
-  static void mb() { asm("fence iorw, iorw" ::: "memory"); }
+  __attribute__((always_inline)) static auto idle() { asm("wfi"); }
 
   static constexpr uint32_t hi32(uint64_t v) {
     return static_cast<uint32_t>(v >> 32);

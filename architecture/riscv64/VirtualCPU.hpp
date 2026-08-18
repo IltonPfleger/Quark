@@ -138,20 +138,14 @@ public:
       previous->save();
       previous->core_ = -1;
     }
-
     if (next) {
       next->activate();
       next->restore();
     } else {
-      asm("li t0, 0x222\n"
-          "csrc mie, t0\n"
-          "csrc mip, t0\n"
-          "csrw mideleg, zero\n"
-          "csrw medeleg, zero\n"
-          :
-          :
-          : "t0", "memory");
-
+      csrc<MachineMode::IE>(0x222);
+      csrc<MachineMode::IP>(0x222);
+      csrw<MachineMode::MIDELEG>(0);
+      csrw<MachineMode::MEDELEG>(0);
       current(nullptr);
     }
   }
@@ -207,15 +201,13 @@ private:
   static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
 
 private:
-  static constexpr uintmax_t STI = SupervisorMode::TI;
-  static constexpr uintmax_t SEI = SupervisorMode::EI;
-  static constexpr uintmax_t SSI = SupervisorMode::SI;
+  static constexpr uintmax_t MIDELEG =
+      SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
   static constexpr uintmax_t PAGE = 1 << 12 | 1 << 13 | 1 << 15;
   static constexpr uintmax_t ECALL = 1 << 8;
   static constexpr uintmax_t MISALIGNED = 1 << 4 | 1 << 6;
   static constexpr uintmax_t BREAKPOINT = 1 << 3;
   static constexpr uintmax_t MEDELEG = MISALIGNED | BREAKPOINT | ECALL | PAGE;
-  static constexpr uintmax_t MIDELEG = STI | SEI | SSI;
 
 private:
   static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};

@@ -22,8 +22,8 @@ public:
   Console(VirtualMachine &owner)
       : Handler(3, 1 << 27, N), device_(*DEVICE::instance()), owner_(owner),
         deferred_(worker, this) {
-    device_.attach(this);
     Deferred::init();
+    device_.attach(this);
   }
 
   ~Console() {

@@ -5,7 +5,7 @@
 #include <Spin.hpp>
 #include <Traits.hpp>
 #include <utility/Atomic.hpp>
-#include <utility/collections/MPSC.hpp>
+#include <utility/collections/FIFO.hpp>
 
 namespace QUARK {
 
@@ -15,7 +15,7 @@ public:
 
 private:
   using Element = collections::Node<Work *>;
-  using List = collections::MPSC<Element>;
+  using List = collections::FIFO<Element>;
 
 public:
   class Work : public Element {
@@ -27,21 +27,22 @@ public:
 
   private:
     void increment(List &list, Semaphore &semaphore) {
-      assert(pending_ >= 0);
-
       if (pending_.finc() == 0) {
-        list.insert(this);
+        {
+          CPU::IRQ::Guard irq;
+          list.insert(this);
+        }
         semaphore.v();
       }
     }
 
     void decrement(List &list, Semaphore &semaphore) {
       function_(argument_);
-
-      assert(pending_ > 0);
-
       if (pending_.fdec() > 1) {
-        list.insert(this);
+        {
+          CPU::IRQ::Guard irq;
+          list.insert(this);
+        }
         semaphore.v();
       }
     }
@@ -49,7 +50,7 @@ public:
   private:
     void (*function_)(void *);
     void *argument_;
-    Atomic<int> pending_;
+    Atomic<size_t> pending_;
   };
 
 public:
@@ -60,37 +61,58 @@ public:
   }
 
   static void init() {
-    if (ussing_.finc() != 0)
-      return;
-
-    for (auto &i : managers_)
-      i = new Deferred();
+    if (using_.finc() == 0) {
+      for (size_t i = 0; i < Threads; ++i)
+        managers_[i] = new Deferred(i);
+      initialized_ = true;
+    } else {
+      while (!initialized_) {
+      }
+    }
   }
 
   static void destroy() {
-    if (ussing_.fdec() != 1)
+    if (using_.fdec() != 1)
       return;
 
-    for (auto &i : managers_)
-      delete i;
+    initialized_ = false;
+
+    for (size_t i = 0; i < Threads; ++i) {
+      Deferred *manager = managers_[i];
+      managers_[i] = nullptr;
+      delete manager;
+    }
   }
 
   static bool schedule(Work &work) {
+    if (!initialized_)
+      return false;
+
+    const size_t start = id();
+
     for (size_t i = 0; i < Threads; i++) {
-      Deferred *manager = managers_[id()];
-      if (!manager)
-        continue;
+      Deferred *manager;
+
+      if constexpr (Threads != 0) {
+        manager = managers_[(start + i) % Threads];
+      } else {
+        manager = managers_[0];
+      }
+
+      assert(manager);
+
       if (manager->enqueue(work))
         return true;
     }
+
     return false;
   }
 
 private:
-  Deferred()
+  Deferred(size_t heart)
       : running_(true),
         thread_(dispatcher, this,
-                Thread::Criterion(Thread::Criterion::NORMAL, id())) {}
+                Thread::Criterion(Thread::Criterion::NORMAL, heart)) {}
 
   ~Deferred() {
     running_ = false;
@@ -99,7 +121,7 @@ private:
   }
 
   bool enqueue(Work &work) {
-    if (!running_ || ussing_ == 0)
+    if (!running_ || !initialized_)
       return false;
 
     work.increment(workers_, pending_);
@@ -109,20 +131,23 @@ private:
   static void *dispatcher(void *pointer) {
     Deferred *self = reinterpret_cast<Deferred *>(pointer);
 
-    while (1) {
+    while (self->running_) {
       self->pending_.p();
 
-      if (!self->running_)
-        break;
+      while (1) {
+        Element *element;
 
-      Element *element = self->workers_.remove();
+        {
+          CPU::IRQ::Guard irq;
+          element = self->workers_.remove();
+        }
 
-      if (!element)
-        continue;
+        if (!element)
+          break;
 
-      Work *work = element->value;
-
-      work->decrement(self->workers_, self->pending_);
+        Work *work = element->value;
+        work->decrement(self->workers_, self->pending_);
+      }
     }
 
     return nullptr;
@@ -139,7 +164,8 @@ private:
 
 private:
   static constinit inline Atomic<size_t> next_ = 0;
-  static constinit inline Atomic<size_t> ussing_ = 0;
+  static constinit inline Atomic<size_t> using_ = 0;
+  static constinit inline Atomic<bool> initialized_ = false;
   static inline Meta::Array<Threads, Deferred *> managers_;
 };
 

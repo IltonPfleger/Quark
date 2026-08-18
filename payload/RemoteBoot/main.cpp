@@ -58,12 +58,16 @@ __attribute__((naked)) void *worker(void *) {
   while (created != Traits<CPU>::Active)
     ;
 
+  Barrier::wait();
+
   CPU::IRQ::disable();
 
   Barrier::wait();
 
   for (size_t i = 0; i < size; i++)
     reinterpret_cast<uint8_t *>(Address)[i] = buffer[i];
+
+  CPU::mb();
 
   Barrier::wait();
 
@@ -77,7 +81,7 @@ int main() {
 
   Device::init();
 
-  auto *link = new LinkIPv4ToEthernet(*Device::instance());
+  auto *link = new LinkIPv4ToEthernet(Device::instance());
   auto *ipv4 = new IPv4(IPv4::Address(192, 168, 1, 101), *link);
   auto *udp = new UDP(*ipv4);
   auto *tftp = new TFTP(*udp);

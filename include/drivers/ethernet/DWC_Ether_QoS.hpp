@@ -620,11 +620,11 @@ public:
 
   static void isr(size_t) {
     volatile uint32_t &status = Reg32(CH0_INTERRUPT_STATUS);
-    DWC_Ether_QoS *self = instance();
+    DWC_Ether_QoS &self = instance();
 
     if (status & (INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU)) {
       status = INTERRUPT_STATUS_RI | INTERRUPT_STATUS_RBU;
-      Deferred::schedule(self->deferred_);
+      Deferred::schedule(self.deferred_);
     }
   }
 
@@ -642,7 +642,10 @@ public:
 
   static void init() { instance_ = new DWC_Ether_QoS(); }
 
-  static DWC_Ether_QoS *instance() { return instance_; }
+  static DWC_Ether_QoS &instance() {
+    assert(instance_);
+    return *instance_;
+  }
 
   static void destroy() { delete instance_; }
 

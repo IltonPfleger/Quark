@@ -157,6 +157,7 @@ void Thread::run() {
 void Thread::yield() { Thread::reschedule(); }
 
 void Thread::reschedule() {
+
   CPU::IRQ::Guard irq;
 
   Thread *previous = running();

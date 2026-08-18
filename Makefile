@@ -8,10 +8,10 @@ KERNEL_OBJECTS       := $(patsubst src/%.cpp,$(BUILD)/%.o,$(KERNEL_SOURCES))
 KERNEL_DEPENDENCIES  := $(KERNEL_OBJECTS:.o=.d)
 PAYLOAD_ELF          := $(BUILD)/$(PAYLOAD).elf
 
-run: $(IMAGE).img
+run: $(IMAGE)
 	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
 
-debug: $(IMAGE).img
+debug: $(IMAGE)
 	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $< -S -gdb tcp::1234
 
 gdb:

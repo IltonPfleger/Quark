@@ -248,10 +248,11 @@ private:
 int main() {
   using namespace QUARK;
 
-  typedef QUARK::Meta::GetFromTypeList<QUARK::Traits<QUARK::Ethernet>::Devices,
-                                       0>::Result Device;
+  typedef Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result Device;
 
-  auto *link = new QUARK::LinkIPv4ToEthernet(*Device::instance());
+  Device::init();
+
+  auto *link = new QUARK::LinkIPv4ToEthernet(Device::instance());
   auto *ipv4 = new QUARK::IPv4(IPv4::Address(192, 168, 1, 101), *link);
   auto *udp = new QUARK::UDP(*ipv4);
   auto *tftp = new QUARK::TFTP(*udp);

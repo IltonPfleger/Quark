@@ -18,7 +18,7 @@ class LinkIPv4ToEthernet : public NetworkLinkLayer,
 
 public:
   LinkIPv4ToEthernet(Ethernet_Controller &device)
-      : device_(device), router_(Router(device_)) {
+      : device_(device), router_(device_) {
     device_.attach(this);
   }
 
