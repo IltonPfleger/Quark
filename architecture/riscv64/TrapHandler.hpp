@@ -2,6 +2,7 @@
 #define __QUARK_RISCV64_TRAP_HANDLER_HEADER__
 
 #include <architecture/riscv64/ExceptionHandler.hpp>
+#include <architecture/riscv64/MMU.hpp>
 
 namespace QUARK {
 
@@ -23,6 +24,15 @@ private:
     size_t id = cause & ~(1ULL << 63);
 
     size_t index = irq2index(id, type);
+
+    // if (c->pc >= 0xffffffff80077ce0 && c->pc <= 0xffffffff80077f44) {
+    //   if (CPU::id() == 0) {
+    //     Console::print("PC: ", (void *)((c->pc)));
+    //     Console::println(" RA: ", (void *)*reinterpret_cast<uintptr_t *>(
+    //                                   MMU::PageTable::virt2phys(c->sp +
+    //                                   88)));
+    //   }
+    // }
 
     assert(index < NumberOfHandlers, index);
     assert(handlers_[index], index, " ", id);

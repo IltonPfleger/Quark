@@ -54,6 +54,8 @@ void *philosopher(void *p) {
 }
 
 int main(int, char *[]) {
+  Console::println("Philosophers Dinner:");
+
   console = new Semaphore(0);
   finish = new Semaphore(0);
 
@@ -69,4 +71,6 @@ int main(int, char *[]) {
 
   for (long i = 0; i < Number; i++)
     threads[i]->join();
+
+  Console::println("Finished!");
 }

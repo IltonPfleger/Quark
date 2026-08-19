@@ -21,6 +21,7 @@ public:
   using NotSupervisorContext =
       Meta::IF<!Virtualization, QUARK::MachineContext<>,
                HypervisorContext>::Result;
+
   using Context =
       Meta::IF<Supervisor, SupervisorContext<>, NotSupervisorContext>::Result;
 
@@ -33,6 +34,9 @@ public:
 
   __attribute__((always_inline)) static void mb() {
     asm("fence iorw, iorw" ::: "memory");
+  }
+
+  __attribute__((always_inline)) static void ib() {
     asm("fence.i" ::: "memory");
   }
 

@@ -3,26 +3,35 @@
 
 #include <architecture/riscv64/CLINT.hpp>
 #include <architecture/riscv64/ContextFrame.hpp>
-#include <architecture/riscv64/VirtualCPU.hpp>
 
 namespace QUARK {
 
 class IPI {
+  using Handler = void (*)(void *);
+
 public:
   struct Message {
-    using Handler = void (*)(void *);
-    Handler function;
+    Handler handler;
     uintptr_t arguments[8];
   };
 
   static void isr(ContextFrame *) {
-    VirtualCPU::onInterProcessorInterrupt();
-    messages_[mhartid()].function(&messages_[mhartid()].arguments);
+    messages_[mhartid()].handler(&messages_[mhartid()].arguments);
     CLINT::ipi(mhartid());
   }
 
-  static void send(size_t hartid, const Message &&message) {
-    messages_[hartid] = message;
+  template <typename... Args>
+  static void send(size_t hartid, Handler handler, Args &&...args) {
+    static_assert(sizeof...(Args) <= 8);
+
+    auto &message = messages_[hartid];
+
+    message.handler = handler;
+
+    size_t i = 0;
+    ((message.arguments[i++] = reinterpret_cast<uintmax_t>(args)), ...);
+
+    CPU::mb();
     CLINT::ipi(hartid);
   }
 

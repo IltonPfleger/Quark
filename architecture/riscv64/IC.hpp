@@ -12,6 +12,7 @@ class IC : Traits<PLIC> {
 public:
   static void isr(ContextFrame *) {
     auto id = PLIC::claim();
+
     if (id != 0) {
       handlers_[id](id);
       PLIC::complete(id);
@@ -30,3 +31,4 @@ private:
 };
 
 } // namespace QUARK
+  //

@@ -1,7 +1,11 @@
 #!/bin/sh
 
+echo "[INIT]" 
+
 mkdir /sys /proc
+
 mount -t sysfs none /sys
 mount -t devtmpfs none /dev
 mount -t proc proc /proc
+
 exec setsid cttyhack sh

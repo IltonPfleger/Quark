@@ -13,10 +13,8 @@ namespace QUARK {
 
 template <size_t CORES, typename... Devices>
 class GenericVirtualMachine : public VirtualMachine {
-
-  class Arguments {
-  public:
-    Arguments()
+  struct Arguments {
+    constexpr Arguments()
         : cpu(nullptr), semaphore(0), core(0), entry(nullptr), opaque(nullptr) {
     }
 
@@ -89,9 +87,9 @@ public:
   template <size_t... Is>
   Meta::Array<CORES, Thread> threads(Meta::IndexSequence<Is...>,
                                      size_t offset) {
-    return {
-        Thread(worker, &arguments[Is],
-               Thread::Criterion(Thread::Criterion::NORMAL, offset + Is))...};
+    return {Thread(worker, &arguments[Is],
+                   Thread::Criterion(Thread::Criterion::NORMAL,
+                                     (offset + Is) % Traits<CPU>::Active))...};
   }
 
   void boot(size_t core, void *entry, void *opaque) {
@@ -111,6 +109,8 @@ public:
   }
 
   void interrupt(uint32_t id) override { devices_.interrupt(id); }
+
+  VirtualCPU &cpu(size_t id) override { return cpus_[id]; }
 
   static void *worker(void *pointer) {
     Arguments *arguments = reinterpret_cast<Arguments *>(pointer);

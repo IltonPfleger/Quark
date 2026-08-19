@@ -15,7 +15,7 @@ public:
 
 private:
   using Element = collections::Node<Work *>;
-  using List = collections::FIFO<Element>;
+  using List = collections::FIFO<Element, Spin>;
 
 public:
   class Work : public Element {
@@ -23,7 +23,8 @@ public:
 
   public:
     Work(void (*function)(void *), void *argument)
-        : Node(this), function_(function), argument_(argument), pending_(0) {}
+        : Element(this), function_(function), argument_(argument), pending_(0) {
+    }
 
   private:
     void increment(List &list, Semaphore &semaphore) {
@@ -121,7 +122,7 @@ private:
   }
 
   bool enqueue(Work &work) {
-    if (!running_ || !initialized_)
+    if (!running_)
       return false;
 
     work.increment(workers_, pending_);

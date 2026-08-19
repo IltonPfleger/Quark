@@ -1,9 +1,10 @@
-#ifndef __QUARK_RISCV64_VCPU__
-#define __QUARK_RISCV64_VCPU__
+#ifndef __QUARK_RISCV64_VIRTUAL_CPU__
+#define __QUARK_RISCV64_VIRTUAL_CPU__
 
 #include <Traits.hpp>
 #include <architecture/riscv64/CLINT.hpp>
 #include <architecture/riscv64/CPU.hpp>
+#include <architecture/riscv64/IPI.hpp>
 #include <architecture/riscv64/MMU.hpp>
 #include <architecture/riscv64/Modes.hpp>
 #include <architecture/riscv64/PMP.hpp>
@@ -33,11 +34,20 @@ public:
     CPU::IRQ::disable();
     activate();
     restore();
+
     csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE |
                               MachineMode::PP);
-    csrs<MachineMode::STATUS>(MachineMode::TW | MachineMode::PP_S |
-                              MachineMode::PIRQE);
+
+    csrs<MachineMode::STATUS>(MachineMode::PP_S | MachineMode::PIRQE);
+
+    // csrs<MachineMode::STATUS>(MachineMode::TW | MachineMode::PP_S |
+    //                           MachineMode::PIRQE);
+
     csrw<MachineMode::EPC>(entry);
+
+    CPU::mb();
+    CPU::ib();
+
     dispatch(core, opaque);
   }
 
@@ -58,33 +68,48 @@ public:
 
     if (CLINT::mtime() >= registers_.mtimecmp)
       registers_.sip |= SupervisorMode::TI;
-    if (external_)
-      registers_.sip |= SupervisorMode::EI;
   }
 
   void setInterruptPending() {
-    int core = core_;
-    external_ = true;
-    if (current() == this)
+    registers_.sip |= SupervisorMode::EI;
+    if (current() == this) {
       setExternalInterruptPending();
-    else if (core >= 0)
-      CLINT::ipi(core);
+    } else if (core_ >= 0) {
+      IPI::send(core_, onInterProcessorInterrupt);
+    }
   }
 
   void clearInterruptPending() {
     assert(current() == this);
-    external_ = false;
+    registers_.sip &= ~SupervisorMode::EI;
     clearExternalInterruptPending();
   }
 
-  static void onInterProcessorInterrupt() {
-    if (current() && current()->external_)
-      csrs<MachineMode::IP>(SupervisorMode::EI);
+  void interProcessorInterrupt() {
+    registers_.sip |= SupervisorMode::SI;
+    if (current() == this) {
+      setSoftwareInterruptPending();
+    } else if (core_ >= 0) {
+      IPI::send(core_, onInterProcessorInterrupt);
+    }
+  }
+
+  static void interProcessorInterrupt(size_t id) {
+    assert(current());
+    current()->vm_->cpu(id).interProcessorInterrupt();
+  }
+
+  static void onInterProcessorInterrupt(void *) {
+    if (!current())
+      return;
+    csrs<MachineMode::IP>(current()->registers_.sip & 0x222);
   }
 
   static void onTick() {
     if (!current())
       return;
+    // if (CPU::id() == 1)
+    //   Console::println(CLINT::mtime(), " ", current()->registers_.mtimecmp);
     if (CLINT::mtime() >= current()->registers_.mtimecmp) {
       setTimerInterruptPending();
     }
@@ -98,6 +123,11 @@ public:
   static void mtimecmp(uintmax_t mtimecmp) {
     assert(current());
     current()->registers_.mtimecmp = mtimecmp;
+
+    // if (CPU::id() == 1)
+    //   Console::println("MTIMECMP: ", CLINT::mtime(), " ",
+    //                    current()->registers_.mtimecmp);
+
     if (mtimecmp <= CLINT::mtime()) {
       setTimerInterruptPending();
     } else {
@@ -151,10 +181,8 @@ public:
   }
 
 private:
-  __attribute__((naked)) static void dispatch(size_t core, void *opaque) {
-    (void)core;
-    (void)opaque;
-    asm("mret");
+  static void dispatch(size_t core, void *opaque) {
+    asm("mv a0, %0; mv a1, %1; mret" ::"r"(core), "r"(opaque));
   }
 
   void save() {
@@ -182,6 +210,14 @@ private:
     MMU::TLB::flush();
   }
 
+  static void setSoftwareInterruptPending() {
+    csrs<MachineMode::IP>(SupervisorMode::SI);
+  }
+
+  static void clearSoftwareInterruptPending() {
+    csrc<MachineMode::IP>(SupervisorMode::SI);
+  }
+
   static void setTimerInterruptPending() {
     csrs<MachineMode::IP>(SupervisorMode::TI);
   }
@@ -203,6 +239,7 @@ private:
 private:
   static constexpr uintmax_t MIDELEG =
       SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
+
   static constexpr uintmax_t PAGE = 1 << 12 | 1 << 13 | 1 << 15;
   static constexpr uintmax_t ECALL = 1 << 8;
   static constexpr uintmax_t MISALIGNED = 1 << 4 | 1 << 6;
@@ -214,7 +251,6 @@ private:
 
 private:
   int core_;
-  bool external_;
   Registers registers_;
   VirtualMachine *vm_;
 };

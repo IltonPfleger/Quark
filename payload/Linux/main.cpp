@@ -19,7 +19,7 @@ __attribute__((section(".__initrd__"), used)) static uint8_t INITRD[8 * MB];
 
 class LinuxLauncher {
 public:
-  static constexpr uint32_t CPUS = 4;
+  static constexpr uint32_t CPUS = Traits<CPU>::Active;
 
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
@@ -27,9 +27,8 @@ public:
   using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
-                Span<const uint8_t> initramfs)
-      : size_(size), start_(nullptr), initramfs_(initramfs), dtb_(nullptr),
-        vm_(nullptr) {
+                Span<const uint8_t> initramfs, size_t offset)
+      : size_(size), start_(nullptr), initramfs_(initramfs), dtb_(nullptr) {
 
     start_ = static_cast<unsigned char *>(Memory::alloc(size_));
 
@@ -37,17 +36,18 @@ public:
 
     memcpy(current, kernel, kernel.length());
     current += kernel.length();
+    current += 32 * MB;
 
-    current = align(current, 4 * MB);
     memcpy(current, initramfs, initramfs.length());
     initramfs_ = Span<const uint8_t>(current, initramfs.length());
     current += initramfs.length();
 
+    current = align(current, 8);
     dtb(current, size_ - initramfs.length() - kernel.length());
 
-    Console::println("*** Linux is at core ", CPU::id(), " ***");
+    Console::println("\n *** Linux is at core ", CPU::id(), " ***");
 
-    (new LinuxMachine(start_, size_, 0))->boot(0, start_, dtb_);
+    (new LinuxMachine(start_, size_, offset))->boot(0, start_, dtb_);
   }
 
   static unsigned char *align(unsigned char *pointer, long alignment) {
@@ -70,12 +70,13 @@ public:
 
       fdt.begin("chosen");
       {
+        fdt.add("bootargs",
+                "console=hvc0 loglevel=8 earlycon=sbi initcall_debug debug");
         uint64_t start = reinterpret_cast<uint64_t>(initramfs_.data());
         uint64_t end = start + initramfs_.length();
-        fdt.add("bootargs", "console=hvc0 loglevel=8");
         uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
-        fdt.add("linux,initrd-start", regs0, 2);
         uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
+        fdt.add("linux,initrd-start", regs0, 2);
         fdt.add("linux,initrd-end", regs1, 2);
       }
       fdt.end();
@@ -110,7 +111,6 @@ public:
               name[length++] = temporary[--digits];
             }
           }
-
           name[length] = '\0';
 
           fdt.begin(name);
@@ -201,7 +201,6 @@ private:
   unsigned char *start_;
   Span<const uint8_t> initramfs_;
   unsigned char *dtb_;
-  LinuxMachine *vm_;
 };
 
 int main() {
@@ -210,7 +209,7 @@ int main() {
   Span<const uint8_t> kernel(LINUX, sizeof(LINUX));
   Span<const uint8_t> initramfs(INITRD, sizeof(INITRD));
 
-  new LinuxLauncher(128 * 1024 * 1024, kernel, initramfs);
+  new LinuxLauncher(128 * 1024 * 1024, kernel, initramfs, 0);
 
   return 0;
 }

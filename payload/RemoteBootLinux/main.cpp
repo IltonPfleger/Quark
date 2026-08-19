@@ -19,30 +19,28 @@ constexpr size_t MB = 1024 * 1024;
 
 class Receiver {
 public:
-  Receiver(TFTP &tftp)
-      : tftp_(tftp), buffer_(new uint8_t[BufferSize], BufferSize) {
+  Receiver(TFTP &tftp) : tftp_(tftp), buffer_(new uint8_t[BufferSize]) {
+    const IPv4::Address server(192, 168, 1, 100);
 
-    IPv4::Address server(192, 168, 1, 100);
-
-    current_ = buffer_.data();
-    remaining_ = buffer_.length();
-
+    uint8_t *current = buffer_;
+    size_t remaining = BufferSize;
     size_t size;
 
-    size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current_,
-                         remaining_);
-    new (&linux_) Span(current_, size);
-    current_ += size;
-    remaining_ -= size;
+    size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current,
+                         remaining);
+    new (&linux_) Span(current, size);
+    current += size;
+    remaining -= size;
 
-    size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current_,
-                         remaining_);
-    new (&initramfs_) Span(current_, size);
-    current_ += size;
-    remaining_ -= size;
+    size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current,
+                         remaining);
+
+    new (&initramfs_) Span(current, size);
+    current += size;
+    remaining -= size;
   }
 
-  ~Receiver() { delete[] buffer_.data(); }
+  ~Receiver() { delete[] buffer_; }
 
   const auto &linux() const { return linux_; }
   const auto &initramfs() const { return initramfs_; }
@@ -52,9 +50,7 @@ private:
 
 private:
   TFTP &tftp_;
-  Span<uint8_t> buffer_;
-  uint8_t *current_;
-  size_t remaining_;
+  uint8_t *const buffer_;
   Span<const uint8_t> linux_;
   Span<const uint8_t> initramfs_;
 };
@@ -69,9 +65,8 @@ public:
   using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
-                Span<const uint8_t> initramfs)
-      : size_(size), start_(nullptr), initramfs_(initramfs), dtb_(nullptr),
-        vm_(nullptr) {
+                Span<const uint8_t> initramfs, size_t offset)
+      : size_(size), start_(nullptr), initramfs_(initramfs), dtb_(nullptr) {
 
     start_ = static_cast<unsigned char *>(Memory::alloc(size_));
 
@@ -79,17 +74,18 @@ public:
 
     memcpy(current, kernel, kernel.length());
     current += kernel.length();
+    current += 32 * MB;
 
-    current = align(current, 4 * MB);
     memcpy(current, initramfs, initramfs.length());
     initramfs_ = Span<const uint8_t>(current, initramfs.length());
     current += initramfs.length();
 
+    current = align(current, 8);
     dtb(current, size_ - initramfs.length() - kernel.length());
 
     Console::println("\n *** Linux is at core ", CPU::id(), " ***");
 
-    (new LinuxMachine(start_, size_, 0))->boot(0, start_, dtb_);
+    (new LinuxMachine(start_, size_, offset))->boot(0, start_, dtb_);
   }
 
   static unsigned char *align(unsigned char *pointer, long alignment) {
@@ -112,12 +108,16 @@ public:
 
       fdt.begin("chosen");
       {
+        fdt.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi");
+
+        // fdt.add("bootargs",
+        //        "console=hvc0 loglevel=8 earlycon=sbi initcall_debug debug");
+
         uint64_t start = reinterpret_cast<uint64_t>(initramfs_.data());
         uint64_t end = start + initramfs_.length();
-        fdt.add("bootargs", "console=hvc0 loglevel=8");
         uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
-        fdt.add("linux,initrd-start", regs0, 2);
         uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
+        fdt.add("linux,initrd-start", regs0, 2);
         fdt.add("linux,initrd-end", regs1, 2);
       }
       fdt.end();
@@ -126,7 +126,7 @@ public:
       {
         fdt.add("#address-cells", 1);
         fdt.add("#size-cells", 0u);
-        fdt.add("timebase-frequency", 10000000);
+        fdt.add("timebase-frequency", 4000000);
 
         for (uint32_t core = 0; core < CPUS; core++) {
           char name[16];
@@ -242,7 +242,6 @@ private:
   unsigned char *start_;
   Span<const uint8_t> initramfs_;
   unsigned char *dtb_;
-  LinuxMachine *vm_;
 };
 
 int main() {
@@ -260,7 +259,7 @@ int main() {
 
   const size_t MemorySize = 1024 * 1024 * 128;
 
-  new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs());
+  new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 0);
 
   return 0;
 }

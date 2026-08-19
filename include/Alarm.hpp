@@ -26,7 +26,7 @@ private:
 private:
   Node node_;
   size_t core_;
-  Semaphore local_;
+  Semaphore internal_;
   Semaphore &handler_;
 };
 

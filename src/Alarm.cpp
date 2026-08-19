@@ -7,11 +7,10 @@ namespace QUARK {
 
 Alarm::operator bool() { return Timer::now() >= node_.criterion; }
 
-Alarm::Alarm(Microsecond at) : Alarm(at, local_) {}
+Alarm::Alarm(Microsecond at) : Alarm(at, internal_) {}
 
 Alarm::Alarm(Microsecond at, Semaphore &handler)
-    : node_(this, at), local_(0), handler_(handler) {
-
+    : node_(this, at), internal_(0), handler_(handler) {
   CPU::IRQ::Guard _;
 
   core_ = CPU::id();

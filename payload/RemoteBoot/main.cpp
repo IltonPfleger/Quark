@@ -12,8 +12,8 @@ static constexpr size_t KB = 1024;
 static constexpr size_t MB = 1024 * KB;
 static constexpr size_t BufferSize = 128 * MB;
 
-constinit volatile size_t created = 0;
 constinit volatile size_t counter = 0;
+constinit Semaphore created;
 
 size_t size;
 uint8_t buffer[BufferSize];
@@ -55,21 +55,24 @@ void receive(TFTP &tftp) {
 __attribute__((naked)) void *worker(void *) {
   static constexpr uintptr_t Address = Traits<MemoryMap>::Boot;
 
-  while (created != Traits<CPU>::Active)
-    ;
-
-  Barrier::wait();
-
   CPU::IRQ::disable();
 
+  size_t core = CPU::id();
+
   Barrier::wait();
 
-  for (size_t i = 0; i < size; i++)
-    reinterpret_cast<uint8_t *>(Address)[i] = buffer[i];
+  Console::println(CPU::id());
+
+  if (core == Traits<CPU>::BSP) {
+    for (size_t i = 0; i < size; i++) {
+      reinterpret_cast<uint8_t *>(Address)[i] = buffer[i];
+    }
+  }
+
+  Barrier::wait();
 
   CPU::mb();
-
-  Barrier::wait();
+  CPU::ib();
 
   reinterpret_cast<void (*)()>(Address)();
 
@@ -96,8 +99,12 @@ int main() {
   Device::destroy();
 
   for (size_t i = 0; i < Traits<CPU>::Active; i++) {
+    if (i == CPU::id())
+      continue;
+
     Thread::Criterion critetion(Thread::Criterion::NORMAL, i);
     new Thread(worker, nullptr, critetion);
-    created = created + 1;
   }
+
+  worker(nullptr);
 }

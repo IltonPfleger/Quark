@@ -7,74 +7,80 @@
 namespace QUARK {
 
 void Memory::init() {
-    constexpr auto PageSize = Traits<Memory>::PageSize;
-    constexpr auto RamStart = Traits<MemoryMap>::RamStart;
-    constexpr auto RamEnd   = Traits<MemoryMap>::RamEnd;
+  constexpr auto PageSize = Traits<Memory>::PageSize;
+  constexpr auto RamStart = Traits<MemoryMap>::RamStart;
+  constexpr auto RamEnd = Traits<MemoryMap>::RamEnd;
 
-    TraceIn();
+  TraceIn();
 
-    new (&allocator_) Allocator();
+  new (&allocator_) Allocator();
 
-    for (uintptr_t c = RamEnd - PageSize; c >= RamStart; c -= PageSize) {
-        Chunk page(c, PageSize);
-        if (page.overlaps(BootInformation::kernel())) continue;
-        if (page.overlaps(__bmm)) continue;
-        if (page.overlaps(__emm)) continue;
-        if (page.overlaps(__pmm)) continue;
-        allocator_.insert(reinterpret_cast<void *>(page.start()), page.length());
-    }
+  for (uintptr_t c = RamEnd - PageSize; c >= RamStart; c -= PageSize) {
+    Chunk page(c, PageSize);
+    if (page.overlaps(BootInformation::kernel()))
+      continue;
+    if (page.overlaps(__bmm))
+      continue;
+    if (page.overlaps(__emm))
+      continue;
+    if (page.overlaps(__pmm))
+      continue;
+    allocator_.insert(reinterpret_cast<void *>(page.start()), page.length());
+  }
 
-    TraceOut();
+  TraceOut();
 }
 
 uintptr_t Memory::virt2phys(uintptr_t address) {
-    if constexpr (Traits<Kernel>::Multitask) {
-        return address - (Traits<MemoryMap>::RamStart - __amm.start());
-    }
-    return address;
+  if constexpr (Traits<Kernel>::Multitask) {
+    return address - (Traits<MemoryMap>::RamStart - __amm.start());
+  }
+  return address;
 }
 
 uintptr_t Memory::phys2virt(uintptr_t address) {
-    if constexpr (Traits<Kernel>::Multitask) {
-        return address + (Traits<MemoryMap>::RamStart - __amm.start());
-    }
-    return address;
+  if constexpr (Traits<Kernel>::Multitask) {
+    return address + (Traits<MemoryMap>::RamStart - __amm.start());
+  }
+  return address;
 }
 
 void *Memory::alloc(size_t size) {
-    if (size == 0) return nullptr;
+  if (size == 0)
+    return nullptr;
 
-    CPU::IRQ::Guard _;
+  CPU::IRQ::Guard _;
 
-    spin_.acquire();
+  spin_.acquire();
 
-    TraceIn(size);
+  TraceIn(size);
 
-    void *chunk = allocator_.remove(size);
+  void *chunk = allocator_.remove(size);
 
-    assert(chunk, "Out of Memory!");
+  assert(chunk, "Out of Memory!");
 
-    TraceOut(chunk);
+  TraceOut(chunk);
 
-    spin_.release();
+  spin_.release();
 
-    return chunk;
+  return chunk;
 }
 
 void Memory::free(void *chunk, size_t size) {
-    if (!chunk) return;
+  if (!chunk)
+    return;
 
-    CPU::IRQ::Guard _;
+  CPU::IRQ::Guard _;
 
-    spin_.acquire();
+  spin_.acquire();
 
-    TraceIn(chunk, size);
+  TraceIn(chunk, size);
 
-    allocator_.insert(chunk, size);
+  allocator_.insert(chunk, size);
 
-    TraceOut();
+  TraceOut();
 
-    spin_.release();
+  spin_.release();
 }
 
 } // namespace QUARK
