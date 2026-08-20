@@ -28,7 +28,7 @@ class VirtualCPU {
   };
 
 public:
-  enum Flags { PENDING_FENCE_I, PENDING_SFENCE };
+  enum Flags { PENDING_FENCE_I = 1 << 0, PENDING_SFENCE = 1 << 1 };
 
   VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
   void boot(size_t core, void *entry, void *opaque) {
@@ -40,7 +40,7 @@ public:
                               MachineMode::PP);
 
     csrs<MachineMode::STATUS>(MachineMode::PP_S | MachineMode::PIRQE);
-    // csrs<MachineMode::STATUS>(MachineMode::TW);
+    csrs<MachineMode::STATUS>(MachineMode::TW);
 
     csrw<MachineMode::EPC>(entry);
 
@@ -264,8 +264,10 @@ private:
   static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
 
 private:
-  static constexpr uintmax_t MIDELEG =
-      SupervisorMode::SI | SupervisorMode::TI | SupervisorMode::EI;
+  static constexpr uintmax_t STI = SupervisorMode::TI;
+  static constexpr uintmax_t SSI = SupervisorMode::SI;
+  static constexpr uintmax_t SEI = SupervisorMode::EI;
+  static constexpr uintmax_t MIDELEG = STI | SSI | SEI;
 
   static constexpr uintmax_t PAGE = 1 << 12 | 1 << 13 | 1 << 15;
   static constexpr uintmax_t ECALL = 1 << 8;

@@ -36,7 +36,8 @@ public:
       }
       context->pc += 4;
     } else if (Decoder::wfi(instruction)) {
-      Alarm(0);
+      // Thread::yield();
+      //  Alarm(0);
       context->pc += 4;
     } else if (Decoder::floating(instruction) && !FPU::enabled(*context)) {
       FPU::enable<MachineMode>(context);
