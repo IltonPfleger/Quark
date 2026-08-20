@@ -24,7 +24,7 @@ class VirtualCPU {
     uint64_t stval = 0;
     uint64_t sepc = 0;
     uint64_t sie = 0;
-    uint64_t sip = 0;
+    Atomic<uint64_t> sip = 0;
   };
 
 public:
@@ -39,9 +39,7 @@ public:
                               MachineMode::PP);
 
     csrs<MachineMode::STATUS>(MachineMode::PP_S | MachineMode::PIRQE);
-
-    // csrs<MachineMode::STATUS>(MachineMode::TW | MachineMode::PP_S |
-    //                           MachineMode::PIRQE);
+    // csrs<MachineMode::STATUS>(MachineMode::TW);
 
     csrw<MachineMode::EPC>(entry);
 
@@ -69,18 +67,17 @@ public:
   }
 
   void setInterruptPending() {
-    // registers_.sip |= SupervisorMode::EI;
-    // if (current() == this) {
-    //   setExternalInterruptPending();
-    // } else if (core_ >= 0) {
-    //   IPI::send(core_, onInterProcessorInterrupt);
-    // }
+    registers_.sip |= SupervisorMode::EI;
+    if (current() == this) {
+      setExternalInterruptPending();
+    } else if (core_ >= 0) {
+      IPI::send(core_, onInterProcessorInterrupt);
+    }
   }
 
   void clearInterruptPending() {
-    // assert(current() == this);
-    // registers_.sip &= ~SupervisorMode::EI;
-    // clearExternalInterruptPending();
+    assert(current() == this);
+    clearExternalInterruptPending();
   }
 
   void interProcessorInterrupt() {
@@ -93,14 +90,16 @@ public:
   }
 
   static void interProcessorInterrupt(size_t id) {
-    // assert(current());
-    // current()->vm_->cpu(id).interProcessorInterrupt();
+    if (!current())
+      return;
+    current()->vm_->cpu(id).interProcessorInterrupt();
   }
 
   static void onInterProcessorInterrupt(void *) {
     if (!current())
       return;
-    csrs<MachineMode::IP>(current()->registers_.sip & MIDELEG);
+
+    csrs<MachineMode::IP>(current()->registers_.sip);
   }
 
   static void onTick() {
@@ -119,10 +118,6 @@ public:
   static void mtimecmp(uintmax_t mtimecmp) {
     assert(current());
     current()->registers_.mtimecmp = mtimecmp;
-
-    // if (CPU::id() == 1)
-    //   Console::println("MTIMECMP: ", CLINT::mtime(), " ",
-    //                    current()->registers_.mtimecmp);
 
     if (mtimecmp <= CLINT::mtime()) {
       setTimerInterruptPending();

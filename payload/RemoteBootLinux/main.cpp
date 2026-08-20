@@ -60,15 +60,12 @@ class LinuxLauncher {
 public:
   static constexpr uint32_t CPUS = 4;
 
-  // using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices,
-  // 0>::Result; using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
-
+  using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+  using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
   using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
+  using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
 
-  // using LinuxMachine = GenericVirtualMachine<CPUS, Serial,
-  // InterruptController>;
-
-  using LinuxMachine = GenericVirtualMachine<CPUS, InterruptController>;
+  // using LinuxMachine = GenericVirtualMachine<CPUS, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
                 Span<const uint8_t> initrd, size_t offset)
@@ -78,14 +75,11 @@ public:
     uint8_t *end = start_ + size_;
     uint8_t *current = start_;
 
-    Console::println("KERNEL ", current, " ", kernel.data());
-
     memcpy(current, kernel, kernel.length());
     current += kernel.length();
     current = align(current, 8);
     current += 32 * MB;
 
-    Console::println("INITRD");
     const uint8_t *address = current;
     memcpy(current, initrd, initrd.length());
     current += initrd.length();
@@ -122,9 +116,7 @@ public:
 
       builder.begin("chosen");
       {
-        builder.add("bootargs", "loglevel=8 earlycon=sbi keep_bootcon debug");
-        // builder.add("bootargs",
-        //             "console=hvc0 loglevel=8 earlycon=sbi keep_bootcon");
+        builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi ");
 
         uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
         uint64_t end = start + initrd.length();
@@ -232,18 +224,18 @@ public:
         }
         builder.end();
 
-        // builder.begin("virtio@30000000");
-        //{
-        //   uint64_t address = 0x30000000;
-        //   uint32_t irq = 32;
-        //   uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
-        //                      0x1000};
-        //   builder.add("compatible", "virtio,mmio");
-        //   builder.add("reg", regs, 4);
-        //   builder.add("interrupts", irq);
-        //   builder.add("interrupt-parent", 0x02);
-        // }
-        // builder.end();
+        builder.begin("virtio@30000000");
+        {
+          uint64_t address = 0x30000000;
+          uint32_t irq = 32;
+          uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
+                             0x1000};
+          builder.add("compatible", "virtio,mmio");
+          builder.add("reg", regs, 4);
+          builder.add("interrupts", irq);
+          builder.add("interrupt-parent", 0x02);
+        }
+        builder.end();
       }
       builder.end();
     }
