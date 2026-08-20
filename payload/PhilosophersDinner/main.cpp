@@ -72,5 +72,5 @@ int main(int, char *[]) {
   for (long i = 0; i < Number; i++)
     threads[i]->join();
 
-  Console::println("Finished!");
+  Console::println("\nFinished!");
 }

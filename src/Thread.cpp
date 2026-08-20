@@ -96,15 +96,16 @@ Thread::Thread(Function f, Argument a, Criterion c, Domain d, Process *p)
       context_(kstack_, stack_, entry, f, a), domain_(d) {
   TraceIn(this);
 
-  [&](auto *self) {
-    if constexpr (Traits<Kernel>::Multitask) {
-      self->owner_ = p;
-      if (self->owner_) {
-        uintptr_t spa = Memory::virt2phys(self->stack_.start());
-        self->stack_ = self->owner_->attach(Chunk(spa, self->stack_.length()));
-      }
-    }
-  }(this);
+  //[&](auto *self) {
+  //  if constexpr (Traits<Kernel>::Multitask) {
+  //    self->owner_ = p;
+  //    if (self->owner_) {
+  //      uintptr_t spa = Memory::virt2phys(self->stack_.start());
+  //      self->stack_ = self->owner_->attach(Chunk(spa,
+  //      self->stack_.length()));
+  //    }
+  //  }
+  //}(this);
 
   {
     CPU::IRQ::Guard irq;
@@ -116,9 +117,14 @@ Thread::Thread(Function f, Argument a, Criterion c, Domain d, Process *p)
 }
 
 Thread::~Thread() {
+  TraceIn();
+
   join();
+
   Memory::free(stack_.data(), stack_.length());
   Memory::free(kstack_.data(), kstack_.length());
+
+  TraceOut();
 }
 
 void Thread::join() {

@@ -8,6 +8,7 @@
 using namespace QUARK;
 
 extern "C" void init() {
+
   if (CPU::id() == Traits<CPU>::BSP) {
     TraceIn();
     Machine::init();
@@ -24,6 +25,8 @@ extern "C" void init() {
     TraceOut();
 
   CPU::barrier();
+  CPU::mb();
+  CPU::ib();
 
   Thread::run();
 }

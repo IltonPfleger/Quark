@@ -9,10 +9,10 @@ KERNEL_DEPENDENCIES  := $(KERNEL_OBJECTS:.o=.d)
 PAYLOAD_ELF          := $(BUILD)/$(PAYLOAD).elf
 
 run: $(IMAGE)
-	-$(QEMU) -accel tcg,thread=multi,tb-size=8192 -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
+	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
 
 debug: $(IMAGE)
-	-$(QEMU) -accel tcg,thread=multi,tb-size=8192 -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $< -S -gdb tcp::1234
+	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $< -S -gdb tcp::1234
 
 gdb:
 	$(GDB) -ex "file $(KERNEL_ELF)" -ex "target extended-remote:1234"

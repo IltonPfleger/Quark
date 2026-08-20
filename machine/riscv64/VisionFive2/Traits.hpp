@@ -117,7 +117,7 @@ template <> struct Traits<PLIC> {
   static constexpr bool Enable = true;
   static constexpr int NumberOfInterruptions = 127;
   static constexpr int Contexts[5][2] = {
-      {0, -1}, // Hart 0: M->0, S->N/A
+      {0, -1}, // Hart 0: M->0, S->NaN
       {1, 2},  // Hart 1: M->1, S->2
       {3, 4},  // Hart 2: M->3, S->4
       {5, 6},  // Hart 3: M->5, S->6

@@ -65,51 +65,47 @@ public:
 
     core_ = mhartid();
     current(this);
-
-    if (CLINT::mtime() >= registers_.mtimecmp)
-      registers_.sip |= SupervisorMode::TI;
+    onTick();
   }
 
   void setInterruptPending() {
-    registers_.sip |= SupervisorMode::EI;
-    if (current() == this) {
-      setExternalInterruptPending();
-    } else if (core_ >= 0) {
-      IPI::send(core_, onInterProcessorInterrupt);
-    }
+    // registers_.sip |= SupervisorMode::EI;
+    // if (current() == this) {
+    //   setExternalInterruptPending();
+    // } else if (core_ >= 0) {
+    //   IPI::send(core_, onInterProcessorInterrupt);
+    // }
   }
 
   void clearInterruptPending() {
-    assert(current() == this);
-    registers_.sip &= ~SupervisorMode::EI;
-    clearExternalInterruptPending();
+    // assert(current() == this);
+    // registers_.sip &= ~SupervisorMode::EI;
+    // clearExternalInterruptPending();
   }
 
   void interProcessorInterrupt() {
-    registers_.sip |= SupervisorMode::SI;
-    if (current() == this) {
-      setSoftwareInterruptPending();
-    } else if (core_ >= 0) {
-      IPI::send(core_, onInterProcessorInterrupt);
-    }
+    // registers_.sip |= SupervisorMode::SI;
+    // if (current() == this) {
+    //   setSoftwareInterruptPending();
+    // } else if (core_ >= 0) {
+    //   IPI::send(core_, onInterProcessorInterrupt);
+    // }
   }
 
   static void interProcessorInterrupt(size_t id) {
-    assert(current());
-    current()->vm_->cpu(id).interProcessorInterrupt();
+    // assert(current());
+    // current()->vm_->cpu(id).interProcessorInterrupt();
   }
 
   static void onInterProcessorInterrupt(void *) {
     if (!current())
       return;
-    csrs<MachineMode::IP>(current()->registers_.sip & 0x222);
+    csrs<MachineMode::IP>(current()->registers_.sip & MIDELEG);
   }
 
   static void onTick() {
     if (!current())
       return;
-    // if (CPU::id() == 1)
-    //   Console::println(CLINT::mtime(), " ", current()->registers_.mtimecmp);
     if (CLINT::mtime() >= current()->registers_.mtimecmp) {
       setTimerInterruptPending();
     }
@@ -172,8 +168,8 @@ public:
       next->activate();
       next->restore();
     } else {
-      csrc<MachineMode::IE>(0x222);
-      csrc<MachineMode::IP>(0x222);
+      csrc<MachineMode::IE>(MIDELEG);
+      csrc<MachineMode::IP>(MIDELEG);
       csrw<MachineMode::MIDELEG>(0);
       csrw<MachineMode::MEDELEG>(0);
       current(nullptr);
@@ -182,7 +178,9 @@ public:
 
 private:
   static void dispatch(size_t core, void *opaque) {
-    asm("mv a0, %0; mv a1, %1; mret" ::"r"(core), "r"(opaque));
+    register size_t a0 asm("a0") = core;
+    register void *a1 asm("a1") = opaque;
+    asm volatile("mret" ::"r"(a0), "r"(a1));
   }
 
   void save() {
@@ -203,10 +201,10 @@ private:
     csrw<SupervisorMode::CAUSE>(registers_.scause);
     csrw<SupervisorMode::TVAL>(registers_.stval);
     csrw<SupervisorMode::EPC>(registers_.sepc);
-    csrc<MachineMode::IE>(0x222);
-    csrs<MachineMode::IE>(registers_.sie & 0x222);
-    csrc<MachineMode::IP>(0x222);
-    csrs<MachineMode::IP>(registers_.sip & 0x222);
+    csrc<MachineMode::IE>(MIDELEG);
+    csrs<MachineMode::IE>(registers_.sie & MIDELEG);
+    csrc<MachineMode::IP>(MIDELEG);
+    csrs<MachineMode::IP>(registers_.sip & MIDELEG);
     MMU::TLB::flush();
   }
 

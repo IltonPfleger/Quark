@@ -63,7 +63,7 @@ public:
       else if (c->a0 == HSM::EID)
         c->a1 = 1;
       else if (c->a0 == RFNC::EID)
-        c->a1 = 1;
+        c->a1 = 0;
       else if (c->a0 == DBCN::EID)
         c->a1 = 1;
       else if (c->a0 == SIP::EID)

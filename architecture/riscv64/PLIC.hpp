@@ -48,11 +48,21 @@ public:
   }
 
   static void init() {
-    threshold(context(), 0);
-
     for (unsigned int i = 0; i < Traits<PLIC>::NumberOfInterruptions; i++) {
-      priority(i, 1);
-      disable(i);
+      priority(i, 0);
+    }
+
+    for (const auto &hart : Traits<PLIC>::Contexts) {
+      for (int c : hart) {
+        if (c < 0)
+          continue;
+
+        threshold(c, 0);
+        unsigned int banks = (Traits<PLIC>::NumberOfInterruptions + 31) / 32;
+        for (unsigned int bank = 0; bank < banks; bank++) {
+          Reg32(Address, ENABLED + (c * 0x80) + (bank * 4)) = 0;
+        }
+      }
     }
   }
 

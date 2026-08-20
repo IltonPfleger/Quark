@@ -18,27 +18,6 @@ constinit Semaphore created;
 size_t size;
 uint8_t buffer[BufferSize];
 
-class Barrier {
-public:
-  __attribute__((always_inline)) static void
-  wait(size_t count = Traits<CPU>::Active) {
-    const size_t generation = __atomic_load_n(&generation_, __ATOMIC_ACQUIRE);
-
-    if (__atomic_fetch_add(&arrived_, 1, __ATOMIC_ACQ_REL) + 1 == count) {
-      __atomic_store_n(&arrived_, 0, __ATOMIC_RELEASE);
-      __atomic_fetch_add(&generation_, 1, __ATOMIC_RELEASE);
-      return;
-    }
-
-    while (__atomic_load_n(&generation_, __ATOMIC_ACQUIRE) == generation)
-      ;
-  }
-
-private:
-  static volatile inline size_t arrived_;
-  static volatile inline size_t generation_;
-};
-
 void receive(TFTP &tftp) {
   IPv4::Address server(192, 168, 1, 100);
   int result = -1;
@@ -52,6 +31,22 @@ void receive(TFTP &tftp) {
   size = result;
 }
 
+static void barrier() {
+  static constinit volatile bool gsense = true;
+  static constinit volatile int ready = Traits<QUARK::CPU>::Active;
+
+  const bool sense = !__atomic_load_n(&gsense, __ATOMIC_ACQUIRE);
+  const int position = __atomic_fetch_sub(&ready, 1, __ATOMIC_ACQ_REL);
+
+  if (position == 1) {
+    __atomic_store_n(&ready, Traits<QUARK::CPU>::Active, __ATOMIC_RELEASE);
+    __atomic_store_n(&gsense, sense, __ATOMIC_RELEASE);
+  } else {
+    while (__atomic_load_n(&gsense, __ATOMIC_ACQUIRE) != sense)
+      ;
+  }
+}
+
 __attribute__((naked)) void *worker(void *) {
   static constexpr uintptr_t Address = Traits<MemoryMap>::Boot;
 
@@ -59,9 +54,9 @@ __attribute__((naked)) void *worker(void *) {
 
   size_t core = CPU::id();
 
-  Barrier::wait();
+  barrier();
 
-  Console::println(CPU::id());
+  CPU::stack(0);
 
   if (core == Traits<CPU>::BSP) {
     for (size_t i = 0; i < size; i++) {
@@ -69,7 +64,7 @@ __attribute__((naked)) void *worker(void *) {
     }
   }
 
-  Barrier::wait();
+  barrier();
 
   CPU::mb();
   CPU::ib();

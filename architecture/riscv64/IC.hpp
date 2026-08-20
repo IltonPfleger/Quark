@@ -26,6 +26,13 @@ public:
     PLIC::enable(id);
   }
 
+  static void uninstall(size_t id) {
+    assert(id < NumberOfInterruptions);
+    handlers_[id] = nullptr;
+    PLIC::priority(id, 0);
+    PLIC::disable(id);
+  }
+
 private:
   static constinit inline ExternalHandler handlers_[NumberOfInterruptions];
 };

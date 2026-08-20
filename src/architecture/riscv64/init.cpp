@@ -62,7 +62,7 @@ __attribute__((naked)) static void jvirtual() {
   init();
 }
 
-[[noreturn]] __attribute__((naked)) void epilogue() {
+[[noreturn]] __attribute__((naked, optimize("O0"))) void epilogue() {
   CPU::tp(mhartid() - Traits<CPU>::Offset);
 
   CoreContextHandler<MachineMode>::bind(
@@ -106,6 +106,7 @@ _init() {
   // Found Which Core It's Running
   asm("csrr %0, mhartid" : "=r"(core));
 
+  // Stop Unused Cores
   if (core < Traits<CPU>::Offset) {
     asm("wfi");
   }

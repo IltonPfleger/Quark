@@ -37,9 +37,9 @@ public:
     case HSM::EID:
       HSM::handler(context);
       break;
-    case RFNC::EID:
-      RFNC::handler(context);
-      break;
+    // case RFNC::EID:
+    //   RFNC::handler(context);
+    //   break;
     case SIP::EID:
       SIP::handler(context);
       break;

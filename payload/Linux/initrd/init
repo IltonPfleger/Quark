@@ -1,7 +1,5 @@
 #!/bin/sh
 
-echo "[INIT]" 
-
 mkdir /sys /proc
 
 mount -t sysfs none /sys

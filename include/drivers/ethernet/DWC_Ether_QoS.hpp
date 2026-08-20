@@ -221,6 +221,13 @@ public:
     TraceOut();
   }
 
+  static void destroy() {
+    TraceIn();
+    Reg32(Base, CONFIGURATION) &=
+        ~(CONFIGURATION_RECEIVER_ENABLE | CONFIGURATION_TRANSMITTER_ENABLE);
+    TraceOut();
+  }
+
   static void duplex(bool full) {
     TraceIn(full);
     Reg32(Base, CONFIGURATION) &= ~CONFIGURATION_DM;
@@ -365,6 +372,11 @@ public:
     TraceOut();
   }
 
+  ~DWC_Ether_QoS_DMA() {
+    Reg32(Address, CH0_TX_CONTROL) &= ~1;
+    Reg32(Address, CH0_RX_CONTROL) &= ~1;
+  }
+
   static void reset() {
     Reg32(Address, DMA_MODE) |= MODE_SOFTWARE_RESET;
     Timer::Delay(Microsecond(1));
@@ -481,15 +493,11 @@ private:
 private:
   collections::FIFO<NetworkBuffer::Node, Mutex> sx_list_;
 
-  alignas(sizeof(Descriptor))
-      Descriptor sx_descriptors_[MyTraits::SendBufferCount];
-  alignas(sizeof(Descriptor))
-      Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
+  Descriptor sx_descriptors_[MyTraits::SendBufferCount];
+  Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
 
-  alignas(MyTraits::BufferAlignment)
-      DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
-  alignas(MyTraits::BufferAlignment)
-      DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
+  DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
+  DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
 
   DWC_Ether_QoS_Buffer *sx_pending_[MyTraits::SendBufferCount];
 
@@ -586,7 +594,13 @@ public:
 
     Deferred::destroy();
 
-    // TODO: Stop DMA
+    for (auto &i : MyTraits::IRQs) {
+      IC::uninstall(i);
+    }
+
+    delete dma_;
+
+    MAC::destroy();
 
     TraceOut();
   }

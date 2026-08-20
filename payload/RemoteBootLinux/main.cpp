@@ -28,14 +28,15 @@ public:
 
     size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current,
                          remaining);
-    new (&linux_) Span(current, size);
+
+    linux_ = Span<const uint8_t>(current, size);
     current += size;
     remaining -= size;
 
     size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current,
                          remaining);
 
-    new (&initramfs_) Span(current, size);
+    initramfs_ = Span<const uint8_t>(current, size);
     current += size;
     remaining -= size;
   }
@@ -59,33 +60,46 @@ class LinuxLauncher {
 public:
   static constexpr uint32_t CPUS = 4;
 
-  using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-  using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
+  // using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices,
+  // 0>::Result; using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
+
   using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
-  using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
+
+  // using LinuxMachine = GenericVirtualMachine<CPUS, Serial,
+  // InterruptController>;
+
+  using LinuxMachine = GenericVirtualMachine<CPUS, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
-                Span<const uint8_t> initramfs, size_t offset)
-      : size_(size), start_(nullptr), initramfs_(initramfs), dtb_(nullptr) {
+                Span<const uint8_t> initrd, size_t offset)
+      : size_(size), start_(nullptr) {
 
-    start_ = static_cast<unsigned char *>(Memory::alloc(size_));
+    start_ = static_cast<uint8_t *>(Memory::alloc(size_));
+    uint8_t *end = start_ + size_;
+    uint8_t *current = start_;
 
-    unsigned char *current = start_;
+    Console::println("KERNEL ", current, " ", kernel.data());
 
     memcpy(current, kernel, kernel.length());
     current += kernel.length();
+    current = align(current, 8);
     current += 32 * MB;
 
-    memcpy(current, initramfs, initramfs.length());
-    initramfs_ = Span<const uint8_t>(current, initramfs.length());
-    current += initramfs.length();
+    Console::println("INITRD");
+    const uint8_t *address = current;
+    memcpy(current, initrd, initrd.length());
+    current += initrd.length();
 
     current = align(current, 8);
-    dtb(current, size_ - initramfs.length() - kernel.length());
+
+    size_t remaining = size_ - (current - start_);
+
+    void *opaque = dtb(current, remaining, Span(address, initrd.length()));
 
     Console::println("\n *** Linux is at core ", CPU::id(), " ***");
 
-    (new LinuxMachine(start_, size_, offset))->boot(0, start_, dtb_);
+    LinuxMachine *vm = new LinuxMachine(start_, size_, offset);
+    vm->boot(0, start_, opaque);
   }
 
   static unsigned char *align(unsigned char *pointer, long alignment) {
@@ -94,39 +108,40 @@ public:
     return reinterpret_cast<unsigned char *>(address);
   }
 
-  size_t dtb(void *buffer, size_t capacity) {
-    FDT_Builder fdt(buffer, capacity);
+  void *dtb(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
+    FDT_Builder builder(buffer, capacity);
 
-    dtb_ = static_cast<unsigned char *>(buffer);
-    uint64_t base = reinterpret_cast<uint64_t>(start_);
-    fdt.begin("");
+    uint64_t memory = reinterpret_cast<uint64_t>(start_);
+
+    builder.begin("");
     {
-      fdt.add("#address-cells", 2);
-      fdt.add("#size-cells", 2);
-      fdt.add("compatible", "riscv-virtio");
-      fdt.add("model", "riscv-virtio,qemu");
+      builder.add("#address-cells", 2);
+      builder.add("#size-cells", 2);
+      builder.add("compatible", "riscv-virtio");
+      builder.add("model", "riscv-virtio,qemu");
 
-      fdt.begin("chosen");
+      builder.begin("chosen");
       {
-        fdt.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi");
+        builder.add("bootargs", "loglevel=8 earlycon=sbi keep_bootcon debug");
+        // builder.add("bootargs",
+        //             "console=hvc0 loglevel=8 earlycon=sbi keep_bootcon");
 
-        // fdt.add("bootargs",
-        //        "console=hvc0 loglevel=8 earlycon=sbi initcall_debug debug");
+        uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
+        uint64_t end = start + initrd.length();
 
-        uint64_t start = reinterpret_cast<uint64_t>(initramfs_.data());
-        uint64_t end = start + initramfs_.length();
         uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
         uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
-        fdt.add("linux,initrd-start", regs0, 2);
-        fdt.add("linux,initrd-end", regs1, 2);
-      }
-      fdt.end();
 
-      fdt.begin("cpus");
+        builder.add("linux,initrd-start", regs0, 2);
+        builder.add("linux,initrd-end", regs1, 2);
+      }
+      builder.end();
+
+      builder.begin("cpus");
       {
-        fdt.add("#address-cells", 1);
-        fdt.add("#size-cells", 0u);
-        fdt.add("timebase-frequency", 4000000);
+        builder.add("#address-cells", 1);
+        builder.add("#size-cells", 0u);
+        builder.add("timebase-frequency", 4000000);
 
         for (uint32_t core = 0; core < CPUS; core++) {
           char name[16];
@@ -154,94 +169,94 @@ public:
           }
           name[length] = '\0';
 
-          fdt.begin(name);
+          builder.begin(name);
           {
-            fdt.add("device_type", "cpu");
-            fdt.add("reg", core);
-            fdt.add("status", "okay");
-            fdt.add("compatible", "riscv");
-            fdt.add("riscv,isa", "rv64imafdcsu");
-            fdt.add("mmu-type", "riscv,sv39");
+            builder.add("device_type", "cpu");
+            builder.add("reg", core);
+            builder.add("status", "okay");
+            builder.add("compatible", "riscv");
+            builder.add("riscv,isa", "rv64imafdcsu");
+            builder.add("mmu-type", "riscv,sv39");
 
-            fdt.begin("interrupt-controller");
+            builder.begin("interrupt-controller");
             {
-              fdt.add("#interrupt-cells", 1);
-              fdt.add("interrupt-controller");
-              fdt.add("compatible", "riscv,cpu-intc");
-              fdt.add("phandle", 0x10 + core);
+              builder.add("#interrupt-cells", 1);
+              builder.add("interrupt-controller");
+              builder.add("compatible", "riscv,cpu-intc");
+              builder.add("phandle", 0x10 + core);
             }
-            fdt.end();
+            builder.end();
           }
-          fdt.end();
+          builder.end();
         }
       }
-      fdt.end();
+      builder.end();
 
-      fdt.begin("memory");
+      builder.begin("memory");
       {
-        fdt.add("device_type", "memory");
-        uint32_t regs[] = {CPU::hi32(base), CPU::lo32(base), CPU::hi32(size_),
-                           CPU::lo32(size_)};
-        fdt.add("reg", regs, 4);
+        builder.add("device_type", "memory");
+        uint32_t regs[] = {CPU::hi32(memory), CPU::lo32(memory),
+                           CPU::hi32(size_), CPU::lo32(size_)};
+        builder.add("reg", regs, 4);
       }
-      fdt.end();
+      builder.end();
 
-      fdt.begin("soc");
+      builder.begin("soc");
       {
-        fdt.add("#address-cells", 2);
-        fdt.add("#size-cells", 2);
-        fdt.add("compatible", "simple-bus");
-        fdt.add("ranges");
+        builder.add("#address-cells", 2);
+        builder.add("#size-cells", 2);
+        builder.add("compatible", "simple-bus");
+        builder.add("ranges");
 
-        fdt.begin("interrupt-controller@c000000");
+        builder.begin("interrupt-controller@c000000");
         {
-          fdt.add("compatible", "sifive,plic-1.0.0");
+          builder.add("compatible", "riscv,plic0");
 
           uint32_t regs0[] = {0x00, 0xc000000, 0x00, 0x4000000};
-          fdt.add("reg", regs0, 4);
+          builder.add("reg", regs0, 4);
 
-          fdt.add("interrupt-controller");
-          fdt.add("#interrupt-cells", 1);
-          fdt.add("riscv,ndev", 0x35);
+          builder.add("interrupt-controller");
+          builder.add("#interrupt-cells", 1);
+          builder.add("riscv,ndev", 0x35);
 
           uint32_t plic[CPUS * 4];
           for (uint32_t core = 0; core < CPUS; core++) {
             uint32_t phandle = 0x10 + core;
             plic[core * 4 + 0] = phandle;
-            plic[core * 4 + 1] = 0x0b;
+            plic[core * 4 + 1] = 11;
             plic[core * 4 + 2] = phandle;
-            plic[core * 4 + 3] = 0x09;
+            plic[core * 4 + 3] = 9;
           }
-          fdt.add("interrupts-extended", plic, CPUS * 4);
-          fdt.add("phandle", 0x02);
+          builder.add("interrupts-extended", plic, CPUS * 4);
+          builder.add("phandle", 0x02);
         }
-        fdt.end();
+        builder.end();
 
-        fdt.begin("virtio@30000000");
-        {
-          uint64_t address = 0x30000000;
-          uint32_t irq = 32;
-          uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
-                             0x1000};
-          fdt.add("compatible", "virtio,mmio");
-          fdt.add("reg", regs, 4);
-          fdt.add("interrupts", irq);
-          fdt.add("interrupt-parent", 0x02);
-        }
-        fdt.end();
+        // builder.begin("virtio@30000000");
+        //{
+        //   uint64_t address = 0x30000000;
+        //   uint32_t irq = 32;
+        //   uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
+        //                      0x1000};
+        //   builder.add("compatible", "virtio,mmio");
+        //   builder.add("reg", regs, 4);
+        //   builder.add("interrupts", irq);
+        //   builder.add("interrupt-parent", 0x02);
+        // }
+        // builder.end();
       }
-      fdt.end();
+      builder.end();
     }
-    fdt.end();
+    builder.end();
 
-    return fdt.finish();
+    builder.finish();
+
+    return buffer;
   }
 
 private:
   size_t size_;
-  unsigned char *start_;
-  Span<const uint8_t> initramfs_;
-  unsigned char *dtb_;
+  uint8_t *start_;
 };
 
 int main() {
@@ -257,9 +272,9 @@ int main() {
   auto *tftp = new QUARK::TFTP(*udp);
   auto *receiver = new Receiver(*tftp);
 
-  const size_t MemorySize = 1024 * 1024 * 128;
+  new LinuxLauncher(128 * MB, receiver->linux(), receiver->initramfs(), 0);
 
-  new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 0);
+  Device::destroy();
 
   return 0;
 }
