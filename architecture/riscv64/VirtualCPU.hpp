@@ -28,8 +28,9 @@ class VirtualCPU {
   };
 
 public:
-  VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
+  enum Flags { PENDING_FENCE_I, PENDING_SFENCE };
 
+  VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
   void boot(size_t core, void *entry, void *opaque) {
     CPU::IRQ::disable();
     activate();
@@ -64,6 +65,7 @@ public:
     core_ = mhartid();
     current(this);
     onTick();
+    onFence();
   }
 
   void setInterruptPending() {
@@ -81,17 +83,18 @@ public:
   }
 
   void interProcessorInterrupt() {
-    // registers_.sip |= SupervisorMode::SI;
-    // if (current() == this) {
-    //   setSoftwareInterruptPending();
-    // } else if (core_ >= 0) {
-    //   IPI::send(core_, onInterProcessorInterrupt);
-    // }
+    registers_.sip |= SupervisorMode::SI;
+    if (current() == this) {
+      setSoftwareInterruptPending();
+    } else if (core_ >= 0) {
+      IPI::send(core_, onInterProcessorInterrupt);
+    }
   }
 
   static void interProcessorInterrupt(size_t id) {
     if (!current())
       return;
+
     current()->vm_->cpu(id).interProcessorInterrupt();
   }
 
@@ -171,6 +174,37 @@ public:
     }
   }
 
+  static void onRemoteFenceInstruction(void *) {
+    if (!current())
+      return;
+    current()->onFence();
+  }
+
+  void onFence() {
+    if (current() == this) {
+      if (flags_ & PENDING_FENCE_I) {
+        flags_ &= ~PENDING_FENCE_I;
+        CPU::ib();
+      }
+      if (flags_ & PENDING_SFENCE) {
+        flags_ &= ~PENDING_SFENCE;
+        MMU::TLB::flush();
+      }
+      return;
+    }
+    if (core_ >= 0) {
+      IPI::send(core_, onRemoteFenceInstruction);
+    }
+  }
+
+  static void fence(size_t hartid, Flags flags) {
+    if (!current())
+      return;
+
+    current()->vm_->cpu(hartid).flags_ |= flags;
+    current()->vm_->cpu(hartid).onFence();
+  }
+
 private:
   static void dispatch(size_t core, void *opaque) {
     register size_t a0 asm("a0") = core;
@@ -244,6 +278,7 @@ private:
 
 private:
   int core_;
+  Atomic<uintmax_t> flags_;
   Registers registers_;
   VirtualMachine *vm_;
 };
