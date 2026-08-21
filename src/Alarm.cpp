@@ -39,7 +39,7 @@ void Alarm::handler() {
     if (!head)
       break;
 
-    if (!*head->value) {
+    if (!*(head->value)) {
       alarms.insert(head);
       break;
     }

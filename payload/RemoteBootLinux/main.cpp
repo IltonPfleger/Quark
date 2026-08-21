@@ -19,7 +19,9 @@ constexpr size_t MB = 1024 * 1024;
 
 class Receiver {
 public:
-  Receiver(TFTP &tftp) : tftp_(tftp), buffer_(new uint8_t[BufferSize]) {
+  Receiver(TFTP &tftp)
+      : tftp_(tftp),
+        buffer_(reinterpret_cast<uint8_t *>(Memory::alloc(BufferSize))) {
     const IPv4::Address server(192, 168, 1, 100);
 
     uint8_t *current = buffer_;
@@ -47,7 +49,7 @@ public:
   const auto &initramfs() const { return initramfs_; }
 
 private:
-  static constexpr size_t BufferSize = 64 * 1024 * 1024;
+  static constexpr size_t BufferSize = 128 * MB;
 
 private:
   TFTP &tftp_;
@@ -63,7 +65,13 @@ public:
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
   using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
-  using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
+
+  using NetworkDevice =
+      Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
+  using Network = virtio::Network<NetworkDevice, 0x30200000, 50>;
+
+  using LinuxMachine =
+      GenericVirtualMachine<CPUS, Serial, Network, InterruptController>;
 
   // using LinuxMachine = GenericVirtualMachine<CPUS, InterruptController>;
 
@@ -104,8 +112,6 @@ public:
 
   void *dtb(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
     FDT_Builder builder(buffer, capacity);
-
-    uint64_t memory = reinterpret_cast<uint64_t>(start_);
 
     builder.begin("");
     {
@@ -187,8 +193,9 @@ public:
       builder.begin("memory");
       {
         builder.add("device_type", "memory");
-        uint32_t regs[] = {CPU::hi32(memory), CPU::lo32(memory),
-                           CPU::hi32(size_), CPU::lo32(size_)};
+        uint64_t start = reinterpret_cast<uint64_t>(start_);
+        uint32_t regs[] = {CPU::hi32(start), CPU::lo32(start), CPU::hi32(size_),
+                           CPU::lo32(size_)};
         builder.add("reg", regs, 4);
       }
       builder.end();
@@ -236,6 +243,19 @@ public:
           builder.add("interrupt-parent", 0x02);
         }
         builder.end();
+
+        builder.begin("virtio@30200000");
+        {
+          uint64_t address = 0x30200000;
+          uint32_t irq = 50;
+          uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
+                             0x1000};
+          builder.add("compatible", "virtio,mmio");
+          builder.add("reg", regs, 4);
+          builder.add("interrupts", irq);
+          builder.add("interrupt-parent", 0x02);
+        }
+        builder.end();
       }
       builder.end();
     }
@@ -264,9 +284,7 @@ int main() {
   auto *tftp = new QUARK::TFTP(*udp);
   auto *receiver = new Receiver(*tftp);
 
-  new LinuxLauncher(128 * MB, receiver->linux(), receiver->initramfs(), 0);
-
-  Device::destroy();
+  new LinuxLauncher(256 * MB, receiver->linux(), receiver->initramfs(), 0);
 
   return 0;
 }

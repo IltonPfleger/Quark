@@ -44,7 +44,7 @@ void *Handler::dispatch(Function f, const Arguments a) {
     break;
   }
   case Function::ABI_HEAP_DELETE: {
-    delete[] reinterpret_cast<uint8_t *>(a[0]);
+    ::operator delete[](reinterpret_cast<void *>(a[0]), a[1]);
     break;
   }
   default: {

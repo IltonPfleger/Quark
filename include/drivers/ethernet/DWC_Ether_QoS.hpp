@@ -661,7 +661,10 @@ public:
     return *instance_;
   }
 
-  static void destroy() { delete instance_; }
+  static void destroy() {
+    delete instance_;
+    instance_ = nullptr;
+  }
 
   static volatile uint32_t &Reg32(size_t offset) {
     return *reinterpret_cast<volatile uint32_t *>(MyTraits::Address + offset);

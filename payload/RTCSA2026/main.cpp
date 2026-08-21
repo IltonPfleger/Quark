@@ -24,227 +24,238 @@
 #include <transducer.h>
 #include <transformer.h>
 
-using DS                = Dynamics_State;
-using DS_Proxy          = Interested_SmartData<DS::Unit::Wrap<DS::UNIT>>;
-using OBRT_Fuser        = Object_Recognition_And_Tracking_Fuser;
-using OBRT_Fuser_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 10)>>;
-using OBRT_Camera_Proxy = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 11)>>;
-using OBRT_LiDAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 12)>>;
-using OBRT_RADAR_Proxy  = Interested_SmartData<OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 13)>>;
+using DS = Dynamics_State;
+using DS_Proxy = Interested_SmartData<DS::Unit::Wrap<DS::UNIT>>;
+using OBRT_Fuser = Object_Recognition_And_Tracking_Fuser;
+using OBRT_Fuser_Proxy = Interested_SmartData<
+    OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 10)>>;
+using OBRT_Camera_Proxy = Interested_SmartData<
+    OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 11)>>;
+using OBRT_LiDAR_Proxy = Interested_SmartData<
+    OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 12)>>;
+using OBRT_RADAR_Proxy = Interested_SmartData<
+    OBRT_Fuser::Unit::Wrap<(SmartData::Unit::MOTION_VECTOR_LOCAL | 13)>>;
 
 namespace QUARK {
 
 class Receiver {
-  public:
-    Receiver(TFTP &tftp)
-        : tftp_(tftp),
-          buffer_(new uint8_t[BufferSize], BufferSize) {
+public:
+  Receiver(TFTP &tftp)
+      : tftp_(tftp), buffer_(new uint8_t[BufferSize], BufferSize) {
 
-        IPv4::Address server(192, 168, 1, 100);
+    IPv4::Address server(192, 168, 1, 100);
 
-        current_   = buffer_.data();
-        remaining_ = buffer_.length();
+    current_ = buffer_.data();
+    remaining_ = buffer_.length();
 
-        size_t size;
+    size_t size;
 
-        size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current_, remaining_);
-        new (&linux_) Span(current_, size);
-        current_ += size;
-        remaining_ -= size;
+    size = tftp_.request(server, "RemoteBootVisionFive2Kernel", current_,
+                         remaining_);
+    new (&linux_) Span(current_, size);
+    current_ += size;
+    remaining_ -= size;
 
-        size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current_, remaining_);
-        new (&initramfs_) Span(current_, size);
-        current_ += size;
-        remaining_ -= size;
+    size = tftp_.request(server, "RemoteBootVisionFive2InitRD.cpio", current_,
+                         remaining_);
+    new (&initramfs_) Span(current_, size);
+    current_ += size;
+    remaining_ -= size;
 
-        size = tftp_.request(server, "RemoteBootVisionFive2EPOS", current_, remaining_);
-        new (&epos_) Span(current_, size);
-        current_ += size;
-        remaining_ -= size;
-    }
+    size = tftp_.request(server, "RemoteBootVisionFive2EPOS", current_,
+                         remaining_);
+    new (&epos_) Span(current_, size);
+    current_ += size;
+    remaining_ -= size;
+  }
 
-    ~Receiver() { delete[] buffer_.data(); }
+  ~Receiver() { delete[] buffer_.data(); }
 
-    const auto &linux() const { return linux_; }
-    const auto &initramfs() const { return initramfs_; }
-    const auto &epos() const { return epos_; }
+  const auto &linux() const { return linux_; }
+  const auto &initramfs() const { return initramfs_; }
+  const auto &epos() const { return epos_; }
 
-  private:
-    static constexpr size_t BufferSize = 64 * 1024 * 1024;
+private:
+  static constexpr size_t BufferSize = 64 * 1024 * 1024;
 
-  private:
-    TFTP &tftp_;
-    Span<uint8_t> buffer_;
-    uint8_t *current_;
-    size_t remaining_;
-    Span<const uint8_t> linux_;
-    Span<const uint8_t> initramfs_;
-    Span<const uint8_t> epos_;
+private:
+  TFTP &tftp_;
+  Span<uint8_t> buffer_;
+  uint8_t *current_;
+  size_t remaining_;
+  Span<const uint8_t> linux_;
+  Span<const uint8_t> initramfs_;
+  Span<const uint8_t> epos_;
 };
 
 class LinuxLauncher {
-  public:
-    using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
-    using InterruptController = VirtualPLIC<1, 0xc000000>;
-    using LinuxMachine        = GenericVirtualMachine<1, InterruptController, Serial>;
+public:
+  using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+  using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
+  using InterruptController = VirtualPLIC<1, 0xc000000>;
+  using LinuxMachine = GenericVirtualMachine<1, InterruptController, Serial>;
 
-    LinuxLauncher(size_t size, Span<const uint8_t> kernel, Span<const uint8_t> initramfs, size_t core)
-        : size_(size),
-          buffer_(new uint8_t[size_]) {
+  LinuxLauncher(size_t size, Span<const uint8_t> kernel,
+                Span<const uint8_t> initramfs, size_t core)
+      : size_(size), buffer_(new uint8_t[size_]) {
 
-        uint8_t *current = align(buffer_, 4 * MB);
+    uint8_t *current = align(buffer_, 4 * MB);
 
-        uint8_t *image = current;
-        memcpy(image, kernel, kernel.length());
-        current += kernel.length();
+    uint8_t *image = current;
+    memcpy(image, kernel, kernel.length());
+    current += kernel.length();
 
-        current               = align(current, 4 * MB);
-        const uint8_t *initrd = current;
-        memcpy(current, initramfs, initramfs.length());
-        current += initramfs.length();
+    current = align(current, 4 * MB);
+    const uint8_t *initrd = current;
+    memcpy(current, initramfs, initramfs.length());
+    current += initramfs.length();
 
-        current = align(current, 4 * MB);
-        dtb(current, size_ - initramfs.length() - kernel.length(), Span(initrd, initramfs.length()));
+    current = align(current, 4 * MB);
+    dtb(current, size_ - initramfs.length() - kernel.length(),
+        Span(initrd, initramfs.length()));
 
-        LinuxMachine *vm = new LinuxMachine(buffer_, size_, core);
-        vm->boot(0, image, current);
-    }
+    LinuxMachine *vm = new LinuxMachine(buffer_, size_, core);
+    vm->boot(0, image, current);
+  }
 
-    static uint8_t *align(uint8_t *pointer, long alignment) {
-        uintptr_t address = reinterpret_cast<long>(pointer);
-        address           = (address + alignment - 1) & ~(alignment - 1);
-        return reinterpret_cast<uint8_t *>(address);
-    }
+  static uint8_t *align(uint8_t *pointer, long alignment) {
+    uintptr_t address = reinterpret_cast<long>(pointer);
+    address = (address + alignment - 1) & ~(alignment - 1);
+    return reinterpret_cast<uint8_t *>(address);
+  }
 
-    void dtb(void *buffer, size_t capacity, Span<const uint8_t> initramfs) {
-        FDT_Builder fdt(buffer, capacity);
+  void dtb(void *buffer, size_t capacity, Span<const uint8_t> initramfs) {
+    FDT_Builder fdt(buffer, capacity);
 
-        fdt.begin("");
+    fdt.begin("");
+    {
+      fdt.add("#address-cells", 2);
+      fdt.add("#size-cells", 2);
+      fdt.add("compatible", "riscv-virtio");
+      fdt.add("model", "riscv-virtio,qemu");
+
+      fdt.begin("chosen");
+      {
+        uint64_t start = reinterpret_cast<uint64_t>(initramfs.data());
+        uint64_t end = start + initramfs.length();
+        uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
+        uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
+        fdt.add("bootargs", "console=hvc0 loglevel=8");
+        fdt.add("linux,initrd-start", regs0, 2);
+        fdt.add("linux,initrd-end", regs1, 2);
+      }
+      fdt.end();
+
+      fdt.begin("cpus");
+      {
+        fdt.add("#address-cells", 1);
+        fdt.add("#size-cells", 0u);
+        fdt.add("timebase-frequency", 0x989680);
+        fdt.begin("cpu@0");
         {
-            fdt.add("#address-cells", 2);
-            fdt.add("#size-cells", 2);
-            fdt.add("compatible", "riscv-virtio");
-            fdt.add("model", "riscv-virtio,qemu");
+          fdt.add("device_type", "cpu");
+          fdt.add("reg", 0u);
+          fdt.add("status", "okay");
+          fdt.add("compatible", "riscv");
+          fdt.add("riscv,isa", "rv64imafdcsu");
+          fdt.add("mmu-type", "riscv,sv39");
+          fdt.begin("interrupt-controller");
+          {
+            fdt.add("#interrupt-cells", 1);
+            fdt.add("interrupt-controller");
+            fdt.add("compatible", "riscv,cpu-intc");
+            fdt.add("phandle", 0x01);
+          }
+          fdt.end();
+        }
+        fdt.end();
+      }
+      fdt.end();
 
-            fdt.begin("chosen");
-            {
-                uint64_t start   = reinterpret_cast<uint64_t>(initramfs.data());
-                uint64_t end     = start + initramfs.length();
-                uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
-                uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
-                fdt.add("bootargs", "console=hvc0 loglevel=8");
-                fdt.add("linux,initrd-start", regs0, 2);
-                fdt.add("linux,initrd-end", regs1, 2);
-            }
-            fdt.end();
+      fdt.begin("memory");
+      {
+        uint64_t base = reinterpret_cast<uint64_t>(buffer_);
+        uint32_t regs[] = {CPU::hi32(base), CPU::lo32(base), CPU::hi32(size_),
+                           CPU::lo32(size_)};
+        fdt.add("device_type", "memory");
+        fdt.add("reg", regs, 4);
+      }
+      fdt.end();
 
-            fdt.begin("cpus");
-            {
-                fdt.add("#address-cells", 1);
-                fdt.add("#size-cells", 0u);
-                fdt.add("timebase-frequency", 0x989680);
-                fdt.begin("cpu@0");
-                {
-                    fdt.add("device_type", "cpu");
-                    fdt.add("reg", 0u);
-                    fdt.add("status", "okay");
-                    fdt.add("compatible", "riscv");
-                    fdt.add("riscv,isa", "rv64imafdcsu");
-                    fdt.add("mmu-type", "riscv,sv39");
-                    fdt.begin("interrupt-controller");
-                    {
-                        fdt.add("#interrupt-cells", 1);
-                        fdt.add("interrupt-controller");
-                        fdt.add("compatible", "riscv,cpu-intc");
-                        fdt.add("phandle", 0x01);
-                    }
-                    fdt.end();
-                }
-                fdt.end();
-            }
-            fdt.end();
+      fdt.begin("soc");
+      {
+        fdt.add("#address-cells", 2);
+        fdt.add("#size-cells", 2);
+        fdt.add("compatible", "simple-bus");
+        fdt.add("ranges");
 
-            fdt.begin("memory");
-            {
-                uint64_t base   = reinterpret_cast<uint64_t>(buffer_);
-                uint32_t regs[] = {CPU::hi32(base), CPU::lo32(base), CPU::hi32(size_), CPU::lo32(size_)};
-                fdt.add("device_type", "memory");
-                fdt.add("reg", regs, 4);
-            }
-            fdt.end();
+        fdt.begin("interrupt-controller@c000000");
+        {
+          fdt.add("compatible", "riscv,plic0");
 
-            fdt.begin("soc");
-            {
-                fdt.add("#address-cells", 2);
-                fdt.add("#size-cells", 2);
-                fdt.add("compatible", "simple-bus");
-                fdt.add("ranges");
+          uint32_t regs0[] = {0x00, 0xc000000, 0x00, 0x4000000};
+          fdt.add("reg", regs0, 4);
 
-                fdt.begin("interrupt-controller@c000000");
-                {
-                    fdt.add("compatible", "riscv,plic0");
+          fdt.add("interrupt-controller");
+          fdt.add("#interrupt-cells", 1);
+          fdt.add("riscv,ndev", 0x35);
 
-                    uint32_t regs0[] = {0x00, 0xc000000, 0x00, 0x4000000};
-                    fdt.add("reg", regs0, 4);
-
-                    fdt.add("interrupt-controller");
-                    fdt.add("#interrupt-cells", 1);
-                    fdt.add("riscv,ndev", 0x35);
-
-                    uint32_t regs1[] = {0x01, 0x0b, 0x01, 0x09};
-                    fdt.add("interrupts-extended", regs1, 4);
-                    fdt.add("phandle", 0x02);
-                }
-                fdt.end();
-
-                fdt.begin("virtio_mmio@30000000");
-                {
-                    uint64_t address = 0x30000000;
-                    uint32_t irq     = 32;
-                    uint32_t regs[]  = {CPU::hi32(address), CPU::lo32(address), 0x00, 0x1000};
-                    fdt.add("compatible", "virtio,mmio");
-                    fdt.add("reg", regs, 4);
-                    fdt.add("interrupts", irq);
-                    fdt.add("interrupt-parent", 0x02);
-                }
-                fdt.end();
-            }
-            fdt.end();
+          uint32_t regs1[] = {0x01, 0x0b, 0x01, 0x09};
+          fdt.add("interrupts-extended", regs1, 4);
+          fdt.add("phandle", 0x02);
         }
         fdt.end();
 
-        fdt.finish();
+        fdt.begin("virtio_mmio@30000000");
+        {
+          uint64_t address = 0x30000000;
+          uint32_t irq = 32;
+          uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
+                             0x1000};
+          fdt.add("compatible", "virtio,mmio");
+          fdt.add("reg", regs, 4);
+          fdt.add("interrupts", irq);
+          fdt.add("interrupt-parent", 0x02);
+        }
+        fdt.end();
+      }
+      fdt.end();
     }
+    fdt.end();
 
-  private:
-    static constexpr size_t MB = 1024 * 1024;
+    fdt.finish();
+  }
 
-  private:
-    size_t size_;
-    uint8_t *buffer_;
+private:
+  static constexpr size_t MB = 1024 * 1024;
+
+private:
+  size_t size_;
+  uint8_t *buffer_;
 };
 
 class EPOS_Launcher {
-    using NetworkDevice       = Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
-    using Network             = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
-    using SerialDevice        = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-    using Serial              = virtio::Console<SerialDevice, 0x30000000, 32>;
-    using InterruptController = VirtualPLIC<1, 0xc000000>;
-    using EPOS_Machine        = GenericVirtualMachine<1, InterruptController, Serial, Network>;
+  using NetworkDevice =
+      Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
+  using Network = virtio::Network<VirtualSwitch<NetworkDevice>, 0x30200000, 50>;
+  using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+  using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
+  using InterruptController = VirtualPLIC<1, 0xc000000>;
+  using EPOS_Machine =
+      GenericVirtualMachine<1, InterruptController, Serial, Network>;
 
-  public:
-    EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, size_t core)
-        : buffer_(static_cast<uint8_t *>(Memory::alloc(size)), size),
-          machine_(buffer_.data(), buffer_.length(), core) {
-        memset(buffer_.data(), 0, buffer_.length());
-        memcpy(buffer_.data(), epos.data(), epos.length());
-        machine_.boot(0, buffer_.data(), (void *)1ULL);
-    }
+public:
+  EPOS_Launcher(size_t size, const Span<const uint8_t> &epos, size_t core)
+      : buffer_(static_cast<uint8_t *>(Memory::alloc(size)), size),
+        machine_(buffer_.data(), buffer_.length(), core) {
+    memset(buffer_.data(), 0, buffer_.length());
+    memcpy(buffer_.data(), epos.data(), epos.length());
+    machine_.boot(0, buffer_.data(), (void *)1ULL);
+  }
 
-  private:
-    Span<uint8_t> buffer_;
-    EPOS_Machine machine_;
+private:
+  Span<uint8_t> buffer_;
+  EPOS_Machine machine_;
 };
 
 } // namespace QUARK
@@ -260,7 +271,8 @@ class EPOS_Launcher {
 //   public:
 //     Overhead(const Device_Id &dev)
 //         : _value(0) {
-//         new Thread(worker, this, Thread::Criterion{Thread::Criterion::NORMAL, 3});
+//         new Thread(worker, this, Thread::Criterion{Thread::Criterion::NORMAL,
+//         3});
 //     }
 //
 //     ~Overhead() {}
@@ -283,120 +295,143 @@ class EPOS_Launcher {
 // };
 
 void smartdata() {
-    TSTP::init();
+  TSTP::init();
 
-    static constexpr int EXPIRY = 150'000;
+  static constexpr int EXPIRY = 150'000;
 
-    SEU_SmartData *seu = new SEU_SmartData();
+  SEU_SmartData *seu = new SEU_SmartData();
 
-    Unit_Dev_Expiry::List *ud_list;
-    ud_list  = new Unit_Dev_Expiry::List();
-    auto *mu = new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
-    seu->add_boolean_filter(mu);
+  Unit_Dev_Expiry::List *ud_list;
+  ud_list = new Unit_Dev_Expiry::List();
+  auto *mu =
+      new MU_Arrival_Dep(ud_list, Dynamics_State::UNIT, 16, 100000, 100000);
+  seu->add_boolean_filter(mu);
 
-    // MONITOR
-    ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, EXPIRY))->link());
-    auto *monitor = new Monitoring(ud_list);
-    seu->add_boolean_filter(monitor);
+  // MONITOR
+  ud_list = new Unit_Dev_Expiry::List();
+  ud_list->insert(
+      (new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+  ud_list->insert(
+      (new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
+  ud_list->insert(
+      (new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
+  ud_list->insert(
+      (new Unit_Dev_Expiry(OBRT_Fuser_Proxy::UNIT, 23, EXPIRY))->link());
+  auto *monitor = new Monitoring(ud_list);
+  seu->add_boolean_filter(monitor);
 
-    // CAMERA
-    ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    auto *obrtc = new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, EXPIRY, 100000);
-    seu->add_boolean_filter(obrtc);
+  // CAMERA
+  ud_list = new Unit_Dev_Expiry::List();
+  ud_list->insert(
+      (new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+  auto *obrtc =
+      new MU_Arrival_Dep(ud_list, OBRT_Camera_Proxy::UNIT, 20, EXPIRY, 100000);
+  seu->add_boolean_filter(obrtc);
 
-    // LIDAR
-    ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    auto *obrtl = new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY, 100000);
-    seu->add_boolean_filter(obrtl);
+  // LIDAR
+  ud_list = new Unit_Dev_Expiry::List();
+  ud_list->insert(
+      (new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+  auto *obrtl =
+      new MU_Arrival_Dep(ud_list, OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY, 100000);
+  seu->add_boolean_filter(obrtl);
 
-    // FUSER
-    ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
-    auto *obrtf = new MU_Arrival_Dep(ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, EXPIRY, 100000);
-    seu->add_boolean_filter(obrtf);
+  // FUSER
+  ud_list = new Unit_Dev_Expiry::List();
+  ud_list->insert(
+      (new Unit_Dev_Expiry(OBRT_Camera_Proxy::UNIT, 20, EXPIRY))->link());
+  ud_list->insert(
+      (new Unit_Dev_Expiry(OBRT_LiDAR_Proxy::UNIT, 21, EXPIRY))->link());
+  auto *obrtf = new MU_Arrival_Dep(
+      ud_list, Object_Recognition_And_Tracking_Fuser::UNIT, 23, EXPIRY, 100000);
+  seu->add_boolean_filter(obrtf);
 
-    // RSS
-    Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
-    rp->set_default();
-    ud_list = new Unit_Dev_Expiry::List();
-    ud_list->insert((new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
-    ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, EXPIRY))->link());
-    RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, EXPIRY);
-    seu->add_boolean_filter(rss);
+  // RSS
+  Road_Parameters *rp = new Road_Parameters(0, 0, 0, 0, 0);
+  rp->set_default();
+  ud_list = new Unit_Dev_Expiry::List();
+  ud_list->insert(
+      (new Unit_Dev_Expiry(Dynamics_State::UNIT, 16, EXPIRY))->link());
+  ud_list->insert((new Unit_Dev_Expiry(OBRT_Fuser::UNIT, 23, EXPIRY))->link());
+  RSS_Safe_Distance *rss = new RSS_Safe_Distance(ud_list, rp, rp, EXPIRY);
+  seu->add_boolean_filter(rss);
 
-    QUARK::Delay(QUARK::Microsecond(1'000));
+  QUARK::Delay(QUARK::Microsecond(1'000));
 
-    new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE), EXPIRY, 5'000, SmartData::SINGLE, SmartData::ANY, 16);
+  new DS_Proxy(DS_Proxy::Region(0, 0, 0, 100, DS_Proxy::now(), INFINITE),
+               EXPIRY, 5'000, SmartData::SINGLE, SmartData::ANY, 16);
 
-    new OBRT_Fuser_Proxy(OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE), EXPIRY, 40'000, SmartData::SINGLE, SmartData::ANY, 23);
+  new OBRT_Fuser_Proxy(
+      OBRT_Fuser_Proxy::Region(0, 0, 0, 100, OBRT_Fuser_Proxy::now(), INFINITE),
+      EXPIRY, 40'000, SmartData::SINGLE, SmartData::ANY, 23);
 
-    new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE), EXPIRY, 150'000, SmartData::SINGLE, SmartData::ANY, 20);
+  new OBRT_Camera_Proxy(OBRT_Camera_Proxy::Region(
+                            0, 0, 0, 100, OBRT_Camera_Proxy::now(), INFINITE),
+                        EXPIRY, 150'000, SmartData::SINGLE, SmartData::ANY, 20);
 
-    new OBRT_LiDAR_Proxy(OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE), EXPIRY, 100'000, SmartData::SINGLE, SmartData::ANY, 21);
+  new OBRT_LiDAR_Proxy(
+      OBRT_LiDAR_Proxy::Region(0, 0, 0, 100, OBRT_LiDAR_Proxy::now(), INFINITE),
+      EXPIRY, 100'000, SmartData::SINGLE, SmartData::ANY, 21);
 
-    new OBRT_RADAR_Proxy(OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE), EXPIRY, 40'000, SmartData::SINGLE, SmartData::ANY, 22);
+  new OBRT_RADAR_Proxy(
+      OBRT_RADAR_Proxy::Region(0, 0, 0, 100, OBRT_RADAR_Proxy::now(), INFINITE),
+      EXPIRY, 40'000, SmartData::SINGLE, SmartData::ANY, 22);
 }
 
 int main() {
-    using namespace QUARK;
+  using namespace QUARK;
 
-    typedef QUARK::Meta::GetFromTypeList<QUARK::Traits<QUARK::Ethernet>::Devices, 0>::Result Device;
+  typedef QUARK::Meta::GetFromTypeList<QUARK::Traits<QUARK::Ethernet>::Devices,
+                                       0>::Result Device;
 
-    auto *link     = new QUARK::LinkIPv4ToEthernet(*Device::instance());
-    auto *ipv4     = new QUARK::IPv4(IPv4::Address(192, 168, 1, 101), *link);
-    auto *udp      = new QUARK::UDP(*ipv4);
-    auto *tftp     = new QUARK::TFTP(*udp);
-    auto *receiver = new Receiver(*tftp);
+  auto *link = new QUARK::LinkIPv4ToEthernet(*Device::instance());
+  auto *ipv4 = new QUARK::IPv4(IPv4::Address(192, 168, 1, 101), *link);
+  auto *udp = new QUARK::UDP(*ipv4);
+  auto *tftp = new QUARK::TFTP(*udp);
+  auto *receiver = new Receiver(*tftp);
 
-    const size_t MemorySize = 1024 * 1024 * 128;
+  const size_t MemorySize = 1024 * 1024 * 128;
 
-    new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 3);
+  new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 3);
 
-    // DYNAMICS STATE
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
-    while (QUARK::sbi::Counter::counter_ != 1)
-        ;
+  // DYNAMICS STATE
+  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+  while (QUARK::sbi::Counter::counter_ != 1)
+    ;
 
-    // Fuser
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
-    while (QUARK::sbi::Counter::counter_ != 2)
-        ;
+  // Fuser
+  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+  while (QUARK::sbi::Counter::counter_ != 2)
+    ;
 
-    // RADAR
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
-    while (QUARK::sbi::Counter::counter_ != 3)
-        ;
+  // RADAR
+  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
+  while (QUARK::sbi::Counter::counter_ != 3)
+    ;
 
-    // LiDAR
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
-    while (QUARK::sbi::Counter::counter_ != 4)
-        ;
+  // LiDAR
+  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
+  while (QUARK::sbi::Counter::counter_ != 4)
+    ;
 
-    // Camera
-    new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
-    while (QUARK::sbi::Counter::counter_ != 5)
-        ;
+  // Camera
+  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+  while (QUARK::sbi::Counter::counter_ != 5)
+    ;
 
-    QUARK::Delay(QUARK::Microsecond(5'000'000));
+  QUARK::Delay(QUARK::Microsecond(5'000'000));
 
-    smartdata();
+  smartdata();
 
-    //// new NetworkVampire<VirtualSwitch<Device>>();
+  //// new NetworkVampire<VirtualSwitch<Device>>();
 
-    // while (1) {
-    //     QUARK::Delay(QUARK::Microsecond(100'000'000));
-    // }
+  // while (1) {
+  //     QUARK::Delay(QUARK::Microsecond(100'000'000));
+  // }
 
-    // for (int i = 0; i < 10; i++) {
-    //     new Responsive_SmartData<Overhead>(i, 5'000, SmartData::ADVERTISED);
-    // }
+  // for (int i = 0; i < 10; i++) {
+  //     new Responsive_SmartData<Overhead>(i, 5'000, SmartData::ADVERTISED);
+  // }
 
-    return 0;
+  return 0;
 }
