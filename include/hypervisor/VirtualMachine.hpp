@@ -10,8 +10,8 @@ namespace QUARK {
 
 class VirtualMachine {
 public:
-  VirtualMachine(const Chunk &&chunk)
-      : memory_(static_cast<const Chunk &&>(chunk)) {}
+  explicit VirtualMachine(Chunk chunk) : memory_(Meta::Move(chunk)) {}
+  virtual ~VirtualMachine() = default;
 
   virtual void boot(uintmax_t, void *, void *) = 0;
 
@@ -24,8 +24,6 @@ public:
   virtual VirtualCPU &cpu(size_t) = 0;
 
   virtual const Chunk &memory() const { return memory_; }
-
-  virtual ~VirtualMachine() = default;
 
 private:
   const Chunk memory_;

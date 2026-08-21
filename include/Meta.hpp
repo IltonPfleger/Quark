@@ -2,7 +2,10 @@
 
 #include <utility/meta/Array.hpp>
 #include <utility/meta/IndexSequence.hpp>
+#include <utility/meta/Move.hpp>
 #include <utility/meta/Pair.hpp>
+#include <utility/meta/Remove.hpp>
+#include <utility/meta/RemoveReference.hpp>
 #include <utility/meta/Tuple.hpp>
 
 namespace QUARK::Meta {
@@ -61,33 +64,10 @@ public:
   static constexpr bool Result = sizeof(f((Derived *)nullptr)) == sizeof(char);
 };
 
-template <typename T> struct Remove {
-  using Result = T;
-};
-
-template <typename T> struct Remove<const T> {
-  using Result = T;
-};
-
-template <typename T> struct Remove<volatile T> {
-  using Result = T;
-};
-
-template <typename T> struct Remove<const volatile T> {
-  using Result = T;
-};
-
-template <typename T> struct Remove<T &> {
-  using Result = T;
-};
-
-template <typename T> struct Remove<T &&> {
-  using Result = T;
-};
-
 template <typename T, typename L> struct Execute {
   constexpr Execute(T &&t, L &&l) {
-    using Removed = typename Remove<T>::Result;
+    using Removed =
+        typename RemoveReference<typename Remove<T>::Result>::Result;
     if constexpr (!Same<Removed, Meta::Empty>::Result) {
       l(t);
     }
