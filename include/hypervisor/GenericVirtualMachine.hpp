@@ -11,7 +11,7 @@
 
 namespace QUARK {
 
-template <size_t CORES, typename... Devices>
+template <size_t CORES, typename... DEVICES>
 class GenericVirtualMachine : public VirtualMachine {
   struct Arguments {
     constexpr Arguments()
@@ -25,57 +25,10 @@ class GenericVirtualMachine : public VirtualMachine {
     void *opaque;
   };
 
-  template <typename... D> struct DeviceCollection {
-    DeviceCollection(VirtualMachine &, Meta::Array<CORES, VirtualCPU> &) {}
-    bool read(uintptr_t, void *, size_t) { return false; }
-    bool write(uintptr_t, const void *, size_t) { return false; }
-    void interrupt(uint32_t) {}
-  };
-
-  template <typename Head, typename... Tail>
-  struct DeviceCollection<Head, Tail...> {
-    Head _device;
-    DeviceCollection<Tail...> _others;
-
-    DeviceCollection(VirtualMachine &machine,
-                     Meta::Array<CORES, VirtualCPU> &cpus)
-        : _device(create(machine, cpus)), _others(machine, cpus) {}
-
-    static Head create(VirtualMachine &machine,
-                       Meta::Array<CORES, VirtualCPU> &cpus) {
-      if constexpr (Meta::IsBaseOf<VirtualInterruptController, Head>::Result) {
-        return Head(cpus);
-      } else {
-        return Head(machine);
-      }
-    }
-
-    bool read(uintptr_t target, void *destination, size_t length) {
-      if (_device.read(target, destination, length)) {
-        return true;
-      }
-      return _others.read(target, destination, length);
-    }
-
-    bool write(uintptr_t target, const void *source, size_t length) {
-      if (_device.write(target, source, length)) {
-        return true;
-      }
-      return _others.write(target, source, length);
-    }
-
-    void interrupt(uint32_t id) {
-      if constexpr (Meta::IsBaseOf<VirtualInterruptController, Head>::Result) {
-        _device.interrupt(id);
-      }
-      _others.interrupt(id);
-    }
-  };
-
 public:
   GenericVirtualMachine(void *entry, size_t size, size_t offset)
       : VirtualMachine(Chunk(entry, size)),
-        cpus_(cpus(Meta::MakeIndexSequence<CORES>{})), devices_(*this, cpus_),
+        cpus_(cpus(Meta::MakeIndexSequence<CORES>{})), devices_(*this),
         threads_(threads(Meta::MakeIndexSequence<CORES>{}, offset)) {}
 
   template <size_t... Is>
@@ -99,15 +52,36 @@ public:
     arguments[core].semaphore.v();
   }
 
-  bool read(uintptr_t target, void *destination, size_t length) override {
-    return devices_.read(target, destination, length);
+  bool read(uintptr_t address, void *destination, size_t length) override {
+    bool handled = false;
+
+    Meta::forEach(devices_, [&](auto &device) {
+      if (!handled)
+        handled = device.read(address, destination, length);
+    });
+
+    return handled;
   }
 
   bool write(uintptr_t address, const void *source, size_t length) override {
-    return devices_.write(address, source, length);
+    bool handled = false;
+
+    Meta::forEach(devices_, [&](auto &device) {
+      if (!handled)
+        handled = device.write(address, source, length);
+    });
+
+    return handled;
   }
 
-  void interrupt(size_t id) override { devices_.interrupt(id); }
+  void interrupt(size_t id) override {
+    Meta::forEach(devices_, [&](auto &device) {
+      using Device = __typeof__(device);
+
+      if constexpr (IsInterruptController<Device>::Result)
+        device.interrupt(id);
+    });
+  }
 
   VirtualCPU &cpu(size_t id) override { return cpus_[id]; }
 
@@ -121,7 +95,7 @@ public:
 private:
   Arguments arguments[CORES];
   Meta::Array<CORES, VirtualCPU> cpus_;
-  DeviceCollection<Devices...> devices_;
+  Meta::Tuple<DEVICES...> devices_;
   Meta::Array<CORES, Thread> threads_;
 };
 

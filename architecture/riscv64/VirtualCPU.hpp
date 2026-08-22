@@ -31,6 +31,7 @@ public:
   enum Flags { PENDING_FENCE_I = 1 << 0, PENDING_SFENCE = 1 << 1 };
 
   VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
+
   void boot(size_t core, void *entry, void *opaque) {
     CPU::IRQ::disable();
     activate();

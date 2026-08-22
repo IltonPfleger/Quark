@@ -3,11 +3,12 @@
 #include <Traits.hpp>
 #include <architecture/riscv64/VirtualCPU.hpp>
 #include <hypervisor/VirtualInterruptController.hpp>
+#include <hypervisor/VirtualMachine.hpp>
 #include <utility/Atomic.hpp>
 
 namespace QUARK {
 
-template <size_t Cores, uintptr_t Address>
+template <size_t CORES, uintptr_t ADDRESS>
 class VirtualPLIC : public VirtualInterruptController {
   enum {
     PRIORITY = 0x000000,
@@ -18,10 +19,10 @@ class VirtualPLIC : public VirtualInterruptController {
   };
 
 public:
-  VirtualPLIC(Meta::Array<Cores, VirtualCPU> &cpus) : cpus(cpus) {}
+  VirtualPLIC(VirtualMachine &owner) : owner_(owner) {}
 
   bool pending(uint32_t context) const {
-    if (context >= Cores)
+    if (context >= CORES)
       return false;
 
     for (uint32_t bank = 0; bank < 32; ++bank) {
@@ -37,25 +38,26 @@ public:
         active &= ~(1U << bit);
       }
     }
+
     return false;
   }
 
   bool active(size_t core) const {
-    if (core >= Cores)
+    if (core >= CORES)
       return false;
 
     return pending(core);
   }
 
   bool pending() const {
-    for (size_t core = 0; core < Cores; ++core) {
+    for (size_t core = 0; core < CORES; ++core) {
       if (active(core))
         return true;
     }
     return false;
   }
 
-  void interrupt(uint32_t identifier) {
+  void interrupt(size_t identifier) {
     if (identifier == 0 || identifier >= 1024)
       return;
 
@@ -65,7 +67,7 @@ public:
 
     pendings[bank] |= mask;
 
-    for (uint32_t context = 0; context < Cores; ++context) {
+    for (uint32_t context = 0; context < CORES; ++context) {
       if (!(enables[context][bank] & mask))
         continue;
       if (priorities[identifier] <= thresholds[context])
@@ -75,7 +77,7 @@ public:
   }
 
   uint32_t claim(uint32_t context) {
-    if (context >= Cores)
+    if (context >= CORES)
       return 0;
 
     uint32_t limit = thresholds[context];
@@ -111,7 +113,7 @@ public:
     assert(length == sizeof(uint32_t));
 
     uint32_t *const destination = reinterpret_cast<uint32_t *>(pointer);
-    const size_t offset = address - Address;
+    const size_t offset = address - ADDRESS;
 
     if (offset < PENDING) {
       return priority(offset, destination);
@@ -128,7 +130,7 @@ public:
     assert(length == sizeof(uint32_t));
 
     const uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
-    const size_t offset = address - Address;
+    const size_t offset = address - ADDRESS;
 
     if (offset < PENDING) {
       return priority(offset, source);
@@ -142,11 +144,11 @@ public:
   }
 
 private:
-  void notify(uint32_t context) { cpus[context].setInterruptPending(); }
+  void notify(uint32_t context) { owner_.cpu(context).setInterruptPending(); }
 
   void update(size_t core) {
     if (!active(core)) {
-      cpus[core].clearInterruptPending();
+      owner_.cpu(core).clearInterruptPending();
     }
   }
 
@@ -171,7 +173,7 @@ private:
     uint32_t context = offset / 0x80;
     uint32_t chunk = (offset % 0x80) / 4;
 
-    if (context >= Cores || chunk >= 32)
+    if (context >= CORES || chunk >= 32)
       return false;
 
     *destination = enables[context][chunk];
@@ -183,7 +185,7 @@ private:
     uint32_t context = offset / 0x80;
     uint32_t chunk = (offset % 0x80) / 4;
 
-    if (context >= Cores || chunk >= 32)
+    if (context >= CORES || chunk >= 32)
       return false;
 
     enables[context][chunk] = source;
@@ -195,7 +197,7 @@ private:
     uint32_t context = relative / 0x1000;
     uint32_t target = relative % 0x1000;
 
-    if (context >= Cores)
+    if (context >= CORES)
       return false;
 
     if (target == 0) {
@@ -215,7 +217,7 @@ private:
     uint32_t context = offset / 0x1000;
     uint32_t target = offset % 0x1000;
 
-    if (context >= Cores)
+    if (context >= CORES)
       return false;
 
     if (target == 0) {
@@ -230,9 +232,9 @@ private:
 
   uint32_t priorities[1024]{};
   uint32_t pendings[32]{};
-  uint32_t enables[Cores][32]{};
-  uint32_t thresholds[Cores]{};
-  Meta::Array<Cores, VirtualCPU> &cpus;
+  uint32_t enables[CORES][32]{};
+  uint32_t thresholds[CORES]{};
+  VirtualMachine &owner_;
 };
 
 } // namespace QUARK

@@ -1,8 +1,13 @@
 #pragma once
 
 #include <utility/meta/Array.hpp>
+#include <utility/meta/Concat.hpp>
+#include <utility/meta/Filter.hpp>
+#include <utility/meta/IF.hpp>
 #include <utility/meta/IndexSequence.hpp>
 #include <utility/meta/Move.hpp>
+#include <utility/meta/Not.hpp>
+#include <utility/meta/Pack.hpp>
 #include <utility/meta/Pair.hpp>
 #include <utility/meta/Remove.hpp>
 #include <utility/meta/RemoveReference.hpp>
@@ -11,14 +16,6 @@
 namespace QUARK::Meta {
 
 struct Empty {};
-
-template <bool B, typename True, typename False> struct IF {
-  using Result = True;
-};
-
-template <typename True, typename False> struct IF<false, True, False> {
-  using Result = False;
-};
 
 template <typename T, typename U> struct Same {
   static constexpr bool Result = false;
