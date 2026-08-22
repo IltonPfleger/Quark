@@ -15,11 +15,11 @@ using namespace QUARK;
 constexpr size_t MB = 1024 * 1024;
 
 __attribute__((section(".__linux__"), used)) static uint8_t LINUX[32 * MB];
-__attribute__((section(".__initrd__"), used)) static uint8_t INITRD[8 * MB];
+__attribute__((section(".__initrd__"), used)) static uint8_t INITRD[16 * MB];
 
 class LinuxLauncher {
 public:
-  static constexpr uint32_t CPUS = 1;
+  static constexpr uint32_t CPUS = 4;
 
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;

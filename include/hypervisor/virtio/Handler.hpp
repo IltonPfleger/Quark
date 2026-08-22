@@ -121,7 +121,7 @@ protected:
   uint32_t pfn(this auto &self) {
     if (self.header_.guest_page_size == 0)
       return 0;
-    return self.queues_[self.header_.queue_sel]->address() /
+    return self.queue(self.header_.queue_sel).address() /
            self.header_.guest_page_size;
   }
 
@@ -134,7 +134,7 @@ protected:
     assert(self.owner_.memory().contains(
         Chunk(address, Queue::size(length, align))));
 
-    new (self.queues_[i]) Queue(address, length, align);
+    new (&self.queue(i)) Queue(address, length, align);
 
     self.header_.queue_pfn = source;
   }

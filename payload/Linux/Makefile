@@ -2,7 +2,7 @@ include ../../Makedefs.mk
 
 PAYLOAD_TARGET       := $(BUILD)/$(PAYLOAD).elf
 PAYLOAD_BUILD        := $(BUILD)/$(PAYLOAD)
-PAYLOAD_SOURCES      := $(shell find . -name '*.cpp')
+PAYLOAD_SOURCES      := main.cpp
 PAYLOAD_OBJECTS      := $(PAYLOAD_SOURCES:%=$(PAYLOAD_BUILD)/%.o)
 PAYLOAD_DEPENDENCIES := $(PAYLOAD_OBJECTS:.o=.d)
 LINUX                := ./linux

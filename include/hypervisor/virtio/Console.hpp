@@ -96,6 +96,11 @@ public:
     return length;
   }
 
+  Queue &queue(size_t id) {
+    assert(id <= 1);
+    return id == 0 ? rx_ : tx_;
+  }
+
 public:
   static constexpr uintptr_t Address = ADDRESS;
   static constexpr size_t N = 32;
@@ -108,7 +113,6 @@ private:
 
   Queue tx_;
   Queue rx_;
-  Queue *queues_[2] = {&rx_, &tx_};
 };
 
 } // namespace QUARK::virtio
