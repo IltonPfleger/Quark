@@ -35,8 +35,7 @@ public:
 
   void notify(uint32_t source) {
     if (source == 1)
-      worker(this);
-    // Deferred::schedule(deferred_);
+      Deferred::schedule(deferred_);
   }
 
   static void worker(void *pointer) {

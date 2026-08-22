@@ -43,11 +43,12 @@ public:
     header_.queue_num_max = descriptors;
   };
 
-  template <typename Self>
-  bool read(this Self &&self, uintptr_t address, uint32_t *destination) {
-    uint32_t offset = address - self.Address;
+  template <typename T>
+  bool read(this T &&self, uintptr_t address, void *pointer, size_t length) {
+    assert(length == sizeof(uint32_t));
 
-    // Console::println("R: ", (void *)(long)offset);
+    uint32_t *const destination = reinterpret_cast<uint32_t *>(pointer);
+    const uint32_t offset = address - self.Address;
 
     bool valid = false;
 
@@ -75,14 +76,17 @@ public:
       break;
     }
 
+    // Console::println("R: ", (void *)address, " ", (void *)*destination);
+
     return valid;
   }
 
-  template <typename Self>
-  bool write(this Self &&self, uintptr_t address, uint32_t value) {
+  template <typename T>
+  bool write(this T &&self, uintptr_t address, const void *pointer,
+             size_t length) {
+    assert(length == sizeof(uint32_t));
+    uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
     const auto offset = address - self.Address;
-
-    // Console::println("W: ", (void *)offset, " ", value);
 
     switch (offset) {
     case Register::GuestPageSize:
@@ -93,16 +97,16 @@ public:
     case Register::DriverFeatures:
     case Register::QueueSize:
     case Register::QueueAlignment:
-      self.header(offset) = value;
+      self.header(offset) = source;
       return true;
     case Register::QueuePFN:
-      self.pfn(value);
+      self.pfn(source);
       return true;
     case Register::InterruptAck:
-      self.header(offset) &= ~value;
+      self.header(offset) &= ~source;
       return true;
     case Register::QueueNotify:
-      self.notify(value);
+      self.notify(source);
       return true;
     default:
       return false;

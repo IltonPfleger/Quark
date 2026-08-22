@@ -131,12 +131,12 @@ public:
 
   static bool read(uintptr_t address, uint32_t *destination) {
     assert(current());
-    return current()->vm_->read(address, destination);
+    return current()->vm_->read(address, destination, sizeof(uint32_t));
   }
 
   static bool write(uintptr_t address, uint32_t source) {
     assert(current());
-    return current()->vm_->write(address, source);
+    return current()->vm_->write(address, &source, sizeof(uint32_t));
   }
 
   static bool sb(uintmax_t address, uint8_t source) {

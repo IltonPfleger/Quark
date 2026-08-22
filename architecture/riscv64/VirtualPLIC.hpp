@@ -7,11 +7,8 @@
 
 namespace QUARK {
 
-template <size_t CORES, uintptr_t ADDRESS>
+template <size_t Cores, uintptr_t Address>
 class VirtualPLIC : public VirtualInterruptController {
-  static constexpr size_t Factor = 2;
-  static constexpr size_t Contexts = CORES * Factor;
-
   enum {
     PRIORITY = 0x000000,
     PENDING = 0x001000,
@@ -21,10 +18,10 @@ class VirtualPLIC : public VirtualInterruptController {
   };
 
 public:
-  VirtualPLIC(Meta::Array<CORES, VirtualCPU> &cpus) : cpus(cpus) {}
+  VirtualPLIC(Meta::Array<Cores, VirtualCPU> &cpus) : cpus(cpus) {}
 
   bool pending(uint32_t context) const {
-    if (context >= Contexts)
+    if (context >= Cores)
       return false;
 
     for (uint32_t bank = 0; bank < 32; ++bank) {
@@ -34,8 +31,8 @@ public:
 
       while (active) {
         uint32_t bit = __builtin_ctz(active);
-        uint32_t irq = (bank << 5) | bit;
-        if (priorities[irq] > thresholds[context])
+        uint32_t interrupt = (bank << 5) | bit;
+        if (priorities[interrupt] > thresholds[context])
           return true;
         active &= ~(1U << bit);
       }
@@ -44,44 +41,41 @@ public:
   }
 
   bool active(size_t core) const {
-    if (core >= CORES)
+    if (core >= Cores)
       return false;
-    for (size_t ctx = 0; ctx < Factor; ++ctx) {
-      if (pending(core * Factor + ctx))
-        return true;
-    }
-    return false;
+
+    return pending(core);
   }
 
   bool pending() const {
-    for (size_t core = 0; core < CORES; ++core) {
+    for (size_t core = 0; core < Cores; ++core) {
       if (active(core))
         return true;
     }
     return false;
   }
 
-  void interrupt(uint32_t id) {
-    if (id == 0 || id >= 1024)
+  void interrupt(uint32_t identifier) {
+    if (identifier == 0 || identifier >= 1024)
       return;
 
-    uint32_t bank = id >> 5;
-    uint32_t bit = id & 31;
+    uint32_t bank = identifier >> 5;
+    uint32_t bit = identifier & 31;
     uint32_t mask = 1U << bit;
 
     pendings[bank] |= mask;
 
-    for (uint32_t context = 0; context < Contexts; ++context) {
+    for (uint32_t context = 0; context < Cores; ++context) {
       if (!(enables[context][bank] & mask))
         continue;
-      if (priorities[id] <= thresholds[context])
+      if (priorities[identifier] <= thresholds[context])
         continue;
       notify(context);
     }
   }
 
   uint32_t claim(uint32_t context) {
-    if (context >= Contexts)
+    if (context >= Cores)
       return 0;
 
     uint32_t limit = thresholds[context];
@@ -94,11 +88,11 @@ public:
 
       while (active) {
         uint32_t bit = __builtin_ctz(active);
-        uint32_t irq = (bank << 5) | bit;
+        uint32_t interrupt = (bank << 5) | bit;
 
-        if (priorities[irq] > limit) {
-          limit = priorities[irq];
-          best = irq;
+        if (priorities[interrupt] > limit) {
+          limit = priorities[interrupt];
+          best = interrupt;
         }
         active &= ~(1U << bit);
       }
@@ -113,41 +107,42 @@ public:
     return best;
   }
 
-  bool read(uintptr_t address, unsigned int *out) {
-    size_t offset = address - ADDRESS;
+  bool read(uintptr_t address, void *pointer, size_t length) {
+    assert(length == sizeof(uint32_t));
+
+    uint32_t *const destination = reinterpret_cast<uint32_t *>(pointer);
+    const size_t offset = address - Address;
 
     if (offset < PENDING) {
-      return priority(offset, out);
+      return priority(offset, destination);
+    } else if (offset >= ENABLED && offset < THRESHOLD) {
+      return enable(offset, destination);
+    } else if (offset >= THRESHOLD) {
+      return control(offset, destination);
     }
-    if (offset >= ENABLED && offset < THRESHOLD) {
-      return enable(offset, out);
-    }
-    if (offset >= THRESHOLD) {
-      return control(offset, out);
-    }
+
     return false;
   }
 
-  bool write(uintptr_t address, unsigned int val) {
-    size_t offset = address - ADDRESS;
+  bool write(uintptr_t address, const void *pointer, size_t length) {
+    assert(length == sizeof(uint32_t));
+
+    const uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
+    const size_t offset = address - Address;
 
     if (offset < PENDING) {
-      return priority(offset, val);
+      return priority(offset, source);
+    } else if (offset >= ENABLED && offset < THRESHOLD) {
+      return enable(offset, source);
+    } else if (offset >= THRESHOLD) {
+      return control(offset, source);
     }
-    if (offset >= ENABLED && offset < THRESHOLD) {
-      return enable(offset, val);
-    }
-    if (offset >= THRESHOLD) {
-      return control(offset, val);
-    }
+
     return false;
   }
 
 private:
-  void notify(uint32_t context) {
-    size_t core = context / Factor;
-    cpus[core].setInterruptPending();
-  }
+  void notify(uint32_t context) { cpus[context].setInterruptPending(); }
 
   void update(size_t core) {
     if (!active(core)) {
@@ -155,80 +150,79 @@ private:
     }
   }
 
-  bool priority(size_t offset, unsigned int *out) const {
-    uint32_t irq = offset / 4;
-    if (irq >= 1024)
+  bool priority(size_t offset, uint32_t *output) const {
+    uint32_t interrupt = offset / 4;
+    if (interrupt >= 1024)
       return false;
-    *out = priorities[irq];
+    *output = priorities[interrupt];
     return true;
   }
 
-  bool priority(size_t offset, unsigned int val) {
-    uint32_t irq = offset / 4;
-    if (irq >= 1024)
+  bool priority(size_t offset, uint32_t source) {
+    uint32_t interrupt = offset / 4;
+    if (interrupt >= 1024)
       return false;
-    priorities[irq] = val;
+    priorities[interrupt] = source;
     return true;
   }
 
-  bool enable(size_t offset, unsigned int *out) const {
-    size_t off = offset - ENABLED;
-    uint32_t context = off / 0x80;
-    uint32_t chunk = (off % 0x80) / 4;
+  bool enable(size_t offset, uint32_t *const destination) const {
+    offset = offset - ENABLED;
+    uint32_t context = offset / 0x80;
+    uint32_t chunk = (offset % 0x80) / 4;
 
-    if (context >= Contexts || chunk >= 32)
+    if (context >= Cores || chunk >= 32)
       return false;
 
-    *out = enables[context][chunk];
+    *destination = enables[context][chunk];
     return true;
   }
 
-  bool enable(size_t offset, unsigned int val) {
-    size_t off = offset - ENABLED;
-    uint32_t context = off / 0x80;
-    uint32_t chunk = (off % 0x80) / 4;
+  bool enable(size_t offset, uint32_t source) {
+    offset = offset - ENABLED;
+    uint32_t context = offset / 0x80;
+    uint32_t chunk = (offset % 0x80) / 4;
 
-    if (context >= Contexts || chunk >= 32)
+    if (context >= Cores || chunk >= 32)
       return false;
 
-    enables[context][chunk] = val;
+    enables[context][chunk] = source;
     return true;
   }
 
-  bool control(size_t offset, unsigned int *out) {
-    size_t off = offset - THRESHOLD;
-    uint32_t context = off / 0x1000;
-    uint32_t reg = off % 0x1000;
+  bool control(size_t offset, uint32_t *output) {
+    size_t relative = offset - THRESHOLD;
+    uint32_t context = relative / 0x1000;
+    uint32_t target = relative % 0x1000;
 
-    if (context >= Contexts)
+    if (context >= Cores)
       return false;
 
-    if (reg == 0) {
-      *out = thresholds[context];
+    if (target == 0) {
+      *output = thresholds[context];
       return true;
     }
-    if (reg == 4) {
-      *out = claim(context);
-      size_t core = context / Factor;
-      update(core);
+    if (target == 4) {
+      *output = claim(context);
+      update(context);
       return true;
     }
     return false;
   }
 
-  bool control(size_t offset, unsigned int val) {
-    size_t off = offset - THRESHOLD;
-    uint32_t context = off / 0x1000;
-    uint32_t reg = off % 0x1000;
+  bool control(size_t offset, uint32_t source) {
+    offset = offset - THRESHOLD;
+    uint32_t context = offset / 0x1000;
+    uint32_t target = offset % 0x1000;
 
-    if (context >= Contexts)
+    if (context >= Cores)
       return false;
 
-    if (reg == 0) {
-      thresholds[context] = val;
+    if (target == 0) {
+      thresholds[context] = source;
       return true;
     }
-    if (reg == 4) {
+    if (target == 4) {
       return true;
     }
     return false;
@@ -236,9 +230,9 @@ private:
 
   uint32_t priorities[1024]{};
   uint32_t pendings[32]{};
-  uint32_t enables[Contexts][32]{};
-  uint32_t thresholds[Contexts]{};
-  Meta::Array<CORES, VirtualCPU> &cpus;
+  uint32_t enables[Cores][32]{};
+  uint32_t thresholds[Cores]{};
+  Meta::Array<Cores, VirtualCPU> &cpus;
 };
 
 } // namespace QUARK

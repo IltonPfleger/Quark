@@ -19,7 +19,7 @@ __attribute__((section(".__initrd__"), used)) static uint8_t INITRD[8 * MB];
 
 class LinuxLauncher {
 public:
-  static constexpr uint32_t CPUS = 4;
+  static constexpr uint32_t CPUS = 1;
 
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
@@ -172,10 +172,8 @@ public:
           uint32_t plic[CPUS * 4];
           for (uint32_t core = 0; core < CPUS; core++) {
             uint32_t phandle = 0x10 + core;
-            plic[core * 4 + 0] = phandle;
-            plic[core * 4 + 1] = 11;
-            plic[core * 4 + 2] = phandle;
-            plic[core * 4 + 3] = 9;
+            plic[core * 2 + 0] = phandle;
+            plic[core * 2 + 1] = 9;
           }
           builder.add("interrupts-extended", plic, CPUS * 4);
           builder.add("phandle", 0x02);

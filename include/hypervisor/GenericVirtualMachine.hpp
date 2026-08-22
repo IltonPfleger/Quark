@@ -27,8 +27,8 @@ class GenericVirtualMachine : public VirtualMachine {
 
   template <typename... D> struct DeviceCollection {
     DeviceCollection(VirtualMachine &, Meta::Array<CORES, VirtualCPU> &) {}
-    bool read(uintptr_t, uint32_t *) { return false; }
-    bool write(uintptr_t, uint32_t) { return false; }
+    bool read(uintptr_t, void *, size_t) { return false; }
+    bool write(uintptr_t, const void *, size_t) { return false; }
     void interrupt(uint32_t) {}
   };
 
@@ -50,26 +50,25 @@ class GenericVirtualMachine : public VirtualMachine {
       }
     }
 
-    bool read(uintptr_t target, uint32_t *destination) {
-      if (_device.read(target, destination)) {
+    bool read(uintptr_t target, void *destination, size_t length) {
+      if (_device.read(target, destination, length)) {
         return true;
       }
-      return _others.read(target, destination);
+      return _others.read(target, destination, length);
     }
 
-    bool write(uintptr_t target, uint32_t source) {
-      if (_device.write(target, source)) {
+    bool write(uintptr_t target, const void *source, size_t length) {
+      if (_device.write(target, source, length)) {
         return true;
       }
-      return _others.write(target, source);
+      return _others.write(target, source, length);
     }
 
     void interrupt(uint32_t id) {
       if constexpr (Meta::IsBaseOf<VirtualInterruptController, Head>::Result) {
         _device.interrupt(id);
-      } else {
-        _others.interrupt(id);
       }
+      _others.interrupt(id);
     }
   };
 
@@ -100,15 +99,15 @@ public:
     arguments[core].semaphore.v();
   }
 
-  bool read(uintptr_t target, uint32_t *destination) override {
-    return devices_.read(target, destination);
+  bool read(uintptr_t target, void *destination, size_t length) override {
+    return devices_.read(target, destination, length);
   }
 
-  bool write(uintptr_t target, uint32_t source) override {
-    return devices_.write(target, source);
+  bool write(uintptr_t address, const void *source, size_t length) override {
+    return devices_.write(address, source, length);
   }
 
-  void interrupt(uint32_t id) override { devices_.interrupt(id); }
+  void interrupt(size_t id) override { devices_.interrupt(id); }
 
   VirtualCPU &cpu(size_t id) override { return cpus_[id]; }
 
