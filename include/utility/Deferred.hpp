@@ -62,33 +62,11 @@ public:
   }
 
   static void init() {
-    if (using_.finc() == 0) {
-      for (size_t i = 0; i < Threads; ++i)
-        managers_[i] = new Deferred(i);
-      initialized_ = true;
-    } else {
-      while (!initialized_) {
-      }
-    }
-  }
-
-  static void destroy() {
-    if (using_.fdec() != 1)
-      return;
-
-    initialized_ = false;
-
-    for (size_t i = 0; i < Threads; ++i) {
-      Deferred *manager = managers_[i];
-      managers_[i] = nullptr;
-      delete manager;
-    }
+    for (size_t i = 0; i < Threads; ++i)
+      managers_[i] = new Deferred(i);
   }
 
   static bool schedule(Work &work) {
-    if (!initialized_)
-      return false;
-
     const size_t start = id();
 
     for (size_t i = 0; i < Threads; i++) {
@@ -96,8 +74,6 @@ public:
 
       if constexpr (Threads != 0) {
         manager = managers_[(start + i) % Threads];
-      } else {
-        manager = managers_[0];
       }
 
       assert(manager);
@@ -165,8 +141,6 @@ private:
 
 private:
   static constinit inline Atomic<size_t> next_ = 0;
-  static constinit inline Atomic<size_t> using_ = 0;
-  static constinit inline Atomic<bool> initialized_ = false;
   static inline Meta::Array<Threads, Deferred *> managers_;
 };
 

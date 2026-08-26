@@ -25,13 +25,15 @@ private:
 
     size_t index = irq2index(id, type);
 
-    // if (c->pc >= 0xffffffff80077ce0 && c->pc <= 0xffffffff80077f44) {
-    //   if (CPU::id() == 0) {
-    //     Console::print("PC: ", (void *)((c->pc)));
-    //     Console::println(" RA: ", (void *)*reinterpret_cast<uintptr_t *>(
-    //                                   MMU::PageTable::virt2phys(c->sp +
-    //                                   88)));
-    //   }
+    // static Spin lock;
+    // if (c->pc >= 256ULL * 1024ULL * 1024ULL * 1024ULL) {
+    //   lock.acquire();
+    //   Console::print(CPU::id());
+    //   Console::print(" PC: ", (void *)((c->pc)));
+    //   Console::print(" a3: ", (void *)((c->a3)));
+    //   Console::print(" a4: ", (void *)((c->a4)));
+    //   Console::println(" a5: ", (void *)((c->a5)));
+    //   lock.release();
     // }
 
     assert(index < NumberOfHandlers, index);

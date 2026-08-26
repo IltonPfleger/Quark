@@ -57,8 +57,8 @@ public:
   }
 
   void activate() {
-    PMP::NAPOT<1>(vm_->memory().start(), vm_->memory().length(),
-                  PMP::R | PMP::W | PMP::X);
+    static constexpr uintmax_t RWX = PMP::R | PMP::W | PMP::X;
+    PMP::NAPOT<1>(vm_->memory().start(), vm_->memory().length(), RWX);
 
     csrw<MachineMode::MIDELEG>(MIDELEG);
     csrw<MachineMode::MEDELEG>(MEDELEG);

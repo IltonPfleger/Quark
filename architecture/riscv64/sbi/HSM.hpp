@@ -25,7 +25,6 @@ public:
 
       break;
     }
-
     default: {
       context->a0 = SBI_ERR_NOT_SUPPORTED;
       context->a1 = 0;

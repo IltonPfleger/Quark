@@ -22,14 +22,10 @@ public:
   Console(VirtualMachine &owner)
       : Handler(3, 1 << 27, N), device_(*DEVICE::instance()), owner_(owner),
         deferred_(worker, this) {
-    Deferred::init();
     device_.attach(this);
   }
 
-  ~Console() {
-    device_.detach(this);
-    Deferred::destroy();
-  }
+  ~Console() { device_.detach(this); }
 
   uint32_t configuration(uint32_t) { return 0; }
 

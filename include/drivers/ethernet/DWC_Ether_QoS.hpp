@@ -567,8 +567,6 @@ public:
   DWC_Ether_QoS() : deferred_(worker, this), address_(MyTraits::MAC) {
     TraceIn();
 
-    Deferred::init();
-
     PHY::init();
     DMA::reset();
     dma_ = new DMA();
@@ -591,8 +589,6 @@ public:
     TraceIn();
 
     Reg32(CH0_INTERRUPT_ENABLE) = 0;
-
-    Deferred::destroy();
 
     for (auto &i : MyTraits::IRQs) {
       IC::uninstall(i);

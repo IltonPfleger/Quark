@@ -122,7 +122,11 @@ public:
 
       builder.begin("chosen");
       {
-        builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi ");
+        // builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi
+        // initcall_debug");
+
+        // builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi ");
+        builder.add("bootargs", "console=hvc0 loglevel=8");
 
         uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
         uint64_t end = start + initrd.length();
@@ -218,15 +222,13 @@ public:
           builder.add("#interrupt-cells", 1);
           builder.add("riscv,ndev", 0x35);
 
-          uint32_t plic[CPUS * 4];
+          uint32_t plic[CPUS * 2];
           for (uint32_t core = 0; core < CPUS; core++) {
             uint32_t phandle = 0x10 + core;
-            plic[core * 4 + 0] = phandle;
-            plic[core * 4 + 1] = 11;
-            plic[core * 4 + 2] = phandle;
-            plic[core * 4 + 3] = 9;
+            plic[core * 2] = phandle;
+            plic[core * 2 + 1] = 9;
           }
-          builder.add("interrupts-extended", plic, CPUS * 4);
+          builder.add("interrupts-extended", plic, CPUS * 2);
           builder.add("phandle", 0x02);
         }
         builder.end();

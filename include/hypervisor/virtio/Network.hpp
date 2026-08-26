@@ -28,14 +28,10 @@ public:
   Network(VirtualMachine &owner)
       : Handler(1, 0, MaximumNumberOfDescriptors), device_(DEVICE::instance()),
         owner_(owner), deferred_(worker, this) {
-    Deferred::init();
     device_.attach(this);
   }
 
-  ~Network() {
-    Deferred::destroy();
-    device_.detach(this);
-  }
+  ~Network() { device_.detach(this); }
 
   uint32_t configuration(uint32_t) { return 0; }
 
@@ -181,6 +177,11 @@ private:
     return descriptors;
   }
 
+  Queue &queue(size_t id) {
+    assert(id <= 1);
+    return id == 0 ? rx_ : tx_;
+  }
+
 public:
   static constexpr uintptr_t Address = ADDRESS;
   static constexpr size_t Size = sizeof(LegacyHeader);
@@ -194,7 +195,6 @@ private:
 
   Queue tx_;
   Queue rx_;
-  Queue *queues_[2] = {&rx_, &tx_};
 
   Configuration configuration_;
 };
