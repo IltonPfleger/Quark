@@ -11,13 +11,11 @@ Alarm::Alarm(Microsecond at) : Alarm(at, internal_) {}
 
 Alarm::Alarm(Microsecond at, Semaphore &handler)
     : node_(this, at), internal_(0), handler_(handler) {
-  CPU::IRQ::Guard _;
-
-  core_ = CPU::id();
-
-  Alarms &alarms = alarms_[core_];
-
-  alarms.insert(&node_);
+  {
+    CPU::IRQ::Guard _;
+    core_ = CPU::id();
+    alarms_[core_].insert(&node_);
+  }
 
   handler_.p();
 }
@@ -26,6 +24,7 @@ Alarm::~Alarm() {
   CPU::IRQ::Guard _;
   Alarms &alarms = alarms_[core_];
   alarms.remove(&this->node_);
+  CPU::mb();
 }
 
 void Alarm::handler() {

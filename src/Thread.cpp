@@ -170,9 +170,6 @@ void Thread::reschedule() {
 
   Node *next = s_scheduler.remove(Criterion::NORMAL);
 
-  // if (next && (CPU::id() == 1))
-  //   Console::println("RES! ", next);
-
   if (next) {
     previous->state_ = State::READY;
     dispatch(previous, next->value);
