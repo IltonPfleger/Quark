@@ -24,11 +24,16 @@ class VirtualCPU {
     uint64_t stval = 0;
     uint64_t sepc = 0;
     uint64_t sie = 0;
-    Atomic<uint64_t> sip = 0;
+    uint64_t sip = 0;
   };
 
 public:
-  enum Flags { PENDING_FENCE_I = 1 << 0, PENDING_SFENCE = 1 << 1 };
+  enum : uintmax_t {
+    FENCEI = 1ULL << 0,
+    SFENCE = 1ULL << 1,
+    EXTERNAL = 1ULL << 2,
+    SOFTWARE = 1ULL << 3,
+  };
 
   VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
 
@@ -41,6 +46,7 @@ public:
                               MachineMode::PP);
 
     csrs<MachineMode::STATUS>(MachineMode::PP_S | MachineMode::PIRQE);
+
     csrs<MachineMode::STATUS>(MachineMode::TW);
 
     csrw<MachineMode::EPC>(entry);
@@ -56,78 +62,54 @@ public:
     current()->vm_->boot(core, entry, opaque);
   }
 
-  void activate() {
-    static constexpr uintmax_t RWX = PMP::R | PMP::W | PMP::X;
-    PMP::NAPOT<1>(vm_->memory().start(), vm_->memory().length(), RWX);
+  void setExternalInterruptPending() {
+    int core = core_;
+    flags_ |= EXTERNAL;
 
-    csrw<MachineMode::MIDELEG>(MIDELEG);
-    csrw<MachineMode::MEDELEG>(MEDELEG);
-
-    core_ = mhartid();
-    current(this);
-    onTick();
-    onFence();
-  }
-
-  void setInterruptPending() {
-    registers_.sip |= SupervisorMode::EI;
     if (current() == this) {
-      setExternalInterruptPending();
-    } else if (core_ >= 0) {
-      IPI::send(core_, onInterProcessorInterrupt);
+      update();
+    } else if (core >= 0) {
+      IPI::send(core, update);
     }
   }
 
-  void clearInterruptPending() {
+  void clearExternalInterruptPending() {
     assert(current() == this);
-    clearExternalInterruptPending();
+    csrc<MachineMode::IP>(SEI);
   }
 
-  void interProcessorInterrupt() {
-    registers_.sip |= SupervisorMode::SI;
-    if (current() == this) {
-      setSoftwareInterruptPending();
-    } else if (core_ >= 0) {
-      IPI::send(core_, onInterProcessorInterrupt);
+  static void setSoftwareInterruptPending(size_t hartid) {
+    if (current())
+      current()->vm_->cpu(hartid).setSoftwareInterruptPending();
+  }
+
+  static void update(void *_ = nullptr) {
+    VirtualCPU *current = VirtualCPU::current();
+
+    if (!current)
+      return;
+
+    if (CLINT::mtime() >= current->registers_.mtimecmp) {
+      csrs<MachineMode::IP>(STI);
+    } else {
+      csrc<MachineMode::IP>(STI);
     }
-  }
 
-  static void interProcessorInterrupt(size_t id) {
-    if (!current())
-      return;
-
-    current()->vm_->cpu(id).interProcessorInterrupt();
-  }
-
-  static void onInterProcessorInterrupt(void *) {
-    if (!current())
-      return;
-
-    csrs<MachineMode::IP>(current()->registers_.sip);
-  }
-
-  static void onTick() {
-    if (!current())
-      return;
-    if (CLINT::mtime() >= current()->registers_.mtimecmp) {
-      setTimerInterruptPending();
+    if (current->flags_ & EXTERNAL) {
+      current->flags_ &= ~EXTERNAL;
+      csrs<MachineMode::IP>(SEI);
     }
-  }
 
-  static uintmax_t mtimecmp() {
-    assert(current());
-    return current()->registers_.mtimecmp;
+    if (current->flags_ & SOFTWARE) {
+      current->flags_ &= ~SOFTWARE;
+      csrs<MachineMode::IP>(SSI);
+    }
   }
 
   static void mtimecmp(uintmax_t mtimecmp) {
     assert(current());
     current()->registers_.mtimecmp = mtimecmp;
-
-    if (mtimecmp <= CLINT::mtime()) {
-      setTimerInterruptPending();
-    } else {
-      clearTimerInterruptPending();
-    }
+    update();
   }
 
   static bool read(uintptr_t address, uint32_t *destination) {
@@ -156,16 +138,17 @@ public:
     return true;
   }
 
-  static VirtualCPU *current() { return current_[CPU::id()]; }
+  static VirtualCPU *swtch(VirtualCPU *next) {
+    VirtualCPU *previous = current();
 
-  static void swtch(VirtualCPU *previous, VirtualCPU *next) {
     if (previous) {
       previous->save();
       previous->core_ = -1;
     }
+
     if (next) {
-      next->activate();
       next->restore();
+      next->activate();
     } else {
       csrc<MachineMode::IE>(MIDELEG);
       csrc<MachineMode::IP>(MIDELEG);
@@ -173,44 +156,56 @@ public:
       csrw<MachineMode::MEDELEG>(0);
       current(nullptr);
     }
+
+    return previous;
   }
 
-  static void onRemoteFenceInstruction(void *) {
-    if (!current())
-      return;
-    current()->onFence();
-  }
-
-  void onFence() {
-    if (current() == this) {
-      if (flags_ & PENDING_FENCE_I) {
-        flags_ &= ~PENDING_FENCE_I;
-        CPU::ib();
-      }
-      if (flags_ & PENDING_SFENCE) {
-        flags_ &= ~PENDING_SFENCE;
-        MMU::TLB::flush();
-      }
-      return;
-    }
-    if (core_ >= 0) {
-      IPI::send(core_, onRemoteFenceInstruction);
-    }
-  }
-
-  static void fence(size_t hartid, Flags flags) {
+  static void fence(size_t hartid, uintmax_t flags) {
     if (!current())
       return;
 
-    current()->vm_->cpu(hartid).flags_ |= flags;
-    current()->vm_->cpu(hartid).onFence();
+    VirtualCPU &destination = current()->vm_->cpu(hartid);
+
+    destination.flags_ |= flags;
+
+    int core = destination.core_;
+
+    if (&destination == current()) {
+      destination.fence();
+    } else if (core >= 0) {
+      IPI::send(core, fence);
+    }
   }
 
 private:
   static void dispatch(size_t core, void *opaque) {
     register size_t a0 asm("a0") = core;
     register void *a1 asm("a1") = opaque;
-    asm volatile("mret" ::"r"(a0), "r"(a1));
+    asm volatile("mret" : : "r"(a0), "r"(a1));
+  }
+
+  void setSoftwareInterruptPending() {
+    int core = core_;
+    flags_ |= SOFTWARE;
+
+    if (current() == this) {
+      update();
+    } else if (core >= 0) {
+      IPI::send(core, update);
+    }
+  }
+
+  void activate() {
+    static constexpr uintmax_t RWX = PMP::R | PMP::W | PMP::X;
+    PMP::NAPOT<1>(vm_->memory().start(), vm_->memory().length(), RWX);
+
+    csrw<MachineMode::MIDELEG>(MIDELEG);
+    csrw<MachineMode::MEDELEG>(MEDELEG);
+
+    core_ = mhartid();
+    current(this);
+    update();
+    fence();
   }
 
   void save() {
@@ -220,8 +215,8 @@ private:
     registers_.scause = csrr<SupervisorMode::CAUSE>();
     registers_.stval = csrr<SupervisorMode::TVAL>();
     registers_.sepc = csrr<SupervisorMode::EPC>();
-    registers_.sie = csrr<MachineMode::IE>();
-    registers_.sip = csrr<MachineMode::IP>();
+    registers_.sie = csrr<MachineMode::IE>() & MIDELEG;
+    registers_.sip = csrr<MachineMode::IP>() & MIDELEG;
   }
 
   void restore() {
@@ -232,37 +227,31 @@ private:
     csrw<SupervisorMode::TVAL>(registers_.stval);
     csrw<SupervisorMode::EPC>(registers_.sepc);
     csrc<MachineMode::IE>(MIDELEG);
-    csrs<MachineMode::IE>(registers_.sie & MIDELEG);
+    csrs<MachineMode::IE>(registers_.sie);
     csrc<MachineMode::IP>(MIDELEG);
-    csrs<MachineMode::IP>(registers_.sip & MIDELEG);
+    csrs<MachineMode::IP>(registers_.sip);
     MMU::TLB::flush();
   }
 
-  static void setSoftwareInterruptPending() {
-    csrs<MachineMode::IP>(SupervisorMode::SI);
+  static void fence(void *) {
+    if (!current())
+      return;
+    current()->fence();
   }
 
-  static void clearSoftwareInterruptPending() {
-    csrc<MachineMode::IP>(SupervisorMode::SI);
-  }
-
-  static void setTimerInterruptPending() {
-    csrs<MachineMode::IP>(SupervisorMode::TI);
-  }
-
-  static void clearTimerInterruptPending() {
-    csrc<MachineMode::IP>(SupervisorMode::TI);
-  }
-
-  static void setExternalInterruptPending() {
-    csrs<MachineMode::IP>(SupervisorMode::EI);
-  }
-
-  static void clearExternalInterruptPending() {
-    csrc<MachineMode::IP>(SupervisorMode::EI);
+  void fence() {
+    if (flags_ & FENCEI) {
+      flags_ &= ~FENCEI;
+      CPU::ib();
+    }
+    if (flags_ & SFENCE) {
+      flags_ &= ~SFENCE;
+      MMU::TLB::flush();
+    }
   }
 
   static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
+  static VirtualCPU *current() { return current_[CPU::id()]; }
 
 private:
   static constexpr uintmax_t STI = SupervisorMode::TI;

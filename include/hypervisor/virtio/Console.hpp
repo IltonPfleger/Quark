@@ -7,7 +7,7 @@
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <utility/Console.hpp>
-#include <utility/Deferred.hpp>
+// #include <utility/Deferred.hpp>
 #include <utility/Observer.hpp>
 
 namespace QUARK::virtio {
@@ -20,8 +20,8 @@ class Console : public Handler, public Observer<const char *, size_t> {
 
 public:
   Console(VirtualMachine &owner)
-      : Handler(3, 1 << 27, N), device_(*DEVICE::instance()), owner_(owner),
-        deferred_(worker, this) {
+      : Handler(3, 1 << 27, MaximumNumberOfDescriptors),
+        device_(*DEVICE::instance()), owner_(owner), deferred_(worker, this) {
     device_.attach(this);
   }
 
@@ -36,19 +36,23 @@ public:
 
   static void worker(void *pointer) {
     auto *self = reinterpret_cast<Console *>(pointer);
-    while (self->tx_.available()) {
-      int head = self->tx_.alloc();
-      size_t length = self->process(head);
-      self->tx_.free(head, length);
+    while (true) {
+      const int head = self->queues_[Tx].alloc();
+
+      if (head < 0)
+        break;
+
+      self->queues_[Tx].free(head, self->process(head));
     }
   }
 
   void update(const char *buffer, size_t size) override {
-    if (!rx_.available())
+    const int id = queues_[Rx].alloc();
+
+    if (id < 0)
       return;
 
-    int id = rx_.alloc();
-    auto *descriptor = rx_.descriptor(id);
+    auto *descriptor = queues_[Rx].descriptor(id);
     auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
 
     descriptor->length = size;
@@ -56,9 +60,9 @@ public:
 
     memcpy(destination, buffer, size);
 
-    rx_.free(id, size);
+    queues_[Rx].free(id, size);
 
-    if (rx_.notifiable()) {
+    if (queues_[Rx].interruptible()) {
       this->interrupt();
       owner_.interrupt(IRQ);
     }
@@ -69,14 +73,14 @@ public:
     size_t count = 0;
     int current = head;
 
-    RingDescriptor *descriptor = tx_.descriptor(current);
+    RingDescriptor *descriptor = queues_[Tx].descriptor(current);
 
     total += print(descriptor);
 
     while (descriptor->flags & VRING_DESC_F_NEXT) {
-      assert(count < N);
+      assert(count < MaximumNumberOfDescriptors);
       current = descriptor->next;
-      descriptor = tx_.descriptor(current);
+      descriptor = queues_[Tx].descriptor(current);
       total += print(descriptor);
       count++;
     }
@@ -88,27 +92,21 @@ public:
     char *data = reinterpret_cast<char *>(descriptor->address);
     uint32_t length = descriptor->length;
     for (uint32_t j = 0; j < descriptor->length; j++)
-      device_.write(data[j]);
+      QUARK::Console::print(data[j]);
     return length;
   }
 
-  Queue &queue(size_t id) {
-    assert(id <= 1);
-    return id == 0 ? rx_ : tx_;
-  }
-
 public:
+  static constexpr size_t MaximumNumberOfDescriptors = 1024;
   static constexpr uintptr_t Address = ADDRESS;
-  static constexpr size_t N = 32;
+  static constexpr uint32_t Rx = 0;
+  static constexpr uint32_t Tx = 1;
 
 private:
   DEVICE &device_;
   VirtualMachine &owner_;
-
-  Deferred::Work deferred_;
-
-  Queue tx_;
-  Queue rx_;
+  Deferred deferred_;
+  Queue queues_[2];
 };
 
 } // namespace QUARK::virtio

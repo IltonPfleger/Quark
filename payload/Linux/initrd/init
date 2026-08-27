@@ -6,4 +6,7 @@ mount -t sysfs none /sys
 mount -t devtmpfs none /dev
 mount -t proc proc /proc
 
+ip link set dev eth0 up
+ip addr add 192.168.1.101/24 dev eth0
+
 exec setsid cttyhack sh

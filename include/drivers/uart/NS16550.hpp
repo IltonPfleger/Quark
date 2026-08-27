@@ -4,7 +4,7 @@
 #include <architecture/IC.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
-#include <utility/Deferred.hpp>
+// #include <utility/Deferred.hpp>
 #include <utility/Observer.hpp>
 
 namespace QUARK {
@@ -17,7 +17,7 @@ template <typename Tag> class NS16550 : public Observed<const char *, size_t> {
   static constexpr unsigned int BaudDivisor = Clock / (16 * BaudRate);
 
 private:
-  NS16550() : deferred_(worker, this) {
+  NS16550() { //: deferred_(worker, this) {
     Address[IER] = 0x00;
     Address[IER] = 0x00;
     Address[LCR] = LCR_DLAB;
@@ -56,8 +56,9 @@ private:
 
   static void isr(size_t) {
     auto *self = reinterpret_cast<NS16550 *>(instance());
-    Deferred::schedule(self->deferred_);
-    Address[IER] = 0;
+    worker(self);
+    // Address[IER] = 0;
+    // Deferred::schedule(self->deferred_);
   }
 
   static void worker(void *pointer) {
@@ -75,7 +76,7 @@ private:
 
     self->notify(buffer, i);
 
-    Address[IER] = RIER;
+    // Address[IER] = RIER;
   }
 
 public:
@@ -106,7 +107,7 @@ private:
       reinterpret_cast<uint8_t *>(Traits::Address);
 
 private:
-  Deferred::Work deferred_;
+  // Deferred::Work deferred_;
 };
 
 } // namespace QUARK

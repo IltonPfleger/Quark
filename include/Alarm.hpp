@@ -6,9 +6,10 @@
 
 namespace QUARK {
 
-class Alarm {
-  using Node = collections::Node<Alarm *, Microsecond, true>;
-  using Alarms = collections::OrderedList<Node, Spin>;
+class Alarm : collections::Node<void, Microsecond, true> {
+  typedef collections::Node<void, Microsecond, true> Node;
+  typedef collections::OrderedList<Node, Spin> Alarms;
+  friend Alarms;
 
 public:
   Alarm(Microsecond);
@@ -24,7 +25,6 @@ private:
   static constinit inline Alarms alarms_[Traits<CPU>::Active];
 
 private:
-  Node node_;
   size_t core_;
   Semaphore internal_;
   Semaphore &handler_;

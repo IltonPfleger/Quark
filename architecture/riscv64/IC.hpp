@@ -13,10 +13,6 @@ public:
   static void isr(ContextFrame *context) {
     auto id = PLIC::claim();
 
-    // if (id == 32) {
-    //   Console::println("PC: ", (void *)context->pc);
-    // }
-
     if (id != 0) {
       handlers_[id](id);
       PLIC::complete(id);

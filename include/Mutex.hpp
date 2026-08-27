@@ -6,14 +6,14 @@
 namespace QUARK {
 
 class Mutex : Semaphore {
-  public:
-    constexpr Mutex()
-        : Semaphore(1) {}
+public:
+  constexpr Mutex() : Semaphore(1) {}
+  constexpr ~Mutex() {}
 
-    void acquire() { p(); }
-    void release() { v(); }
+  void acquire() { p(); }
+  void release() { v(); }
 
-    using Guard = QUARK::Guard<Mutex, &Mutex::acquire, &Mutex::release>;
+  using Guard = QUARK::Guard<Mutex, &Mutex::acquire, &Mutex::release>;
 };
 
 } // namespace QUARK

@@ -49,8 +49,8 @@ public:
   T operator|=(T mask)
     requires Meta::Integer<T>
   {
-    T current = load();
     while (true) {
+      T current = load();
       T desired = current | mask;
       if (cas(current, desired))
         return desired;
@@ -60,8 +60,8 @@ public:
   T operator&=(T mask)
     requires Meta::Integer<T>
   {
-    T current = load();
     while (true) {
+      T current = load();
       T desired = current & mask;
       if (cas(current, desired))
         return desired;

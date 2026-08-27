@@ -1,19 +1,18 @@
 #pragma once
 
 #include <architecture/riscv64/ContextFrame.hpp>
+#include <architecture/riscv64/sbi/values.hpp>
 
 namespace QUARK::sbi {
 
 class FWFT {
-  public:
-    static constexpr unsigned int EID = 0x46574654;
+public:
+  static constexpr unsigned int EID = 0x46574654;
 
-    static void handler(ContextFrame *c) {
-        switch (c->a6) {
-            default: break;
-        }
-        c->a0 = 0;
-    }
+  static void handler(ContextFrame *context) {
+    context->a0 = SBI_ERR_NOT_SUPPORTED;
+    context->a1 = 0;
+  }
 };
 
 } // namespace QUARK::sbi

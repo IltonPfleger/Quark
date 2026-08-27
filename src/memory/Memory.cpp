@@ -17,7 +17,7 @@ void Memory::init() {
 
   for (uintptr_t c = RamEnd - PageSize; c >= RamStart; c -= PageSize) {
     Chunk page(c, PageSize);
-    if (page.overlaps(BootInformation::kernel()))
+    if (page.overlaps(BootInformation::all()))
       continue;
     if (page.overlaps(__bmm))
       continue;

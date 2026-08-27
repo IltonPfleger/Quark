@@ -12,7 +12,7 @@ concept VirtualInterruptControllerConcept = requires(T controller) {
   { controller.write(0, nullptr, 0) } -> Meta::SameAs<bool>;
 };
 
-template <typename T> struct IsInterruptController {
+template <typename T> struct IsVirtualInterruptController {
   static constexpr bool Result =
       Meta::IsBaseOf<VirtualInterruptController, T>::Result &&
       VirtualInterruptControllerConcept<T>;

@@ -253,12 +253,12 @@ public:
   }
 };
 
-class DWC_Ether_QoS_Payload {
+class DWC_Ether_QoS_Buffer_Data {
 protected:
   unsigned payload_[1522];
 };
 
-class DWC_Ether_QoS_Buffer : DWC_Ether_QoS_Payload, public NetworkBuffer {
+class DWC_Ether_QoS_Buffer : DWC_Ether_QoS_Buffer_Data, public NetworkBuffer {
 public:
   DWC_Ether_QoS_Buffer(size_t head = 0, size_t tail = 0)
       : NetworkBuffer(this, head, tail) {}
@@ -338,16 +338,14 @@ public:
   DWC_Ether_QoS_DMA() : sx_head_(0), sx_tail_(0), rx_head_(0), rx_tail_(0) {
     TraceIn();
 
-    memset(sx_pending_, 0, sizeof(sx_pending_));
-
-    for (size_t i = 0; i < MyTraits::SendBufferCount; i++) {
+    for (size_t i = 0; i < MyTraits::SxBufferCount; i++) {
       memset(&sx_descriptors_[i], 0, sizeof(Descriptor));
       Cache::flush(&sx_descriptors_[i], sizeof(Descriptor));
-      sx_list_.insert(sx_buffers_[i].node());
-      sx_semaphore_.v();
+      free_.insert(sx_buffers_[i].node());
+      counter_.v();
     }
 
-    for (size_t i = 0; i < MyTraits::ReceiveBufferCount - 1; i++) {
+    for (size_t i = 0; i < MyTraits::RxBufferCount - 1; i++) {
       release(&rx_buffers_[i]);
     }
 
@@ -356,18 +354,18 @@ public:
     uintptr_t rx = reinterpret_cast<uintptr_t>(rx_descriptors_);
     Reg32(Address, CH0_RXDESC_LIST_ADDR) = static_cast<uint32_t>(rx);
     Reg32(Address, CH0_RXDESC_LIST_HADDR) = static_cast<uint32_t>(rx >> 32);
-    Reg32(Address, CH0_RXDESC_RING_LENGTH) = MyTraits::ReceiveBufferCount - 1;
+    Reg32(Address, CH0_RXDESC_RING_LENGTH) = MyTraits::RxBufferCount - 1;
 
     uintptr_t tx = reinterpret_cast<uintptr_t>(sx_descriptors_);
     Reg32(Address, CH0_TXDESC_LIST_ADDR) = static_cast<uint32_t>(tx);
     Reg32(Address, CH0_TXDESC_LIST_HADDR) = static_cast<uint32_t>(tx >> 32);
-    Reg32(Address, CH0_TXDESC_RING_LENGTH) = MyTraits::SendBufferCount - 1;
+    Reg32(Address, CH0_TXDESC_RING_LENGTH) = MyTraits::SxBufferCount - 1;
 
     Reg32(Address, CH0_TX_CONTROL) |= CH0_TX_CONTROL_OSF;
     Reg32(Address, CH0_TX_CONTROL) |= 1;
     Reg32(Address, CH0_RX_CONTROL) |= 1;
 
-    release(&rx_buffers_[MyTraits::ReceiveBufferCount - 1]);
+    release(&rx_buffers_[MyTraits::RxBufferCount - 1]);
 
     TraceOut();
   }
@@ -385,14 +383,13 @@ public:
   }
 
   DWC_Ether_QoS_Buffer *alloc(size_t length) {
-    sx_semaphore_.p();
+    counter_.p();
 
-    NetworkBuffer::Node *node = sx_list_.remove();
+    NetworkBuffer::Node *node = free_.remove();
 
     assert(node);
 
-    DWC_Ether_QoS_Buffer *buffer =
-        static_cast<DWC_Ether_QoS_Buffer *>(node->value);
+    auto *buffer = static_cast<DWC_Ether_QoS_Buffer *>(node->value);
 
     new (buffer) DWC_Ether_QoS_Buffer(0, length);
 
@@ -400,48 +397,52 @@ public:
   }
 
   void free(DWC_Ether_QoS_Buffer *buffer) {
-    sx_list_.insert(buffer->node());
-    sx_semaphore_.v();
+    assert(buffer);
+    free_.insert(buffer->node());
+    counter_.v();
   }
 
   int send(DWC_Ether_QoS_Buffer *buffer) {
     auto *data = buffer->start();
-    size_t length = buffer->capacity();
+    size_t length = buffer->capacity() & 0x3FFF;
+
+    assert(length <= sizeof(DWC_Ether_QoS_Buffer_Data), length);
 
     Cache::flush(data, length);
 
-    sx_lock_.acquire();
+    lock_.acquire();
 
-    size_t &i = sx_head_;
+    size_t i = sx_head_++ % MyTraits::SxBufferCount;
 
-    Descriptor &descriptor = sx_descriptors_[i % MyTraits::SendBufferCount];
+    Descriptor *descriptor = &sx_descriptors_[i];
 
-    Cache::invalidate(&descriptor, sizeof(Descriptor));
+    Cache::invalidate(descriptor, sizeof(Descriptor));
 
-    if (descriptor.des3 & Descriptor::OWN) {
-      sx_lock_.release();
+    if (descriptor->des3 & Descriptor::OWN) {
+      lock_.release();
       free(buffer);
       return -1;
     }
 
-    sx_pending_[i % MyTraits::SendBufferCount] = buffer;
+    descriptor->buffer(data);
+    descriptor->des2 = length;
+    descriptor->des3 = Descriptor::OWN | Descriptor::FD | Descriptor::LD;
+    descriptor->des3 |= length;
 
-    descriptor.buffer(data);
-    descriptor.des2 = (length & 0x3FFF);
-    descriptor.des3 =
-        Descriptor::OWN | Descriptor::FD | Descriptor::LD | (length & 0x3FFF);
+    Cache::flush(descriptor, sizeof(Descriptor));
 
-    Cache::flush(&descriptor, sizeof(Descriptor));
+    uintptr_t tail = reinterpret_cast<uintptr_t>(sx_descriptors_ + i);
+    Reg32(Address, CH0_TX_TAIL_POINTER) = tail;
 
-    Reg32(Address, CH0_TX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(
-        sx_descriptors_ + (++i % MyTraits::SendBufferCount));
-
-    sx_lock_.release();
+    lock_.release();
 
     while (1) {
-      Cache::flush(&descriptor, sizeof(Descriptor));
-      if (!(descriptor.des3 & Descriptor::OWN))
+
+      Cache::flush(descriptor, sizeof(Descriptor));
+      if (!(const_cast<volatile Descriptor *>(descriptor)->des3 &
+            Descriptor::OWN))
         break;
+
       Thread::yield();
     }
 
@@ -453,15 +454,14 @@ public:
   DWC_Ether_QoS_Buffer *receive() {
     size_t &i = rx_head_;
 
-    Descriptor &descriptor = rx_descriptors_[i % MyTraits::ReceiveBufferCount];
+    Descriptor &descriptor = rx_descriptors_[i % MyTraits::RxBufferCount];
 
     Cache::invalidate(&descriptor, sizeof(Descriptor));
 
     if (descriptor.des3 & Descriptor::OWN)
       return nullptr;
 
-    DWC_Ether_QoS_Buffer *buffer =
-        descriptor.template buffer<DWC_Ether_QoS_Buffer *>();
+    auto *buffer = descriptor.template buffer<DWC_Ether_QoS_Buffer *>();
 
     Cache::invalidate(buffer, descriptor.length());
 
@@ -475,7 +475,7 @@ public:
   void release(DWC_Ether_QoS_Buffer *buffer) {
     size_t &i = rx_tail_;
 
-    Descriptor &descriptor = rx_descriptors_[i % MyTraits::ReceiveBufferCount];
+    Descriptor &descriptor = rx_descriptors_[i % MyTraits::RxBufferCount];
 
     descriptor.buffer(buffer);
     descriptor.des2 = 0;
@@ -484,26 +484,22 @@ public:
     Cache::flush(&descriptor, sizeof(Descriptor));
 
     Reg32(Address, CH0_RX_TAIL_POINTER) = reinterpret_cast<uintptr_t>(
-        rx_descriptors_ + (++i % MyTraits::ReceiveBufferCount));
+        rx_descriptors_ + (++i % MyTraits::RxBufferCount));
   }
 
 private:
   static constexpr uintptr_t Address = MyTraits::Address;
 
 private:
-  collections::FIFO<NetworkBuffer::Node, Mutex> sx_list_;
+  Descriptor sx_descriptors_[MyTraits::SxBufferCount];
+  Descriptor rx_descriptors_[MyTraits::RxBufferCount];
 
-  Descriptor sx_descriptors_[MyTraits::SendBufferCount];
-  Descriptor rx_descriptors_[MyTraits::ReceiveBufferCount];
+  DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SxBufferCount];
+  DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::RxBufferCount];
 
-  DWC_Ether_QoS_Buffer sx_buffers_[MyTraits::SendBufferCount];
-  DWC_Ether_QoS_Buffer rx_buffers_[MyTraits::ReceiveBufferCount];
-
-  DWC_Ether_QoS_Buffer *sx_pending_[MyTraits::SendBufferCount];
-
-  Semaphore sx_semaphore_;
-
-  Mutex sx_lock_;
+  collections::FIFO<NetworkBuffer::Node, Mutex> free_;
+  Semaphore counter_;
+  Mutex lock_;
 
   size_t sx_head_;
   size_t sx_tail_;
@@ -601,6 +597,8 @@ public:
     TraceOut();
   }
 
+  size_t mtu() override { return 1500; }
+
   NetworkBuffer *alloc(size_t length) override {
     NetworkBuffer *buffer = dma_->alloc(length + sizeof(Header));
     buffer->advance(sizeof(Header));
@@ -641,13 +639,16 @@ public:
   static void worker(void *pointer) {
     DWC_Ether_QoS *self = reinterpret_cast<DWC_Ether_QoS *>(pointer);
 
-    NetworkBuffer *received = self->receive();
+    while (1) {
+      NetworkBuffer *received = self->receive();
 
-    if (!received)
-      return;
+      if (!received) {
+        break;
+      }
 
-    self->notify(received);
-    self->release(received);
+      self->notify(received);
+      self->release(received);
+    }
   }
 
   static void init() { instance_ = new DWC_Ether_QoS(); }
@@ -670,7 +671,7 @@ private:
   static constinit inline DWC_Ether_QoS *instance_ = nullptr;
 
 private:
-  Deferred::Work deferred_;
+  Deferred deferred_;
   Address address_;
   DMA *dma_;
 };

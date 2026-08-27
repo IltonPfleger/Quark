@@ -38,8 +38,8 @@ public:
     } else if (Decoder::wfi(instruction)) {
       Thread::yield();
       context->pc += 4;
-    } else if (Decoder::floating(instruction) && !FPU::enabled(*context)) {
-      FPU::enable<MachineMode>(context);
+      //} else if (Decoder::floating(instruction) && !FPU::enabled(*context)) {
+      //  FPU::enable<MachineMode>(context);
     } else {
       ExceptionHandler::esr(context);
     }

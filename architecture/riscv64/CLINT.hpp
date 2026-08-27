@@ -16,9 +16,8 @@ class CLINT {
 public:
   static uint64_t mtime() { return *mtime_; }
 
-  static void ipi(uint32_t hartid = mhartid()) {
-    msip_[hartid] = hartid != mhartid();
-  }
+  static void ipi(uint32_t hartid, uint32_t value) { msip_[hartid] = value; }
+  [[nodiscard]] static uint32_t ipi(uint32_t hartid) { return msip_[hartid]; }
 
   static void write(uint64_t ticks = mtime() + Ticks,
                     uint32_t core = mhartid()) {

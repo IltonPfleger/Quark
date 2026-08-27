@@ -21,19 +21,119 @@ class VirtualPLIC : public VirtualInterruptController {
 public:
   VirtualPLIC(VirtualMachine &owner) : owner_(owner) {}
 
+  template <bool Write> bool access(size_t offset, uint32_t &value) {
+    if (offset < PENDING) {
+      size_t identifier = offset / 4;
+      if (identifier >= 1024)
+        return false;
+
+      if constexpr (Write) {
+        priorities_[identifier] = value;
+      } else {
+        value = priorities_[identifier];
+      }
+    } else if (offset < ENABLED) {
+      size_t bank = (offset - PENDING) / 4;
+      if (bank >= 32)
+        return false;
+
+      if constexpr (Write) {
+        return false;
+      } else {
+        value = pendings_[bank];
+      }
+    } else if (offset < THRESHOLD) {
+      size_t relative = offset - ENABLED;
+      size_t context = relative / 0x80;
+      size_t chunk = (relative % 0x80) / 4;
+
+      if (context >= CORES || chunk >= 32)
+        return false;
+
+      if constexpr (Write) {
+        enables_[context][chunk] = value;
+      } else {
+        value = enables_[context][chunk];
+      }
+    } else {
+      size_t relative = offset - THRESHOLD;
+      size_t context = relative / 0x1000;
+      size_t target = relative % 0x1000;
+
+      if (context >= CORES)
+        return false;
+
+      if (target == 0) {
+        if constexpr (Write) {
+          thresholds_[context] = value;
+        } else {
+          value = thresholds_[context];
+        }
+      } else if (target == 4) {
+        if constexpr (Write) {
+          return true;
+        } else {
+          value = claim(context);
+          update(context);
+        }
+      } else {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool read(uintptr_t address, void *pointer, size_t length) {
+    assert(length == sizeof(uint32_t));
+
+    uint32_t *const destination = reinterpret_cast<uint32_t *>(pointer);
+    const size_t offset = address - ADDRESS;
+
+    return access<false>(offset, *destination);
+  }
+
+  bool write(uintptr_t address, const void *pointer, size_t length) {
+    assert(length == sizeof(uint32_t));
+
+    uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
+    const size_t offset = address - ADDRESS;
+
+    return access<true>(offset, source);
+  }
+
+  void interrupt(size_t identifier) {
+    assert(identifier != 0 && identifier < 1024);
+
+    uint32_t bank = identifier >> 5;
+    uint32_t bit = identifier & 31;
+    uint32_t mask = 1U << bit;
+
+    pendings_[bank] |= mask;
+
+    for (uint32_t context = 0; context < CORES; ++context) {
+      if (!(enables_[context][bank] & mask))
+        continue;
+      if (priorities_[identifier] <= thresholds_[context])
+        continue;
+      owner_.cpu(context).setExternalInterruptPending();
+    }
+  }
+
+private:
   bool pending(uint32_t context) const {
     if (context >= CORES)
       return false;
 
     for (uint32_t bank = 0; bank < 32; ++bank) {
-      uint32_t active = pendings[bank] & enables[context][bank];
+      uint32_t active = pendings_[bank] & enables_[context][bank];
       if (bank == 0)
         active &= ~1U;
 
       while (active) {
         uint32_t bit = __builtin_ctz(active);
         uint32_t interrupt = (bank << 5) | bit;
-        if (priorities[interrupt] > thresholds[context])
+        if (priorities_[interrupt] > thresholds_[context])
           return true;
         active &= ~(1U << bit);
       }
@@ -42,49 +142,23 @@ public:
     return false;
   }
 
-  bool active(size_t core) const {
-    if (core >= CORES)
-      return false;
-
-    return pending(core);
-  }
-
   bool pending() const {
     for (size_t core = 0; core < CORES; ++core) {
-      if (active(core))
+      if (pending(core))
         return true;
     }
     return false;
-  }
-
-  void interrupt(size_t identifier) {
-    if (identifier == 0 || identifier >= 1024)
-      return;
-
-    uint32_t bank = identifier >> 5;
-    uint32_t bit = identifier & 31;
-    uint32_t mask = 1U << bit;
-
-    pendings[bank] |= mask;
-
-    for (uint32_t context = 0; context < CORES; ++context) {
-      if (!(enables[context][bank] & mask))
-        continue;
-      if (priorities[identifier] <= thresholds[context])
-        continue;
-      notify(context);
-    }
   }
 
   uint32_t claim(uint32_t context) {
     if (context >= CORES)
       return 0;
 
-    uint32_t limit = thresholds[context];
+    uint32_t limit = thresholds_[context];
     uint32_t best = 0;
 
     for (uint32_t bank = 0; bank < 32; ++bank) {
-      uint32_t active = pendings[bank] & enables[context][bank];
+      uint32_t active = pendings_[bank] & enables_[context][bank];
       if (bank == 0)
         active &= ~1U;
 
@@ -92,8 +166,8 @@ public:
         uint32_t bit = __builtin_ctz(active);
         uint32_t interrupt = (bank << 5) | bit;
 
-        if (priorities[interrupt] > limit) {
-          limit = priorities[interrupt];
+        if (priorities_[interrupt] > limit) {
+          limit = priorities_[interrupt];
           best = interrupt;
         }
         active &= ~(1U << bit);
@@ -103,137 +177,22 @@ public:
     if (best != 0) {
       uint32_t bank = best >> 5;
       uint32_t bit = best & 31;
-      pendings[bank] &= ~(1U << bit);
+      pendings_[bank] &= ~(1U << bit);
     }
 
     return best;
   }
 
-  bool read(uintptr_t address, void *pointer, size_t length) {
-    assert(length == sizeof(uint32_t));
-
-    uint32_t *const destination = reinterpret_cast<uint32_t *>(pointer);
-    const size_t offset = address - ADDRESS;
-
-    if (offset < PENDING) {
-      return priority(offset, destination);
-    } else if (offset >= ENABLED && offset < THRESHOLD) {
-      return enable(offset, destination);
-    } else if (offset >= THRESHOLD) {
-      return control(offset, destination);
-    }
-
-    return false;
-  }
-
-  bool write(uintptr_t address, const void *pointer, size_t length) {
-    assert(length == sizeof(uint32_t));
-
-    const uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
-    const size_t offset = address - ADDRESS;
-
-    if (offset < PENDING) {
-      return priority(offset, source);
-    } else if (offset >= ENABLED && offset < THRESHOLD) {
-      return enable(offset, source);
-    } else if (offset >= THRESHOLD) {
-      return control(offset, source);
-    }
-
-    return false;
-  }
-
-private:
-  void notify(uint32_t context) { owner_.cpu(context).setInterruptPending(); }
-
   void update(size_t core) {
-    if (!active(core)) {
-      owner_.cpu(core).clearInterruptPending();
+    if (!pending(core)) {
+      owner_.cpu(core).clearExternalInterruptPending();
     }
   }
 
-  bool priority(size_t offset, uint32_t *output) const {
-    uint32_t interrupt = offset / 4;
-    if (interrupt >= 1024)
-      return false;
-    *output = priorities[interrupt];
-    return true;
-  }
-
-  bool priority(size_t offset, uint32_t source) {
-    uint32_t interrupt = offset / 4;
-    if (interrupt >= 1024)
-      return false;
-    priorities[interrupt] = source;
-    return true;
-  }
-
-  bool enable(size_t offset, uint32_t *const destination) const {
-    offset = offset - ENABLED;
-    uint32_t context = offset / 0x80;
-    uint32_t chunk = (offset % 0x80) / 4;
-
-    if (context >= CORES || chunk >= 32)
-      return false;
-
-    *destination = enables[context][chunk];
-    return true;
-  }
-
-  bool enable(size_t offset, uint32_t source) {
-    offset = offset - ENABLED;
-    uint32_t context = offset / 0x80;
-    uint32_t chunk = (offset % 0x80) / 4;
-
-    if (context >= CORES || chunk >= 32)
-      return false;
-
-    enables[context][chunk] = source;
-    return true;
-  }
-
-  bool control(size_t offset, uint32_t *output) {
-    size_t relative = offset - THRESHOLD;
-    uint32_t context = relative / 0x1000;
-    uint32_t target = relative % 0x1000;
-
-    if (context >= CORES)
-      return false;
-
-    if (target == 0) {
-      *output = thresholds[context];
-      return true;
-    }
-    if (target == 4) {
-      *output = claim(context);
-      update(context);
-      return true;
-    }
-    return false;
-  }
-
-  bool control(size_t offset, uint32_t source) {
-    offset = offset - THRESHOLD;
-    uint32_t context = offset / 0x1000;
-    uint32_t target = offset % 0x1000;
-
-    if (context >= CORES)
-      return false;
-
-    if (target == 0) {
-      thresholds[context] = source;
-      return true;
-    }
-    if (target == 4) {
-      return true;
-    }
-    return false;
-  }
-
-  uint32_t priorities[1024]{};
-  uint32_t pendings[32]{};
-  uint32_t enables[CORES][32]{};
-  uint32_t thresholds[CORES]{};
+  uint32_t priorities_[1024]{};
+  uint32_t pendings_[32]{};
+  uint32_t enables_[CORES][32]{};
+  uint32_t thresholds_[CORES]{};
   VirtualMachine &owner_;
 };
 

@@ -93,7 +93,7 @@ template <> struct Traits<CacheController0> {
   static constexpr size_t NumberOfWays = 16;
   static constexpr size_t CacheLineSize = 64;
   static constexpr bool Isolation = false;
-  static constexpr bool Prefetcher = true;
+  static constexpr bool Prefetcher = false;
   static constexpr bool Enable = true;
   static constexpr uintptr_t PrefetcherAddresses[] = {0x2032000, 0x2034000,
                                                       0x2036000, 0x2038000};
@@ -154,8 +154,8 @@ template <> struct Traits<UART> {
 /* ********** Ethernet ********** */
 template <> struct Traits<GMAC0> {
   static constexpr uintptr_t Address = Traits<MemoryMap>::GMAC0;
-  static constexpr size_t SendBufferCount = 256;
-  static constexpr size_t ReceiveBufferCount = 256;
+  static constexpr size_t SxBufferCount = 256;
+  static constexpr size_t RxBufferCount = 256;
   static constexpr size_t BufferAlignment = 64;
   static constexpr unsigned char MAC[] = {12, 34, 56, 78, 12, 34};
   static constexpr unsigned int IRQs[] = {9};

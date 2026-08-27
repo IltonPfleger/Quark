@@ -36,6 +36,14 @@ public:
     asm("fence iorw, iorw" ::: "memory");
   }
 
+  __attribute__((always_inline)) static void mbr() {
+    asm("fence r, r" ::: "memory");
+  }
+
+  __attribute__((always_inline)) static void mbw() {
+    asm("fence w, w" ::: "memory");
+  }
+
   __attribute__((always_inline)) static void ib() {
     asm("fence.i" ::: "memory");
   }

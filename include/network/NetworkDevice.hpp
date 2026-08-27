@@ -7,17 +7,18 @@
 namespace QUARK {
 
 class NetworkDevice : public Observed<const NetworkBuffer *> {
-  public:
-    using Observed = QUARK::Observed<const NetworkBuffer *>;
-    using Observer = QUARK::Observer<const NetworkBuffer *>;
-    using Observed::notify;
+public:
+  using Observed = QUARK::Observed<const NetworkBuffer *>;
+  using Observer = QUARK::Observer<const NetworkBuffer *>;
+  using Observed::notify;
 
-  public:
-    virtual ~NetworkDevice()              = default;
-    virtual int send(NetworkBuffer *)     = 0;
-    virtual NetworkBuffer *alloc(size_t)  = 0;
-    virtual NetworkBuffer *receive()      = 0;
-    virtual void release(NetworkBuffer *) = 0;
+public:
+  virtual ~NetworkDevice() = default;
+  virtual int send(NetworkBuffer *) = 0;
+  virtual NetworkBuffer *alloc(size_t) = 0;
+  virtual NetworkBuffer *receive() = 0;
+  virtual void release(NetworkBuffer *) = 0;
+  virtual size_t mtu() = 0;
 };
 
 } // namespace QUARK

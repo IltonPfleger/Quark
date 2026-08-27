@@ -39,7 +39,7 @@ public:
     new (&__emm) Chunk(header, header->length());
     new (&__pmm) Chunk(start, size);
 
-    assert(!__pmm.overlaps(BootInformation::kernel()));
+    assert(!__pmm.overlaps(BootInformation::all()));
   }
 
   static void direct(Elf_Ehdr *header) {
@@ -96,7 +96,7 @@ public:
   }
 
   static uint8_t *image() {
-    return reinterpret_cast<uint8_t *>(BootInformation::kernel().end());
+    return reinterpret_cast<uint8_t *>(BootInformation::all().end());
   }
 
   static void init() {

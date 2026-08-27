@@ -9,6 +9,10 @@ template <typename... Args> class Observer;
 template <typename... Args> class Observed;
 
 template <typename... Args> class Observed {
+  friend class Observer<Args...>;
+  using Node = collections::Node<Observer<Args...> *, void, true>;
+  using List = collections::UnorderedList<Node>;
+
 public:
   Observed() = default;
 
@@ -26,9 +30,7 @@ public:
   }
 
 private:
-  collections::UnorderedList<collections::Node<Observer<Args...> *, void, true>,
-                             Mutex>
-      observers_;
+  List observers_;
 };
 
 template <typename... Args> class Observer {
@@ -42,7 +44,7 @@ public:
   virtual void update(Args... args) = 0;
 
 private:
-  typename collections::Node<Observer<Args...> *, void, true> node_;
+  typename Observed<Args...>::Node node_;
 };
 
 } // namespace QUARK

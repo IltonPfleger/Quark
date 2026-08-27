@@ -38,11 +38,12 @@ public:
   }
 
   int send(const NetworkAddress &address, NetworkBuffer *buffer) override {
-    if (IP(address) == IPv4::Broadcast)
-      return device_.send(Ethernet::Broadcast, IPv4::ProtocolValue, buffer);
+    if (IP(address) == IPv4::Address::broadcast())
+      return device_.send(Ethernet::Address::broadcast(), IPv4::ProtocolValue,
+                          buffer);
 
     MAC solved;
-    if (router_.resolve(address, Ethernet::Broadcast, solved))
+    if (router_.resolve(address, Ethernet::Address::broadcast(), solved))
       return device_.send(solved, IPv4::ProtocolValue, buffer);
 
     return 0;

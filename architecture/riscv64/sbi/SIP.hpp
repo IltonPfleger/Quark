@@ -6,7 +6,6 @@
 #include <architecture/riscv64/VirtualCPU.hpp>
 
 namespace QUARK::sbi {
-
 class SIP {
 public:
   static constexpr unsigned int EID = 's' << 16 | 'P' << 8 | 'I';
@@ -16,26 +15,23 @@ public:
       uintmax_t harts = context->a0;
       uintmax_t base = context->a1;
 
-      for (unsigned int bit = 0; bit < sizeof(uintptr_t) * 8; ++bit) {
+      for (unsigned int bit = 0; bit < sizeof(uintmax_t) * 8; ++bit) {
         uintmax_t mask = 1ULL << bit;
-
         if (harts & mask) {
-          VirtualCPU::interProcessorInterrupt(base + bit);
+          VirtualCPU::setSoftwareInterruptPending(base + bit);
           harts &= ~mask;
         }
-
         if (!harts)
           break;
       }
 
-      context->a0 = 0;
-
+      context->a0 = SBI_SUCCESS;
+      context->a1 = 0;
     } else {
       ExceptionHandler::esr(context);
     }
   }
 };
-
 } // namespace QUARK::sbi
 
 #endif

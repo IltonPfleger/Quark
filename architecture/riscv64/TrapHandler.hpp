@@ -25,17 +25,6 @@ private:
 
     size_t index = irq2index(id, type);
 
-    // static Spin lock;
-    // if (c->pc >= 256ULL * 1024ULL * 1024ULL * 1024ULL) {
-    //   lock.acquire();
-    //   Console::print(CPU::id());
-    //   Console::print(" PC: ", (void *)((c->pc)));
-    //   Console::print(" a3: ", (void *)((c->a3)));
-    //   Console::print(" a4: ", (void *)((c->a4)));
-    //   Console::println(" a5: ", (void *)((c->a5)));
-    //   lock.release();
-    // }
-
     assert(index < NumberOfHandlers, index);
     assert(handlers_[index], index, " ", id);
 

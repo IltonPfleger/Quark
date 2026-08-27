@@ -98,13 +98,13 @@ template <> struct Traits<PLIC> {
   }();
 };
 
-template <> struct Traits<PMU> {
-  static constexpr bool Enable = false;
-  static constexpr size_t Fixed = 2;
-  static constexpr size_t Programmable = 0;
-  static constexpr Meta::Array<2, Meta::Pair<Event, uint64_t>> Events = {
-      {{CPU_CYCLES, 0x00001}, {INSTRUCTIONS, 0x00002}}};
-};
+// template <> struct Traits<PMU> {
+//   static constexpr bool Enable = false;
+//   static constexpr size_t Fixed = 2;
+//   static constexpr size_t Programmable = 0;
+//   static constexpr Meta::Array<2, Meta::Pair<Event, uint64_t>> Events = {
+//       {{CPU_CYCLES, 0x00001}, {INSTRUCTIONS, 0x00002}}};
+// };
 
 template <> struct Traits<FPU> {
   static constexpr bool Enable = false;

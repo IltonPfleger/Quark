@@ -8,21 +8,20 @@
 namespace QUARK {
 
 class Spin {
-  public:
-    constexpr Spin()
-        : locked_(0) {}
+public:
+  constexpr Spin() : locked_(0) {}
 
-    void acquire() {
-        while (CPU::Atomic::tsl(locked_))
-            ;
-    }
-    void release() { CPU::Atomic::store(locked_, 0); }
+  void acquire() {
+    while (CPU::Atomic::tsl(locked_))
+      ;
+  }
+  void release() { CPU::Atomic::store(locked_, 0); }
 
-  public:
-    using Guard = QUARK::Guard<Spin, &Spin::acquire, &Spin::release>;
+public:
+  using Guard = QUARK::Guard<Spin, &Spin::acquire, &Spin::release>;
 
-  private:
-    volatile uint32_t locked_;
+private:
+  volatile uint32_t locked_;
 };
 
 } // namespace QUARK

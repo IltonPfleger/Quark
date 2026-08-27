@@ -7,35 +7,37 @@
 namespace QUARK {
 
 class Semaphore {
-  public:
-    constexpr Semaphore(int value = 0)
-        : value_(value),
-          waiting_(),
-          lock_() {}
+public:
+  constexpr Semaphore(int value = 0) : value_(value), waiting_(), lock_() {
+    assert(value_ >= 0);
+  }
 
-    void p() {
-        CPU::IRQ::Guard irqg;
+  ~Semaphore() { assert(value_ >= 0); }
 
-        lock_.acquire();
+  void p() {
+    CPU::IRQ::Guard _;
 
-        if (CPU::Atomic::fdec(value_) <= 0) {
-            Thread::sleep(&waiting_, &lock_);
-        } else {
-            lock_.release();
-        }
+    lock_.acquire();
+
+    if (CPU::Atomic::fdec(value_) <= 0) {
+      Thread::sleep(&waiting_, &lock_);
+    } else {
+      lock_.release();
     }
+  }
 
-    void v() {
-        CPU::IRQ::Guard irqg;
-        lock_.acquire();
-        if (CPU::Atomic::finc(value_) < 0) Thread::wakeup(&waiting_);
-        lock_.release();
-    }
+  void v() {
+    CPU::IRQ::Guard _;
+    lock_.acquire();
+    if (CPU::Atomic::finc(value_) < 0)
+      Thread::wakeup(&waiting_);
+    lock_.release();
+  }
 
-  private:
-    volatile int value_;
-    Thread::List waiting_;
-    Spin lock_;
+private:
+  int value_;
+  Thread::List waiting_;
+  Spin lock_;
 };
 
 } // namespace QUARK

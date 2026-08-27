@@ -30,7 +30,7 @@ public:
       break;
     }
     case 2: {
-      put(context->a0 + 1);
+      put(context->a0);
       context->a0 = SBI_SUCCESS;
       context->a1 = 0;
       break;

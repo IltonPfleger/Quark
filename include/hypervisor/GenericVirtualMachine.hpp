@@ -27,7 +27,7 @@ class GenericVirtualMachine : public VirtualMachine {
 
 public:
   GenericVirtualMachine(void *entry, size_t size, size_t offset)
-      : VirtualMachine(Chunk(entry, size)),
+      : VirtualMachine(Chunk(entry, size)), arguments_(),
         cpus_(cpus(Meta::MakeIndexSequence<CORES>{})), devices_(*this),
         threads_(threads(Meta::MakeIndexSequence<CORES>{}, offset)) {}
 
@@ -39,17 +39,17 @@ public:
   template <size_t... Is>
   Meta::Array<CORES, Thread> threads(Meta::IndexSequence<Is...>,
                                      size_t offset) {
-    return {Thread(worker, &arguments[Is],
+    return {Thread(worker, &arguments_[Is],
                    Thread::Criterion(Thread::Criterion::NORMAL,
                                      (offset + Is) % Traits<CPU>::Active))...};
   }
 
   void boot(size_t core, void *entry, void *opaque) {
-    arguments[core].cpu = &cpus_[core];
-    arguments[core].core = core;
-    arguments[core].entry = entry;
-    arguments[core].opaque = opaque;
-    arguments[core].semaphore.v();
+    arguments_[core].cpu = &cpus_[core];
+    arguments_[core].core = core;
+    arguments_[core].entry = entry;
+    arguments_[core].opaque = opaque;
+    arguments_[core].semaphore.v();
   }
 
   bool read(uintptr_t address, void *destination, size_t length) override {
@@ -75,12 +75,17 @@ public:
   }
 
   void interrupt(size_t id) override {
-    Meta::forEach(devices_, [&](auto &device) {
-      using Device = __typeof__(device);
+    bool handled = false;
 
-      if constexpr (IsInterruptController<Device>::Result)
+    Meta::forEach(devices_, [&](auto &device) {
+      using Device = Meta::RemoveReference<decltype(device)>::Result;
+      if constexpr (IsVirtualInterruptController<Device>::Result) {
         device.interrupt(id);
+        handled = true;
+      }
     });
+
+    assert(handled);
   }
 
   VirtualCPU &cpu(size_t id) override { return cpus_[id]; }
@@ -93,7 +98,7 @@ public:
   };
 
 private:
-  Arguments arguments[CORES];
+  Arguments arguments_[CORES];
   Meta::Array<CORES, VirtualCPU> cpus_;
   Meta::Tuple<DEVICES...> devices_;
   Meta::Array<CORES, Thread> threads_;

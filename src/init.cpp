@@ -8,14 +8,15 @@
 using namespace QUARK;
 
 extern "C" void init() {
+  Machine::init();
+
   if (CPU::id() == Traits<CPU>::BSP) {
     TraceIn();
-    Machine::init();
     Payload::reserve();
     Memory::init();
     Thread::init();
-    Payload::init();
     Deferred::init();
+    Payload::init();
   }
 
   if constexpr (Traits<Timer>::Enable)

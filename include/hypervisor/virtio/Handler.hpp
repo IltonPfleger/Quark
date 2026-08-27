@@ -52,6 +52,7 @@ public:
 
     bool valid = false;
 
+    Spin::Guard _(self.lock_);
     switch (offset) {
     case Register::Magic:
     case Register::Version:
@@ -88,6 +89,7 @@ public:
     uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
     const auto offset = address - self.Address;
 
+    Spin::Guard _(self.lock_);
     switch (offset) {
     case Register::GuestPageSize:
     case Register::Status:
@@ -103,7 +105,7 @@ public:
       self.pfn(source);
       return true;
     case Register::InterruptAck:
-      self.header(offset) &= ~source;
+      self.header_.interrupt_status &= ~source;
       return true;
     case Register::QueueNotify:
       self.notify(source);
@@ -121,7 +123,7 @@ protected:
   uint32_t pfn(this auto &self) {
     if (self.header_.guest_page_size == 0)
       return 0;
-    return self.queue(self.header_.queue_sel).address() /
+    return self.queues_[self.header_.queue_sel].address() /
            self.header_.guest_page_size;
   }
 
@@ -134,7 +136,7 @@ protected:
     assert(self.owner_.memory().contains(
         Chunk(address, Queue::size(length, align))));
 
-    new (&self.queue(i)) Queue(address, length, align);
+    new (&self.queues_[i]) Queue(address, length, align);
 
     self.header_.queue_pfn = source;
   }
@@ -142,6 +144,7 @@ protected:
   void interrupt(this auto &self) { self.header_.interrupt_status |= 0x1; }
 
 protected:
+  Spin lock_;
   LegacyHeader header_;
 };
 

@@ -28,9 +28,7 @@ extern uint8_t __bss_end[];
 }
 
 inline Chunk make(uint8_t *start, uint8_t *end) {
-    uintptr_t s = reinterpret_cast<uintptr_t>(start);
-    uintptr_t e = reinterpret_cast<uintptr_t>(end);
-    return Chunk(s, e - s);
+    return Chunk(reinterpret_cast<uintptr_t>(start), end - start);
 }
 
 inline Chunk text() { return make(__text_start, __text_end); }
@@ -38,7 +36,7 @@ inline Chunk data() { return make(__data_start, __data_end); }
 inline Chunk rodata() { return make(__rodata_start, __rodata_end); }
 inline Chunk bss() { return make(__bss_start, __bss_end); }
 inline Chunk init() { return make(__init_start, __init_end); }
-inline Chunk kernel() { return make(__kernel_start, __kernel_end); }
+inline Chunk all() { return make(__kernel_start, __kernel_end); }
 
 } // namespace BootInformation
 

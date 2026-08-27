@@ -8,20 +8,20 @@
 
 namespace QUARK {
 
-template <typename HardwareLayerType, typename ProtocolLayerType>
+template <typename HardwareDevice, typename ProtocolLayer>
 class ARP : public Observer<const NetworkBuffer *> {
 public:
   enum : uint16_t { ProtocolValue = 0x0806 };
   enum : uint16_t { REQUEST = 1, REPLY = 2 };
 
-  typedef typename HardwareLayerType::Address HA;
-  typedef ProtocolLayerType::Address PA;
+  typedef typename HardwareDevice::Address HA;
+  typedef ProtocolLayer::Address PA;
 
   struct Header {
     Header()
         : htype(CPU::htobe16(1)),
-          ptype(CPU::htobe16(ProtocolLayerType::ProtocolValue)),
-          hlen(sizeof(HA)), plen(sizeof(PA)), operation(CPU::htobe16(0)) {}
+          ptype(CPU::htobe16(ProtocolLayer::ProtocolValue)), hlen(sizeof(HA)),
+          plen(sizeof(PA)), operation(CPU::htobe16(0)) {}
 
     uint16_t htype;
     uint16_t ptype;
@@ -49,7 +49,7 @@ public:
 
   typedef Hash<PA, Entry, 256, Hasher> Table;
 
-  ARP(HardwareLayerType &device) : device_(device) { device_.attach(this); }
+  ARP(HardwareDevice &device) : device_(device) { device_.attach(this); }
 
   ~ARP() { device_.detach(this); }
 
@@ -78,8 +78,8 @@ public:
 private:
   void update(const NetworkBuffer *buffer) {
     {
-      typename HardwareLayerType::Header *header =
-          buffer->start<typename HardwareLayerType::Header *>();
+      typename HardwareDevice::Header *header =
+          buffer->start<typename HardwareDevice::Header *>();
       if (header->protocol() != ProtocolValue)
         return;
     }
@@ -142,7 +142,7 @@ private:
   static constexpr Microsecond TimeoutDelay = 1'000'000;
 
 private:
-  HardwareLayerType &device_;
+  HardwareDevice &device_;
   PA pa_;
   Table table_;
 };

@@ -40,8 +40,8 @@ private:
 
   static void dispatch(ContextFrame *) {
     if constexpr (Traits<Payload>::Virtualization) {
+      VirtualCPU::update();
       CLINT::write();
-      VirtualCPU::onTick();
     } else if (!Traits<RISCV>::Supervisor) {
       CLINT::write();
     } else {

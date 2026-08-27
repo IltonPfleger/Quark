@@ -122,10 +122,6 @@ public:
 
       builder.begin("chosen");
       {
-        // builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi
-        // initcall_debug");
-
-        // builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi ");
         builder.add("bootargs", "console=hvc0 loglevel=8");
 
         uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
@@ -285,6 +281,11 @@ int main() {
   auto *udp = new QUARK::UDP(*ipv4);
   auto *tftp = new QUARK::TFTP(*udp);
   auto *receiver = new Receiver(*tftp);
+
+  delete tftp;
+  delete udp;
+  delete ipv4;
+  delete link;
 
   new LinuxLauncher(256 * MB, receiver->linux(), receiver->initramfs(), 0);
 

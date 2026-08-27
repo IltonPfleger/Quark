@@ -2,9 +2,11 @@
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
 #include <architecture/riscv64/VirtualPLIC.hpp>
+// #include <drivers/ethernet/Dummy_Ethernet_Controller.hpp>
 #include <hypervisor/GenericVirtualMachine.hpp>
 #include <hypervisor/dtb/FDT_Builder.hpp>
 #include <hypervisor/virtio/Console.hpp>
+// #include <hypervisor/virtio/Network.hpp>
 #include <machine/Machine.hpp>
 #include <utility/Console.hpp>
 #include <utility/Delay.hpp>
@@ -19,17 +21,20 @@ __attribute__((section(".__initrd__"), used)) static uint8_t INITRD[16 * MB];
 
 class LinuxLauncher {
 public:
-  static constexpr uint32_t CPUS = 4;
+  static constexpr uint32_t CPUS = Traits<CPU>::Active;
 
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
   using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
+  // using NetworkDevice = Dummy_Ethernet_Controller;
+  // using Network = virtio::Network<NetworkDevice, 0x30200000, 50>;
   using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
                 Span<const uint8_t> initrd, size_t offset)
-      : size_(size), start_(new uint8_t[size_]) {
+      : size_(size) {
 
+    start_ = reinterpret_cast<uint8_t *>(Memory::alloc(size_));
     uint8_t *end = start_ + size_;
     uint8_t *current = start_;
 
@@ -169,13 +174,13 @@ public:
           builder.add("#interrupt-cells", 1);
           builder.add("riscv,ndev", 0x35);
 
-          uint32_t plic[CPUS * 4];
+          uint32_t plic[CPUS * 2];
           for (uint32_t core = 0; core < CPUS; core++) {
             uint32_t phandle = 0x10 + core;
-            plic[core * 2 + 0] = phandle;
+            plic[core * 2] = phandle;
             plic[core * 2 + 1] = 9;
           }
-          builder.add("interrupts-extended", plic, CPUS * 4);
+          builder.add("interrupts-extended", plic, CPUS * 2);
           builder.add("phandle", 0x02);
         }
         builder.end();

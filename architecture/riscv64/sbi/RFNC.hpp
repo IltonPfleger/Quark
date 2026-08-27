@@ -5,8 +5,6 @@
 #include <architecture/riscv64/ExceptionHandler.hpp>
 #include <architecture/riscv64/IPI.hpp>
 
-// TODO: VMs can't sent ipi to real harts
-
 namespace QUARK::sbi {
 
 class RFNC {
@@ -29,16 +27,12 @@ public:
 
     switch (context->a6) {
     case 0:
-      all([](size_t hartid) {
-        VirtualCPU::fence(hartid, VirtualCPU::PENDING_FENCE_I);
-      });
+      all([](size_t hartid) { VirtualCPU::fence(hartid, VirtualCPU::FENCEI); });
       context->a0 = SBI_SUCCESS;
       break;
     case 1:
     case 2:
-      all([&](size_t hartid) {
-        VirtualCPU::fence(hartid, VirtualCPU::PENDING_SFENCE);
-      });
+      all([](size_t hartid) { VirtualCPU::fence(hartid, VirtualCPU::SFENCE); });
       context->a0 = SBI_SUCCESS;
       break;
     default:

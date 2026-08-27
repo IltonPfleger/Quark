@@ -5,16 +5,16 @@
 
 namespace QUARK {
 
-Alarm::operator bool() { return Timer::now() >= node_.criterion; }
+Alarm::operator bool() { return Timer::now() >= criterion; }
 
 Alarm::Alarm(Microsecond at) : Alarm(at, internal_) {}
 
 Alarm::Alarm(Microsecond at, Semaphore &handler)
-    : node_(this, at), internal_(0), handler_(handler) {
+    : Node(at), internal_(0), handler_(handler) {
   {
     CPU::IRQ::Guard _;
     core_ = CPU::id();
-    alarms_[core_].insert(&node_);
+    alarms_[core_].insert(this);
   }
 
   handler_.p();
@@ -22,7 +22,7 @@ Alarm::Alarm(Microsecond at, Semaphore &handler)
 
 Alarm::~Alarm() {
   CPU::IRQ::Guard _;
-  alarms_[core_].remove(&this->node_);
+  alarms_[core_].remove(this);
 }
 
 void Alarm::handler() {
@@ -31,17 +31,19 @@ void Alarm::handler() {
   Alarms &alarms = alarms_[core];
 
   while (true) {
-    Node *head = alarms.remove();
+    Node *removed = alarms.remove();
 
-    if (!head)
+    if (!removed)
       break;
 
-    if (!*(head->value)) {
+    Alarm *head = static_cast<Alarm *>(removed);
+
+    if (!*head) {
       alarms.insert(head);
       break;
     }
 
-    head->value->handler_.v();
+    head->handler_.v();
   }
 }
 
