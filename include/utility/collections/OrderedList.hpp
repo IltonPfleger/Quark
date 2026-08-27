@@ -67,6 +67,9 @@ public:
   }
 
   bool remove(T *node) {
+    if (!node)
+      return false;
+
     lock();
 
     if (node == this->head_) {
@@ -83,6 +86,9 @@ public:
     } else if (node->next) {
       node->next->previous = node->previous;
     }
+
+    node->next = nullptr;
+    node->previous = nullptr;
 
     unlock();
 

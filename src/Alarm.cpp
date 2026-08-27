@@ -22,9 +22,7 @@ Alarm::Alarm(Microsecond at, Semaphore &handler)
 
 Alarm::~Alarm() {
   CPU::IRQ::Guard _;
-  Alarms &alarms = alarms_[core_];
-  alarms.remove(&this->node_);
-  CPU::mb();
+  alarms_[core_].remove(&this->node_);
 }
 
 void Alarm::handler() {

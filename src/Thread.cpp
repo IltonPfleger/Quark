@@ -108,7 +108,7 @@ Thread::Thread(Function f, Argument a, Criterion c, Domain d, Process *p)
   //}(this);
 
   {
-    CPU::IRQ::Guard irq;
+    CPU::IRQ::Guard _;
     CPU::Atomic::finc(s_count);
     s_scheduler.insert(&node_);
   }
@@ -163,8 +163,7 @@ void Thread::run() {
 void Thread::yield() { Thread::reschedule(); }
 
 void Thread::reschedule() {
-
-  CPU::IRQ::Guard irq;
+  CPU::IRQ::Guard _;
 
   Thread *previous = running();
 
@@ -181,7 +180,7 @@ void Thread::sleep(List *list, Spin *lock) {
   list->insert(&previous->node_);
 
   {
-    CPU::IRQ::Guard irq;
+    CPU::IRQ::Guard _;
     previous->state_ = State::WAITING;
     Node *next = s_scheduler.remove();
     dispatch(previous, next->value, lock);
@@ -195,7 +194,7 @@ void Thread::wakeup(List *list) {
   node->value->state_ = State::READY;
 
   {
-    CPU::IRQ::Guard irq;
+    CPU::IRQ::Guard _;
     s_scheduler.insert(node);
   }
 }
