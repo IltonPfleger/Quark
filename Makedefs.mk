@@ -34,6 +34,7 @@ MAKE           := make
 RM             := rm
 TRUNCATE       := truncate
 QEMU           := qemu-system-riscv64
+CONSOLE        := kgx -e
 
 ARCH           ?= riscv64
 MACHINE        ?= virt

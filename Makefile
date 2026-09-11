@@ -9,7 +9,7 @@ KERNEL_DEPENDENCIES  := $(KERNEL_OBJECTS:.o=.d)
 PAYLOAD_ELF          := $(BUILD)/$(PAYLOAD).elf
 
 run: $(IMAGE)
-	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
+	$(CONSOLE) $(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
 
 debug: $(IMAGE)
 	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $< -S -gdb tcp::1234
@@ -17,12 +17,9 @@ debug: $(IMAGE)
 gdb:
 	$(GDB) -ex "file $(KERNEL_ELF)" -ex "target extended-remote:1234"
 
-$(IMAGE).bin: $(KERNEL_BINARY) 
-	$(MV) $^ $@
-
-$(KERNEL_BINARY) : $(KERNEL_ELF) $(PAYLOAD_ELF)
-	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(KERNEL_ELF) $(KERNEL_BINARY)
-	$(CAT) $(PAYLOAD_ELF) >> $(KERNEL_BINARY)
+$(IMAGE).bin : $(KERNEL_ELF) $(PAYLOAD_ELF)
+	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(KERNEL_ELF) $(IMAGE).bin
+	$(CAT) $(PAYLOAD_ELF) >> $(IMAGE).bin
 
 $(PAYLOAD_ELF): $(KERNEL_ELF)
 	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
