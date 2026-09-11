@@ -27,6 +27,19 @@ class VirtualCPU {
     uint64_t sip = 0;
   };
 
+  enum {
+    STI = SupervisorMode::TI,
+    SSI = SupervisorMode::SI,
+    SEI = SupervisorMode::EI,
+    MIDELEG = STI | SSI | SEI,
+    PAGE = 1 << 12 | 1 << 13 | 1 << 15,
+    ECALL = 1 << 8,
+    MISALIGNED = 1 << 4 | 1 << 6,
+    BREAKPOINT = 1 << 3,
+    MEDELEG = MISALIGNED | BREAKPOINT | ECALL | PAGE,
+    RWX = PMP::R | PMP::W | PMP::X,
+  };
+
 public:
   enum : uintmax_t {
     FENCEI = 1ULL << 0,
@@ -34,7 +47,6 @@ public:
     EXTERNAL = 1ULL << 2,
     SOFTWARE = 1ULL << 3,
   };
-
   VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
 
   void boot(size_t core, void *entry, void *opaque) {
@@ -62,7 +74,7 @@ public:
     current()->vm_->boot(core, entry, opaque);
   }
 
-  void setExternalInterruptPending() {
+  void set_external_interrupt_pending() {
     int core = core_;
     flags_ |= EXTERNAL;
 
@@ -73,14 +85,14 @@ public:
     }
   }
 
-  void clearExternalInterruptPending() {
+  void clear_external_interrupt_pending() {
     assert(current() == this);
     csrc<MachineMode::IP>(SEI);
   }
 
-  static void setSoftwareInterruptPending(size_t hartid) {
+  static void set_software_interrupt_pending(size_t hartid) {
     if (current())
-      current()->vm_->cpu(hartid).setSoftwareInterruptPending();
+      current()->vm_->cpu(hartid).set_software_interrupt_pending();
   }
 
   static void update(void *_ = nullptr) {
@@ -184,7 +196,7 @@ private:
     asm volatile("mret" : : "r"(a0), "r"(a1));
   }
 
-  void setSoftwareInterruptPending() {
+  void set_software_interrupt_pending() {
     int core = core_;
     flags_ |= SOFTWARE;
 
@@ -196,7 +208,6 @@ private:
   }
 
   void activate() {
-    static constexpr uintmax_t RWX = PMP::R | PMP::W | PMP::X;
     PMP::NAPOT<1>(vm_->memory().start(), vm_->memory().length(), RWX);
 
     csrw<MachineMode::MIDELEG>(MIDELEG);
@@ -252,18 +263,6 @@ private:
 
   static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
   static VirtualCPU *current() { return current_[CPU::id()]; }
-
-private:
-  static constexpr uintmax_t STI = SupervisorMode::TI;
-  static constexpr uintmax_t SSI = SupervisorMode::SI;
-  static constexpr uintmax_t SEI = SupervisorMode::EI;
-  static constexpr uintmax_t MIDELEG = STI | SSI | SEI;
-
-  static constexpr uintmax_t PAGE = 1 << 12 | 1 << 13 | 1 << 15;
-  static constexpr uintmax_t ECALL = 1 << 8;
-  static constexpr uintmax_t MISALIGNED = 1 << 4 | 1 << 6;
-  static constexpr uintmax_t BREAKPOINT = 1 << 3;
-  static constexpr uintmax_t MEDELEG = MISALIGNED | BREAKPOINT | ECALL | PAGE;
 
 private:
   static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};

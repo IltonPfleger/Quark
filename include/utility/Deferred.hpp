@@ -4,6 +4,7 @@
 #include <Semaphore.hpp>
 #include <Spin.hpp>
 #include <Traits.hpp>
+#include <utility/Atomic.hpp>
 #include <utility/collections/FIFO.hpp>
 
 namespace QUARK {
@@ -87,20 +88,20 @@ public:
       : element_(this), function_(function), argument_(argument), pending_(0) {}
 
   static void init() {
-    for (size_t i = 0; i < Threads; ++i)
-      workers_[i] = new Worker(i);
+    for (size_t i = 0; i < kThreads; ++i)
+      workers[i] = new Worker(i);
   }
 
   static bool schedule(Deferred &work) {
-    if constexpr (Threads == 0) {
+    if constexpr (kThreads == 0) {
       return false;
     }
 
     static size_t next = 0;
     const size_t start = CPU::Atomic::finc(next);
 
-    for (size_t i = 0; i < Threads; i++) {
-      Worker *worker = workers_[(start + i) % Threads];
+    for (size_t i = 0; i < kThreads; i++) {
+      Worker *worker = workers[(start + i) % kThreads];
 
       if (worker && worker->insert(work)) {
         return true;
@@ -116,10 +117,10 @@ private:
   void *argument_;
   Atomic<int> pending_;
 
-  static constexpr size_t Threads = Traits<Deferred>::Threads;
+  static constexpr size_t kThreads = Traits<Deferred>::Threads;
 
-public:
-  static inline Meta::Array<Threads, Worker *> workers_;
+private:
+  static inline Meta::Array<kThreads, Worker *> workers;
 };
 
 } // namespace QUARK

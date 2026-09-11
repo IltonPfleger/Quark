@@ -7,7 +7,7 @@
 #include <hypervisor/virtio/Queue.hpp>
 #include <memory/Heap.hpp>
 #include <utility/Console.hpp>
-// #include <utility/Deferred.hpp>
+#include <utility/Deferred.hpp>
 #include <utility/Observer.hpp>
 
 namespace QUARK::virtio {
@@ -18,9 +18,11 @@ class Console : public Handler, public Observer<const char *, size_t> {
 
   static_assert(Traits<Deferred>::Threads > 0);
 
+  enum { RX, TX };
+
 public:
   Console(VirtualMachine &owner)
-      : Handler(3, 1 << 27, MaximumNumberOfDescriptors),
+      : Handler(3, 1 << 27, kMaximumNumberOfDescriptors),
         device_(*DEVICE::instance()), owner_(owner), deferred_(worker, this) {
     device_.attach(this);
   }
@@ -37,22 +39,22 @@ public:
   static void worker(void *pointer) {
     auto *self = reinterpret_cast<Console *>(pointer);
     while (true) {
-      const int head = self->queues_[Tx].alloc();
+      const int head = self->queues_[TX].alloc();
 
       if (head < 0)
         break;
 
-      self->queues_[Tx].free(head, self->process(head));
+      self->queues_[TX].free(head, self->process(head));
     }
   }
 
   void update(const char *buffer, size_t size) override {
-    const int id = queues_[Rx].alloc();
+    const int id = queues_[RX].alloc();
 
     if (id < 0)
       return;
 
-    auto *descriptor = queues_[Rx].descriptor(id);
+    auto *descriptor = queues_[RX].descriptor(id);
     auto *destination = reinterpret_cast<uint8_t *>(descriptor->address);
 
     descriptor->length = size;
@@ -60,9 +62,9 @@ public:
 
     memcpy(destination, buffer, size);
 
-    queues_[Rx].free(id, size);
+    queues_[RX].free(id, size);
 
-    if (queues_[Rx].interruptible()) {
+    if (queues_[RX].interruptible()) {
       this->interrupt();
       owner_.interrupt(IRQ);
     }
@@ -73,14 +75,14 @@ public:
     size_t count = 0;
     int current = head;
 
-    RingDescriptor *descriptor = queues_[Tx].descriptor(current);
+    RingDescriptor *descriptor = queues_[TX].descriptor(current);
 
     total += print(descriptor);
 
     while (descriptor->flags & VRING_DESC_F_NEXT) {
-      assert(count < MaximumNumberOfDescriptors);
+      assert(count < kMaximumNumberOfDescriptors);
       current = descriptor->next;
-      descriptor = queues_[Tx].descriptor(current);
+      descriptor = queues_[TX].descriptor(current);
       total += print(descriptor);
       count++;
     }
@@ -97,10 +99,8 @@ public:
   }
 
 public:
-  static constexpr size_t MaximumNumberOfDescriptors = 1024;
+  static constexpr size_t kMaximumNumberOfDescriptors = 1024;
   static constexpr uintptr_t Address = ADDRESS;
-  static constexpr uint32_t Rx = 0;
-  static constexpr uint32_t Tx = 1;
 
 private:
   DEVICE &device_;

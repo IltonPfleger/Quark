@@ -116,7 +116,7 @@ public:
         continue;
       if (priorities_[identifier] <= thresholds_[context])
         continue;
-      owner_.cpu(context).setExternalInterruptPending();
+      owner_.cpu(context).set_external_interrupt_pending();
     }
   }
 
@@ -185,7 +185,7 @@ private:
 
   void update(size_t core) {
     if (!pending(core)) {
-      owner_.cpu(core).clearExternalInterruptPending();
+      owner_.cpu(core).clear_external_interrupt_pending();
     }
   }
 

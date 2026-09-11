@@ -4,6 +4,7 @@
 #include <architecture/riscv64/ExceptionHandler.hpp>
 #include <architecture/riscv64/IPI.hpp>
 #include <architecture/riscv64/VirtualCPU.hpp>
+#include <architecture/riscv64/sbi/values.hpp>
 
 namespace QUARK::sbi {
 class SIP {
@@ -18,7 +19,7 @@ public:
       for (unsigned int bit = 0; bit < sizeof(uintmax_t) * 8; ++bit) {
         uintmax_t mask = 1ULL << bit;
         if (harts & mask) {
-          VirtualCPU::setSoftwareInterruptPending(base + bit);
+          VirtualCPU::set_software_interrupt_pending(base + bit);
           harts &= ~mask;
         }
         if (!harts)

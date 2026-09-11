@@ -21,6 +21,7 @@ class Scheduler;
 class Monitor;
 class Deferred;
 class Process;
+class VirtualMachine;
 
 template <typename T> struct Traits;
 

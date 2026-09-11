@@ -1,8 +1,7 @@
 #ifndef __QUARK_HYPERVISOR_VIRTUAL_MACHINE__
 #define __QUARK_HYPERVISOR_VIRTUAL_MACHINE__
 
-#include <Meta.hpp>
-#include <architecture/VirtualCPU.hpp>
+#include <Traits.hpp>
 #include <memory/Chunk.hpp>
 #include <types.hpp>
 

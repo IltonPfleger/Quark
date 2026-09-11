@@ -8,6 +8,7 @@ namespace QUARK {
 namespace BootInformation {
 
 extern "C" {
+
 extern uint8_t __kernel_start[];
 extern uint8_t __kernel_end[];
 
@@ -28,7 +29,7 @@ extern uint8_t __bss_end[];
 }
 
 inline Chunk make(uint8_t *start, uint8_t *end) {
-    return Chunk(reinterpret_cast<uintptr_t>(start), end - start);
+  return Chunk(reinterpret_cast<uintptr_t>(start), end - start);
 }
 
 inline Chunk text() { return make(__text_start, __text_end); }
