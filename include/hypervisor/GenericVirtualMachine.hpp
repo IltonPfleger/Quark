@@ -55,7 +55,7 @@ public:
   bool read(uintptr_t address, void *destination, size_t length) override {
     bool handled = false;
 
-    Meta::forEach(devices_, [&](auto &device) {
+    Meta::for_each(devices_, [&](auto &device) {
       if (!handled)
         handled = device.read(address, destination, length);
     });
@@ -66,7 +66,7 @@ public:
   bool write(uintptr_t address, const void *source, size_t length) override {
     bool handled = false;
 
-    Meta::forEach(devices_, [&](auto &device) {
+    Meta::for_each(devices_, [&](auto &device) {
       if (!handled)
         handled = device.write(address, source, length);
     });
@@ -77,7 +77,7 @@ public:
   void interrupt(size_t id) override {
     bool handled = false;
 
-    Meta::forEach(devices_, [&](auto &device) {
+    Meta::for_each(devices_, [&](auto &device) {
       using Device = Meta::RemoveReference<decltype(device)>::Result;
       if constexpr (IsVirtualInterruptController<Device>::Result) {
         device.interrupt(id);

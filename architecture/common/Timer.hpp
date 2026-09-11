@@ -22,7 +22,7 @@ class Timer {
 
 protected:
   static void handler(size_t channel) {
-    Meta::forEach(tickers_, [channel]<typename T>(T &ticker) {
+    Meta::for_each(tickers_, [channel]<typename T>(T &ticker) {
       if constexpr (!Meta::Same<T, Meta::Empty>::Result) {
         ticker.handler(channel);
       }

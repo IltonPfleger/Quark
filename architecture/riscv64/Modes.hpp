@@ -23,35 +23,34 @@ struct MachineMode {
     EI = 1ULL << 11,   // External Interrupt Enable
     IRQE = 1ULL << 3,  // Interrupt Enable
     PIRQE = 1ULL << 7, // Previous Interrupt Enable
+
+    /* Registers */
+    HARTID = 0xF14,
+    STATUS = 0x300,
+    MISA = 0x301,
+    MEDELEG = 0x302,
+    MIDELEG = 0x303,
+    IE = 0x304,
+    TVEC = 0x305,
+    MCOUNTEREN = 0x306,
+    PMPADDR0 = 0x3B0,
+    PMPCFG0 = 0x3A0,
+    PMPADDR1 = 0x3B1,
+    PMPCFG1 = 0x3A1,
+    SCRATCH = 0x340,
+    EPC = 0x341,
+    CAUSE = 0x342,
+    IP = 0x344,
+    TVAL = 0x343,
+    VENDORID = 0xF11,
+    ARCHID = 0xF12,
+    IMPID = 0xF13,
+    MCYCLE = 0xB00,
+    MINSTRET = 0xB02,
+    MHPMCOUNTER3 = 0xB03,
+    MCOUNTINHIBIT = 0x320,
+    MHPMEVENT3 = 0x323,
   };
-
-  static constexpr int HARTID = 0xF14;
-  static constexpr int STATUS = 0x300;
-  static constexpr int MISA = 0x301;
-  static constexpr int MEDELEG = 0x302;
-  static constexpr int MIDELEG = 0x303;
-  static constexpr int IE = 0x304;
-  static constexpr int TVEC = 0x305;
-  static constexpr int MCOUNTEREN = 0x306;
-  static constexpr int PMPADDR0 = 0x3B0;
-  static constexpr int PMPCFG0 = 0x3A0;
-  static constexpr int PMPADDR1 = 0x3B1;
-  static constexpr int PMPCFG1 = 0x3A1;
-  static constexpr int SCRATCH = 0x340;
-  static constexpr int EPC = 0x341;
-  static constexpr int CAUSE = 0x342;
-  static constexpr int IP = 0x344;
-  static constexpr int TVAL = 0x343;
-  static constexpr int VENDORID = 0xF11;
-  static constexpr int ARCHID = 0xF12;
-  static constexpr int IMPID = 0xF13;
-  static constexpr int MCYCLE = 0xB00;
-  static constexpr int MINSTRET = 0xB02;
-  static constexpr int MHPMCOUNTER3 = 0xB03;
-  static constexpr int MCOUNTINHIBIT = 0x320;
-  static constexpr int MHPMEVENT3 = 0x323;
-
-  static constexpr char PREFIX = 'm';
 
   __attribute__((always_inline)) static inline void ret() {
     asm volatile("mret");
@@ -71,18 +70,18 @@ struct SupervisorMode {
     SI = 1ULL << 1,    // Software Interrupt Enable
     TI = 1ULL << 5,    // Timer Interrupt Enable
     EI = 1ULL << 9,    // External Interrupt Enable
-  };
 
-  static constexpr const int SATP = 0x180;
-  static constexpr const int STATUS = 0x100;
-  static constexpr const int IE = 0x104;
-  static constexpr const int TVEC = 0x105;
-  static constexpr const int SCRATCH = 0x140;
-  static constexpr const int EPC = 0x141;
-  static constexpr const int CAUSE = 0x142;
-  static constexpr const int TVAL = 0x143;
-  static constexpr const int IP = 0x144;
-  static constexpr char PREFIX = 's';
+    /* Registers */
+    SATP = 0x180,
+    STATUS = 0x100,
+    IE = 0x104,
+    TVEC = 0x105,
+    SCRATCH = 0x140,
+    EPC = 0x141,
+    CAUSE = 0x142,
+    TVAL = 0x143,
+    IP = 0x144,
+  };
 
   __attribute__((always_inline)) static inline void ret() {
     asm volatile("sret");

@@ -13,29 +13,31 @@ namespace virtio {
 
 class Handler {
   struct Register {
-    static constexpr uint32_t Magic = 0x000;
-    static constexpr uint32_t Version = 0x004;
-    static constexpr uint32_t DeviceID = 0x008;
-    static constexpr uint32_t VendorID = 0x00c;
-    static constexpr uint32_t DeviceFeatures = 0x010;
-    static constexpr uint32_t DeviceFeaturesSelector = 0x014;
-    static constexpr uint32_t DriverFeatures = 0x020;
-    static constexpr uint32_t DriverFeaturesSelector = 0x024;
-    static constexpr uint32_t GuestPageSize = 0x028;
-    static constexpr uint32_t QueueSelector = 0x030;
-    static constexpr uint32_t QueueSizeMax = 0x034;
-    static constexpr uint32_t QueueSize = 0x038;
-    static constexpr uint32_t QueueAlignment = 0x03c;
-    static constexpr uint32_t QueuePFN = 0x040;
-    static constexpr uint32_t QueueNotify = 0x050;
-    static constexpr uint32_t InterruptStatus = 0x060;
-    static constexpr uint32_t InterruptAck = 0x064;
-    static constexpr uint32_t Status = 0x070;
+    enum {
+      MAGIC = 0x000,
+      VERSION = 0x004,
+      DEVICE_ID = 0x008,
+      VENDOR_ID = 0x00c,
+      DEVICE_FEATURES = 0x010,
+      DEVICE_FEATURES_SELECTOR = 0x014,
+      DRIVER_FEATURES = 0x020,
+      DRIVER_FEATURES_SELECTOR = 0x024,
+      GUEST_PAGE_SIZE = 0x028,
+      QUEUE_SELECTOR = 0x030,
+      QUEUE_SIZE_MAX = 0x034,
+      QUEUE_SIZE = 0x038,
+      QUEUE_ALIGNMENT = 0x03c,
+      QUEUE_PFN = 0x040,
+      QUEUE_NOTIFY = 0x050,
+      INTERRUPT_STATUS = 0x060,
+      INTERRUPT_ACK = 0x064,
+      STATUS = 0x070,
+    };
   };
 
 public:
   Handler(uint32_t id, uint32_t features, uint32_t descriptors) {
-    header_.magic_value = ('t' << 24) | ('r' << 16) | ('i' << 8) | 'v';
+    header_.magic = ('t' << 24) | ('r' << 16) | ('i' << 8) | 'v';
     header_.version = 1;
     header_.device_id = id;
     header_.vendor_id = 0x554d4551;
@@ -52,20 +54,19 @@ public:
 
     bool valid = false;
 
-    Spin::Guard _(self.lock_);
     switch (offset) {
-    case Register::Magic:
-    case Register::Version:
-    case Register::DeviceID:
-    case Register::VendorID:
-    case Register::Status:
-    case Register::DeviceFeatures:
-    case Register::QueueSizeMax:
-    case Register::InterruptStatus:
+    case Register::MAGIC:
+    case Register::VERSION:
+    case Register::DEVICE_ID:
+    case Register::VENDOR_ID:
+    case Register::STATUS:
+    case Register::DEVICE_FEATURES:
+    case Register::QUEUE_SIZE_MAX:
+    case Register::INTERRUPT_STATUS:
       *destination = self.header(offset);
       valid = true;
       break;
-    case Register::QueuePFN:
+    case Register::QUEUE_PFN:
       *destination = self.pfn();
       valid = true;
       break;
@@ -89,25 +90,24 @@ public:
     uint32_t source = *reinterpret_cast<const uint32_t *>(pointer);
     const auto offset = address - self.Address;
 
-    Spin::Guard _(self.lock_);
     switch (offset) {
-    case Register::GuestPageSize:
-    case Register::Status:
-    case Register::QueueSelector:
-    case Register::DeviceFeaturesSelector:
-    case Register::DriverFeaturesSelector:
-    case Register::DriverFeatures:
-    case Register::QueueSize:
-    case Register::QueueAlignment:
+    case Register::GUEST_PAGE_SIZE:
+    case Register::STATUS:
+    case Register::QUEUE_SELECTOR:
+    case Register::DEVICE_FEATURES_SELECTOR:
+    case Register::DRIVER_FEATURES_SELECTOR:
+    case Register::DRIVER_FEATURES:
+    case Register::QUEUE_SIZE:
+    case Register::QUEUE_ALIGNMENT:
       self.header(offset) = source;
       return true;
-    case Register::QueuePFN:
+    case Register::QUEUE_PFN:
       self.pfn(source);
       return true;
-    case Register::InterruptAck:
+    case Register::INTERRUPT_ACK:
       self.header_.interrupt_status &= ~source;
       return true;
-    case Register::QueueNotify:
+    case Register::QUEUE_NOTIFY:
       self.notify(source);
       return true;
     default:
@@ -144,7 +144,6 @@ protected:
   void interrupt(this auto &self) { self.header_.interrupt_status |= 0x1; }
 
 protected:
-  Spin lock_;
   LegacyHeader header_;
 };
 

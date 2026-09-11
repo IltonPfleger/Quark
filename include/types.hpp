@@ -10,6 +10,7 @@ typedef Meta::IF<sizeof(unsigned long) == 8, unsigned long, void>::Result
 typedef Meta::IF<sizeof(void *) == 8, long, int>::Result intmax_t;
 typedef Meta::IF<sizeof(void *) == 8, unsigned long, unsigned int>::Result
     uintmax_t;
+
 typedef int int32_t;
 typedef short int16_t;
 typedef char int8_t;
