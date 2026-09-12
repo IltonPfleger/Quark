@@ -38,6 +38,8 @@ using OBRT_RADAR_Proxy = Interested_SmartData<
 
 namespace QUARK {
 
+static constexpr size_t MB = 1024 * 1024;
+
 class Receiver {
 public:
   Receiver(TFTP &tftp)
@@ -76,7 +78,7 @@ public:
   const auto &epos() const { return epos_; }
 
 private:
-  static constexpr size_t BufferSize = 64 * 1024 * 1024;
+  static constexpr size_t BufferSize = 128 * MB;
 
 private:
   TFTP &tftp_;
@@ -90,148 +92,213 @@ private:
 
 class LinuxLauncher {
 public:
+  static constexpr uint32_t CPUS = 1;
+
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
-  using InterruptController = VirtualPLIC<1, 0xc000000>;
-  using LinuxMachine = GenericVirtualMachine<1, InterruptController, Serial>;
+  using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
+
+  using NetworkDevice =
+      Meta::GetFromTypeList<Traits<Ethernet>::Devices, 0>::Result;
+  using Network = virtio::Network<NetworkDevice, 0x30200000, 50>;
+
+  using LinuxMachine =
+      GenericVirtualMachine<CPUS, Serial, Network, InterruptController>;
+
+  // using LinuxMachine = GenericVirtualMachine<CPUS, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
-                Span<const uint8_t> initramfs, size_t core)
-      : size_(size), buffer_(new uint8_t[size_]) {
+                Span<const uint8_t> initrd, size_t offset)
+      : size_(size), start_(nullptr) {
 
-    uint8_t *current = align(buffer_, 4 * MB);
+    start_ = static_cast<uint8_t *>(Memory::alloc(size_));
+    uint8_t *end = start_ + size_;
+    uint8_t *current = start_;
 
-    uint8_t *image = current;
-    memcpy(image, kernel, kernel.length());
+    memcpy(current, kernel, kernel.length());
     current += kernel.length();
+    current = align(current, 8);
+    current += 32 * MB;
 
-    current = align(current, 4 * MB);
-    const uint8_t *initrd = current;
-    memcpy(current, initramfs, initramfs.length());
-    current += initramfs.length();
+    const uint8_t *address = current;
+    memcpy(current, initrd, initrd.length());
+    current += initrd.length();
 
-    current = align(current, 4 * MB);
-    dtb(current, size_ - initramfs.length() - kernel.length(),
-        Span(initrd, initramfs.length()));
+    current = align(current, 8);
 
-    LinuxMachine *vm = new LinuxMachine(buffer_, size_, core);
-    vm->boot(0, image, current);
+    size_t remaining = size_ - (current - start_);
+
+    void *opaque = dtb(current, remaining, Span(address, initrd.length()));
+
+    Console::println("\n *** Linux is at core ", CPU::id(), " ***");
+
+    LinuxMachine *vm = new LinuxMachine(start_, size_, offset);
+    vm->boot(0, start_, opaque);
   }
 
-  static uint8_t *align(uint8_t *pointer, long alignment) {
+  static unsigned char *align(unsigned char *pointer, long alignment) {
     uintptr_t address = reinterpret_cast<long>(pointer);
     address = (address + alignment - 1) & ~(alignment - 1);
-    return reinterpret_cast<uint8_t *>(address);
+    return reinterpret_cast<unsigned char *>(address);
   }
 
-  void dtb(void *buffer, size_t capacity, Span<const uint8_t> initramfs) {
-    FDT_Builder fdt(buffer, capacity);
+  void *dtb(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
+    FDT_Builder builder(buffer, capacity);
 
-    fdt.begin("");
+    builder.begin("");
     {
-      fdt.add("#address-cells", 2);
-      fdt.add("#size-cells", 2);
-      fdt.add("compatible", "riscv-virtio");
-      fdt.add("model", "riscv-virtio,qemu");
+      builder.add("#address-cells", 2);
+      builder.add("#size-cells", 2);
+      builder.add("compatible", "riscv-virtio");
+      builder.add("model", "riscv-virtio,qemu");
 
-      fdt.begin("chosen");
+      builder.begin("chosen");
       {
-        uint64_t start = reinterpret_cast<uint64_t>(initramfs.data());
-        uint64_t end = start + initramfs.length();
+        builder.add("bootargs", "console=hvc0 loglevel=8");
+
+        uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
+        uint64_t end = start + initrd.length();
+
         uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
         uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
-        fdt.add("bootargs", "console=hvc0 loglevel=8");
-        fdt.add("linux,initrd-start", regs0, 2);
-        fdt.add("linux,initrd-end", regs1, 2);
-      }
-      fdt.end();
 
-      fdt.begin("cpus");
+        builder.add("linux,initrd-start", regs0, 2);
+        builder.add("linux,initrd-end", regs1, 2);
+      }
+      builder.end();
+
+      builder.begin("cpus");
       {
-        fdt.add("#address-cells", 1);
-        fdt.add("#size-cells", 0u);
-        fdt.add("timebase-frequency", 0x989680);
-        fdt.begin("cpu@0");
-        {
-          fdt.add("device_type", "cpu");
-          fdt.add("reg", 0u);
-          fdt.add("status", "okay");
-          fdt.add("compatible", "riscv");
-          fdt.add("riscv,isa", "rv64imafdcsu");
-          fdt.add("mmu-type", "riscv,sv39");
-          fdt.begin("interrupt-controller");
-          {
-            fdt.add("#interrupt-cells", 1);
-            fdt.add("interrupt-controller");
-            fdt.add("compatible", "riscv,cpu-intc");
-            fdt.add("phandle", 0x01);
+        builder.add("#address-cells", 1);
+        builder.add("#size-cells", 0u);
+        builder.add("timebase-frequency", 4000000);
+
+        for (uint32_t core = 0; core < CPUS; core++) {
+          char name[16];
+          size_t length = 4;
+          name[0] = 'c';
+          name[1] = 'p';
+          name[2] = 'u';
+          name[3] = '@';
+
+          if (core == 0) {
+            name[length++] = '0';
+          } else {
+            char temporary[10];
+            uint32_t digits = 0;
+            uint32_t value = core;
+
+            while (value) {
+              temporary[digits++] = '0' + (value % 10);
+              value /= 10;
+            }
+
+            while (digits) {
+              name[length++] = temporary[--digits];
+            }
           }
-          fdt.end();
+          name[length] = '\0';
+
+          builder.begin(name);
+          {
+            builder.add("device_type", "cpu");
+            builder.add("reg", core);
+            builder.add("status", "okay");
+            builder.add("compatible", "riscv");
+            builder.add("riscv,isa", "rv64imafdcsu");
+            builder.add("mmu-type", "riscv,sv39");
+
+            builder.begin("interrupt-controller");
+            {
+              builder.add("#interrupt-cells", 1);
+              builder.add("interrupt-controller");
+              builder.add("compatible", "riscv,cpu-intc");
+              builder.add("phandle", 0x10 + core);
+            }
+            builder.end();
+          }
+          builder.end();
         }
-        fdt.end();
       }
-      fdt.end();
+      builder.end();
 
-      fdt.begin("memory");
+      builder.begin("memory");
       {
-        uint64_t base = reinterpret_cast<uint64_t>(buffer_);
-        uint32_t regs[] = {CPU::hi32(base), CPU::lo32(base), CPU::hi32(size_),
+        builder.add("device_type", "memory");
+        uint64_t start = reinterpret_cast<uint64_t>(start_);
+        uint32_t regs[] = {CPU::hi32(start), CPU::lo32(start), CPU::hi32(size_),
                            CPU::lo32(size_)};
-        fdt.add("device_type", "memory");
-        fdt.add("reg", regs, 4);
+        builder.add("reg", regs, 4);
       }
-      fdt.end();
+      builder.end();
 
-      fdt.begin("soc");
+      builder.begin("soc");
       {
-        fdt.add("#address-cells", 2);
-        fdt.add("#size-cells", 2);
-        fdt.add("compatible", "simple-bus");
-        fdt.add("ranges");
+        builder.add("#address-cells", 2);
+        builder.add("#size-cells", 2);
+        builder.add("compatible", "simple-bus");
+        builder.add("ranges");
 
-        fdt.begin("interrupt-controller@c000000");
+        builder.begin("interrupt-controller@c000000");
         {
-          fdt.add("compatible", "riscv,plic0");
+          builder.add("compatible", "riscv,plic0");
 
           uint32_t regs0[] = {0x00, 0xc000000, 0x00, 0x4000000};
-          fdt.add("reg", regs0, 4);
+          builder.add("reg", regs0, 4);
 
-          fdt.add("interrupt-controller");
-          fdt.add("#interrupt-cells", 1);
-          fdt.add("riscv,ndev", 0x35);
+          builder.add("interrupt-controller");
+          builder.add("#interrupt-cells", 1);
+          builder.add("riscv,ndev", 0x35);
 
-          uint32_t regs1[] = {0x01, 0x0b, 0x01, 0x09};
-          fdt.add("interrupts-extended", regs1, 4);
-          fdt.add("phandle", 0x02);
+          uint32_t plic[CPUS * 2];
+          for (uint32_t core = 0; core < CPUS; core++) {
+            uint32_t phandle = 0x10 + core;
+            plic[core * 2] = phandle;
+            plic[core * 2 + 1] = 9;
+          }
+          builder.add("interrupts-extended", plic, CPUS * 2);
+          builder.add("phandle", 0x02);
         }
-        fdt.end();
+        builder.end();
 
-        fdt.begin("virtio_mmio@30000000");
+        builder.begin("virtio@30000000");
         {
           uint64_t address = 0x30000000;
           uint32_t irq = 32;
           uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
                              0x1000};
-          fdt.add("compatible", "virtio,mmio");
-          fdt.add("reg", regs, 4);
-          fdt.add("interrupts", irq);
-          fdt.add("interrupt-parent", 0x02);
+          builder.add("compatible", "virtio,mmio");
+          builder.add("reg", regs, 4);
+          builder.add("interrupts", irq);
+          builder.add("interrupt-parent", 0x02);
         }
-        fdt.end();
-      }
-      fdt.end();
-    }
-    fdt.end();
+        builder.end();
 
-    fdt.finish();
+        builder.begin("virtio@30200000");
+        {
+          uint64_t address = 0x30200000;
+          uint32_t irq = 50;
+          uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
+                             0x1000};
+          builder.add("compatible", "virtio,mmio");
+          builder.add("reg", regs, 4);
+          builder.add("interrupts", irq);
+          builder.add("interrupt-parent", 0x02);
+        }
+        builder.end();
+      }
+      builder.end();
+    }
+    builder.end();
+
+    builder.finish();
+
+    return buffer;
   }
 
 private:
-  static constexpr size_t MB = 1024 * 1024;
-
-private:
   size_t size_;
-  uint8_t *buffer_;
+  uint8_t *start_;
 };
 
 class EPOS_Launcher {
@@ -381,47 +448,52 @@ void smartdata() {
 int main() {
   using namespace QUARK;
 
-  typedef QUARK::Meta::GetFromTypeList<QUARK::Traits<QUARK::Ethernet>::Devices,
-                                       0>::Result Device;
+  typedef Meta::GetFromTypeList<QUARK::Traits<QUARK::Ethernet>::Devices,
+                                0>::Result Device;
 
-  auto *link = new QUARK::LinkIPv4ToEthernet(*Device::instance());
+  Device::init();
+
+  auto *link = new QUARK::LinkIPv4ToEthernet(Device::instance());
   auto *ipv4 = new QUARK::IPv4(IPv4::Address(192, 168, 1, 101), *link);
   auto *udp = new QUARK::UDP(*ipv4);
   auto *tftp = new QUARK::TFTP(*udp);
   auto *receiver = new Receiver(*tftp);
 
-  const size_t MemorySize = 1024 * 1024 * 128;
+  delete tftp;
+  delete udp;
+  delete ipv4;
+  delete link;
 
-  new LinuxLauncher(MemorySize, receiver->linux(), receiver->initramfs(), 3);
+  new LinuxLauncher(256 * MB, receiver->linux(), receiver->initramfs(), 3);
 
   // DYNAMICS STATE
-  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
-  while (QUARK::sbi::Counter::counter_ != 1)
-    ;
+  // new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+  // while (QUARK::sbi::Counter::counter_ != 1)
+  //  ;
 
-  // Fuser
-  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
-  while (QUARK::sbi::Counter::counter_ != 2)
-    ;
+  //// Fuser
+  // new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+  // while (QUARK::sbi::Counter::counter_ != 2)
+  //   ;
 
-  // RADAR
-  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
-  while (QUARK::sbi::Counter::counter_ != 3)
-    ;
+  //// RADAR
+  // new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
+  // while (QUARK::sbi::Counter::counter_ != 3)
+  //   ;
 
-  // LiDAR
-  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
-  while (QUARK::sbi::Counter::counter_ != 4)
-    ;
+  //// LiDAR
+  // new EPOS_Launcher(MemorySize / 2, receiver->epos(), 2);
+  // while (QUARK::sbi::Counter::counter_ != 4)
+  //   ;
 
-  // Camera
-  new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
-  while (QUARK::sbi::Counter::counter_ != 5)
-    ;
+  //// Camera
+  // new EPOS_Launcher(MemorySize / 2, receiver->epos(), 1);
+  // while (QUARK::sbi::Counter::counter_ != 5)
+  //   ;
 
-  QUARK::Delay(QUARK::Microsecond(5'000'000));
+  // QUARK::Delay(QUARK::Microsecond(5'000'000));
 
-  smartdata();
+  // smartdata();
 
   //// new NetworkVampire<VirtualSwitch<Device>>();
 

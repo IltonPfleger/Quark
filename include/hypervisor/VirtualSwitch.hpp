@@ -9,41 +9,41 @@
 
 namespace QUARK {
 
-template <typename DEVICE> class VirtualSwitch : public DEVICE::Observer, public DEVICE::Observed {
-  public:
-    VirtualSwitch()
-        : device_(*DEVICE::instance()) {
-        device_.attach(this);
-    }
+template <typename DEVICE>
+class VirtualSwitch : public DEVICE::Observer, public DEVICE::Observed {
+public:
+  VirtualSwitch() : device_(DEVICE::instance()) { device_.attach(this); }
 
-    NetworkBuffer *alloc(size_t length) { return device_.alloc(length); }
+  NetworkBuffer *alloc(size_t length) { return device_.alloc(length); }
 
-    void free(NetworkBuffer *buffer) { device_.free(buffer); }
+  void free(NetworkBuffer *buffer) { device_.free(buffer); }
 
-    int send(NetworkBuffer *buffer) {
-        lock_.acquire();
+  int send(NetworkBuffer *buffer) {
+    lock_.acquire();
 
-        this->notify(buffer);
+    this->notify(buffer);
 
-        lock_.release();
+    lock_.release();
 
-        return device_.send(buffer);
-    }
+    return device_.send(buffer);
+  }
 
-    void update(const NetworkBuffer *buffer) override {
-        lock_.acquire();
-        this->notify(buffer);
-        lock_.release();
-    }
+  size_t mtu() { return device_.mtu(); }
 
-    static auto instance() {
-        static VirtualSwitch instance;
-        return &instance;
-    }
+  void update(const NetworkBuffer *buffer) override {
+    lock_.acquire();
+    this->notify(buffer);
+    lock_.release();
+  }
 
-  private:
-    DEVICE &device_;
-    Mutex lock_;
+  static VirtualSwitch &instance() {
+    static VirtualSwitch instance;
+    return instance;
+  }
+
+private:
+  DEVICE &device_;
+  Mutex lock_;
 };
 
 } // namespace QUARK

@@ -651,16 +651,14 @@ public:
     }
   }
 
-  static void init() { instance_ = new DWC_Ether_QoS(); }
+  static void init() {
+    assert(!instance_);
+    instance_ = new DWC_Ether_QoS();
+  }
 
   static DWC_Ether_QoS &instance() {
     assert(instance_);
     return *instance_;
-  }
-
-  static void destroy() {
-    delete instance_;
-    instance_ = nullptr;
   }
 
   static volatile uint32_t &Reg32(size_t offset) {

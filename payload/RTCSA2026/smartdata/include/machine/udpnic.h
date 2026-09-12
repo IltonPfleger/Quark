@@ -28,7 +28,7 @@ class UDPNIC : public NIC<Only_Data_UDP_Wrapper>, public LocalNetwork::Observer 
 
   public:
     UDPNIC()
-        : m_network(LocalNetwork::instance()) {
+        : m_network(&LocalNetwork::instance()) {
         db<NIC>(TRC) << "UDPNIC::UDPNIC()" << endl;
 
         for (int i = 0; i < NumberOfBuffers; i++) {

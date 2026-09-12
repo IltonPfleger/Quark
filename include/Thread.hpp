@@ -32,6 +32,7 @@ public:
   ~Thread();
 
   static void init();
+  static Thread *running();
   static void run();
   static void sleep(List *, Spin *);
   static void wakeup(List *);
@@ -42,7 +43,6 @@ public:
   void join();
 
 private:
-  static Thread *running();
   static void entry(Function, Argument);
   static void dispatch(Thread *, Thread *, Spin * = 0);
   static Return idle(Argument);

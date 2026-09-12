@@ -91,8 +91,6 @@ int main() {
   // delete udp;
   // delete tftp;
 
-  Device::destroy();
-
   for (size_t i = 0; i < Traits<CPU>::Active; i++) {
     if (i == CPU::id())
       continue;
