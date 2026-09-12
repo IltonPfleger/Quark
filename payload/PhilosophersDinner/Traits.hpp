@@ -1,7 +1,5 @@
 #pragma once
 
-#include <Traits.hpp>
-
 namespace QUARK {
 
 template <> struct Traits<Payload> {

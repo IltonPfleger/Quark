@@ -93,15 +93,15 @@ public:
   }
 
   static bool schedule(Deferred &work) {
-    if constexpr (kThreads == 0) {
-      return false;
-    }
-
     static size_t next = 0;
     const size_t start = CPU::Atomic::finc(next);
 
     for (size_t i = 0; i < kThreads; i++) {
-      Worker *worker = workers[(start + i) % kThreads];
+      Worker *worker = nullptr;
+
+      if constexpr (kThreads != 0) {
+        worker = workers[(start + i) % kThreads];
+      }
 
       if (worker && worker->insert(work)) {
         return true;
