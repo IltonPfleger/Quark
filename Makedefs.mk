@@ -10,8 +10,7 @@ TOOLS          := $(HERE)/tools
 SYSTEM         := $(BUILD)/QUARK
 IMAGE          := $(BUILD)/Image
 CONFIG         := $(BUILD)/Config
-KERNEL_ELF     := $(BUILD)/QUARK.elf
-KERNEL_BINARY  := $(BUILD)/QUARK.bin
+ELF            := $(BUILD)/QUARK.elf
 
 CONFIGURATOR   := $(TOOLS)/TraitsLoggerGenerator
 TRAITS         := $(shell find $(HERE) -name "Traits.hpp")

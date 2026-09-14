@@ -10,8 +10,8 @@
 #define __HEADER_PAYLOAD(X) <payload/__PAYLOAD/__HEADER_NAME(X)>
 
 /* Payload */
-#ifdef __PAYLOAD
+// #ifdef __PAYLOAD
 #define __PAYLOAD_TRAITS_HEADER __HEADER_PAYLOAD(Traits)
-#endif
+// #endif
 
 #endif
