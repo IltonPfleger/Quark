@@ -3,7 +3,6 @@ include Makedefs.mk
 SOURCES       := $(shell find src -name '*.cpp' | grep -v -E 'architecture|machine|abi')
 SOURCES 	  += $(shell find src/architecture/$(ARCH) -name '*.cpp')
 SOURCES 	  += $(shell find src/machine/$(ARCH)/$(MACHINE) -name '*.cpp')
-SOURCES       += $(if $(filter-out undefined,$(origin Payload_Unprivileged)),$(shell find src/abi -name '*.cpp'))
 OBJECTS       := $(patsubst src/%.cpp,$(BUILD)/%.o,$(SOURCES))
 DEPENDENCIES  := $(OBJECTS:.o=.d)
 
