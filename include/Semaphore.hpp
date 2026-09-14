@@ -8,11 +8,9 @@ namespace QUARK {
 
 class Semaphore {
 public:
-  constexpr Semaphore(int value = 0) : value_(value), waiting_(), lock_() {
-    assert(value_ >= 0);
-  }
+  constexpr Semaphore(int value = 0) : value_(value), waiting_(), lock_() {}
 
-  ~Semaphore() { assert(value_ >= 0); }
+  ~Semaphore() {}
 
   void p() {
     CPU::IRQ::Guard _;

@@ -2,23 +2,11 @@
 
 #include <utility/Console.hpp>
 
-extern "C" [[noreturn]] inline void failure(const char *cause, const char *file,
-                                            int line) {
-  using namespace QUARK;
-  Console::panic();
-  Console::println("\n[Assertion Failed]");
-  Console::println("    ", file, ":", line);
-  Console::println("    ", cause);
-  for (;;)
-    ;
-}
+extern "C" void failure(bool, const char *, const char *, int);
 
-#define assert(expression, ...)                                                \
-  if constexpr (QUARK::Traits<QUARK::Debug>::Error) {                          \
-    if (!(expression)) [[unlikely]] {                                          \
-      failure(#expression, __FILE__, __LINE__);                                \
-    }                                                                          \
-  }
+#define assert(condition, ...)                                                 \
+  if constexpr (QUARK::Traits<QUARK::Debug>::Error)                            \
+    failure(!(condition), #condition, __FILE__, __LINE__);
 
 // ********** Traces **********
 
