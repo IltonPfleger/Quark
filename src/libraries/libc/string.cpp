@@ -33,6 +33,7 @@ int memcmp(const void *ptr1, const void *ptr2, size_t n) {
             return (int)(p1[i] - p2[i]);
         }
     }
+
     return 0;
 }
 
@@ -51,13 +52,4 @@ int strcmp(const char *s1, const char *s2) {
     return (unsigned char)(*s1) - (unsigned char)(*s2);
 }
 
-char *strchr(const char *str, int ch) {
-    while (*str != (char)ch) {
-        if (!*str) {
-            return nullptr;
-        }
-        str++;
-    }
-    return const_cast<char *>(str);
-}
 }

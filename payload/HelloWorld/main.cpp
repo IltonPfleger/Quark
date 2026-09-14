@@ -5,6 +5,7 @@
 using namespace QUARK;
 
 int main(int, char *[]) {
-    Console::println("Hello World!");
-    return 0;
+  Console::println("Hello World!");
+  assert(false);
+  return 0;
 }

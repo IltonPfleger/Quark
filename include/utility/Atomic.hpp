@@ -30,8 +30,6 @@ public:
     return CPU::Atomic::cas(value_, expected, desired);
   }
 
-  T exchange(T desired) { return CPU::Atomic::exchange(value_, desired); }
-
   void store(T value) { CPU::Atomic::store(value_, value); }
 
   T operator++()
