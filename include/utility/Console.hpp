@@ -8,14 +8,9 @@ namespace QUARK {
 class Console {
   using Device = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
 
-private:
-  static bool panicked();
-
 public:
-  static void panic();
-
   template <typename T> struct Hex {
-    constexpr Hex(T x) : value_(x) {}
+    constexpr explicit Hex(T x) : value_(x) {}
     constexpr operator T() { return value_; }
 
   private:
@@ -24,6 +19,7 @@ public:
 
   template <typename T> Hex(T) -> Hex<T>;
 
+  static void panic();
   static void print(char);
   static void print(const char *);
   static void print(uintmax_t);
@@ -34,8 +30,8 @@ public:
 
   static void print(const void *p) { print(Hex(p)); }
 
-  template <typename T> static void print(Hex<T> x) {
-    print(Hex(reinterpret_cast<uintmax_t>(static_cast<T>(x))));
+  template <typename T> static void print(Hex<T> hex) {
+    print(Hex(reinterpret_cast<uintmax_t>(static_cast<T>(hex))));
   }
 
   template <Meta::Integer T> static void print(T x) {
@@ -60,6 +56,9 @@ public:
     }
     print('\n');
   }
+
+private:
+  static bool panicked();
 
 private:
   static volatile inline uintmax_t panic_ = 0;
