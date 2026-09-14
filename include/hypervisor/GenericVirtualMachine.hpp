@@ -88,7 +88,12 @@ public:
     assert(handled);
   }
 
-  VirtualCPU &cpu(size_t id) override { return cpus_[id]; }
+  VirtualCPU &cpu(size_t id) override {
+    assert(id < CORES);
+    return cpus_[id];
+  }
+
+  size_t cpus() const override { return CORES; }
 
   static void *worker(void *pointer) {
     Arguments *arguments = reinterpret_cast<Arguments *>(pointer);

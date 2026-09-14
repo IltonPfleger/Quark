@@ -23,6 +23,8 @@ public:
 
   virtual VirtualCPU &cpu(size_t) = 0;
 
+  virtual size_t cpus() const = 0;
+
   virtual const Chunk &memory() const { return memory_; }
 
 private:

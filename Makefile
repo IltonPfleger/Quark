@@ -1,9 +1,8 @@
 include Makedefs.mk
 
-SOURCES       := $(shell find src -name '*.cpp' | grep -v -E 'architecture|machine|abi')
-SOURCES 	  += $(shell find src/architecture/$(ARCH) -name '*.cpp')
-SOURCES 	  += $(shell find src/machine/$(ARCH)/$(MACHINE) -name '*.cpp')
-OBJECTS       := $(patsubst src/%.cpp,$(BUILD)/%.o,$(SOURCES))
+SOURCES       := $(shell find src -name '*.cpp')
+SOURCES 	  += $(shell find architecture/$(ARCH)/src -name '*.cpp')
+OBJECTS       := $(patsubst %.cpp,$(BUILD)/%.o,$(SOURCES))
 DEPENDENCIES  := $(OBJECTS:.o=.d)
 
 run: $(IMAGE)
@@ -26,7 +25,7 @@ $(ELF): $(OBJECTS)
 	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) $(BUILD)/$(PAYLOAD).o
 	$(LD) $(LDFLAGS) `nm -u $(BUILD)/$(PAYLOAD).o 2>/dev/null | awk '{print "-u " $$NF}'` -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $^
 
-$(BUILD)/%.o: src/%.cpp 
+$(BUILD)/%.o: %.cpp 
 	$(MKDIR) -p $(dir $@)
 	$(CC) $(MACH_CCFLAGS) -MMD -MP -c $< -o $@
 
