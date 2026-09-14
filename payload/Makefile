@@ -1,8 +1,8 @@
 include ../Makedefs.mk
 
 ifneq ($(wildcard $(PAYLOAD)/Makefile),)
-all:
-	$(MAKE) -C $(PAYLOAD) all
+$(BUILD)/$(PAYLOAD).o:
+	$(MAKE) -C $(PAYLOAD) $@
 else
 include Template.mk
 endif

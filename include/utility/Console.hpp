@@ -28,7 +28,7 @@ public:
   static void print(double x);
   static void print(bool);
 
-  static void print(const void *p) { print(Hex(p)); }
+  static void print(const void *pointer) { print(Hex(pointer)); }
 
   template <typename T> static void print(Hex<T> hex) {
     print(Hex(reinterpret_cast<uintmax_t>(static_cast<T>(hex))));

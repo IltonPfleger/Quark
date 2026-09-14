@@ -21,11 +21,12 @@ $(IMAGE).bin : $(KERNEL_ELF) $(PAYLOAD_ELF)
 	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(KERNEL_ELF) $(IMAGE).bin
 	$(CAT) $(PAYLOAD_ELF) >> $(IMAGE).bin
 
-$(PAYLOAD_ELF): $(KERNEL_ELF)
-	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
+$(BUILD)/$(PAYLOAD).elf: $(KERNEL_ELF)
+	$(LD) -e main --just-symbols $(KERNEL_ELF) -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $(BUILD)/$(PAYLOAD).o
 
 $(KERNEL_ELF): $(KERNEL_OBJECTS)
-	$(LD) $(LDFLAGS) -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $^
+	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) $(BUILD)/$(PAYLOAD).o
+	$(LD) $(LDFLAGS) `nm -u $(BUILD)/$(PAYLOAD).o 2>/dev/null | awk '{print "-u " $$NF}'` -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $^
 
 $(BUILD)/%.o: src/%.cpp 
 	$(MKDIR) -p $(dir $@)
