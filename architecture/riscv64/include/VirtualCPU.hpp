@@ -47,6 +47,7 @@ public:
     EXTERNAL = 1ULL << 2,
     SOFTWARE = 1ULL << 3,
   };
+
   VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
 
   void boot(size_t core, void *entry, void *opaque) {
