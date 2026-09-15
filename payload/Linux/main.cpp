@@ -2,7 +2,6 @@
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
 #include <architecture/VirtualPLIC.hpp>
-// #include <drivers/ethernet/Dummy_Ethernet_Controller.hpp>
 #include <hypervisor/GenericVirtualMachine.hpp>
 #include <hypervisor/dtb/FDT_Builder.hpp>
 #include <hypervisor/virtio/Console.hpp>

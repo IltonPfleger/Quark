@@ -11,32 +11,30 @@ class StoreAccessFault {
   using PageTable = MMU::PageTable;
 
 public:
-  static constexpr unsigned int CODE = 7;
+  static constexpr uint32_t CODE = 7;
 
-  static void dispatch(ContextFrame *c) {
-    if ((c->status & MachineMode::PP) == MachineMode::PP_M)
-      ExceptionHandler::esr(c);
+  static void dispatch(ContextFrame *context) {
+    if ((context->status & MachineMode::PP) == MachineMode::PP_M) [[unlikely]]
+      ExceptionHandler::esr(context);
 
     uintptr_t address = PageTable::virt2phys(csrr<MachineMode::TVAL>());
-    uintptr_t pc = PageTable::virt2phys(c->pc);
+    uintptr_t pc = PageTable::virt2phys(context->pc);
     uint16_t compressed = Decoder::compressed(pc);
     uint8_t i;
 
     if (compressed) {
       i = Decoder::rs2(compressed);
-      c->pc += 2;
+      context->pc += 2;
     } else {
       uint32_t instruction = Decoder::uncompressed(pc);
       i = Decoder::rs2(instruction);
-      c->pc += 4;
+      context->pc += 4;
     }
 
-    uintmax_t source = (*c)[i];
+    uintmax_t source = (*static_cast<const ContextFrame *>(context))[i];
 
-    if (VirtualCPU::write(address, source))
-      return;
-
-    ExceptionHandler::esr(c);
+    if (!VirtualCPU::write(address, source)) [[unlikely]]
+      ExceptionHandler::esr(context);
   }
 };
 

@@ -99,7 +99,7 @@ public:
     return true;
   }
 
-  static void update(void *_ = nullptr) {
+  static void update(void * = nullptr) {
     VirtualCPU *current = VirtualCPU::current();
 
     if (!current)
@@ -111,15 +111,13 @@ public:
       csrc<MachineMode::IP>(STI);
     }
 
-    if (current->flags_ & EXTERNAL) {
-      current->flags_ &= ~EXTERNAL;
-      csrs<MachineMode::IP>(SEI);
-    }
+    const uintmax_t external =
+        -((current->flags_.fand(~EXTERNAL) & EXTERNAL) != 0);
 
-    if (current->flags_ & SOFTWARE) {
-      current->flags_ &= ~SOFTWARE;
-      csrs<MachineMode::IP>(SSI);
-    }
+    const uintmax_t software =
+        -((current->flags_.fand(~SOFTWARE) & SOFTWARE) != 0);
+
+    csrs<MachineMode::IP>((SEI & external) | (SSI & software));
   }
 
   static void mtimecmp(uintmax_t mtimecmp) {
