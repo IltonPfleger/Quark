@@ -138,7 +138,7 @@ public:
 
   static bool sb(uintmax_t address, uint8_t source) {
     assert(current());
-    if (!current()->vm_->memory().contains(Chunk(address, 1)))
+    if (!current()->vm_->memory().contains(Chunk(address, 1))) [[unlikely]]
       return false;
     *reinterpret_cast<uint8_t *>(address) = source;
     return true;
@@ -146,7 +146,7 @@ public:
 
   static bool lb(uintmax_t address, uint8_t *source) {
     assert(current());
-    if (!current()->vm_->memory().contains(Chunk(address, 1)))
+    if (!current()->vm_->memory().contains(Chunk(address, 1))) [[unlikely]]
       return false;
     *source = *reinterpret_cast<uint8_t *>(address);
     return true;
@@ -175,8 +175,7 @@ public:
   }
 
   static void fence(size_t hartid, uintmax_t flags) {
-    if (!current())
-      return;
+    assert(current());
 
     VirtualCPU &destination = current()->vm_->cpu(hartid);
 
