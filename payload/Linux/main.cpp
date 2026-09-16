@@ -3,7 +3,7 @@
 #include <architecture/CPU.hpp>
 #include <architecture/VirtualPLIC.hpp>
 #include <hypervisor/GenericVirtualMachine.hpp>
-#include <hypervisor/dtb/FDT_Builder.hpp>
+#include <hypervisor/fdt/FDT_Builder.hpp>
 #include <hypervisor/virtio/Console.hpp>
 // #include <hypervisor/virtio/Network.hpp>
 #include <machine/Machine.hpp>
@@ -50,7 +50,7 @@ public:
 
     size_t remaining = size_ - (current - start_);
 
-    void *opaque = dtb(current, remaining, Span(address, initrd.length()));
+    void *opaque = fdt(current, remaining, Span(address, initrd.length()));
 
     Console::println("\n *** Linux is at core ", CPU::id(), " ***");
 
@@ -64,7 +64,7 @@ public:
     return reinterpret_cast<unsigned char *>(address);
   }
 
-  void *dtb(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
+  void *fdt(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
     FDT_Builder builder(buffer, capacity);
 
     uint64_t memory = reinterpret_cast<uint64_t>(start_);

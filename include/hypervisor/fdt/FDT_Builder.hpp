@@ -2,8 +2,8 @@
 #define __QUARK_FDT_BUILDER__
 
 #include <architecture/CPU.hpp>
-#include <hypervisor/dtb/FDT_Header.hpp>
-#include <hypervisor/dtb/FDT_ReservedEntry.hpp>
+#include <hypervisor/fdt/FDT_Header.hpp>
+#include <hypervisor/fdt/FDT_ReservedEntry.hpp>
 #include <libraries/libc/string.h>
 
 namespace QUARK {
