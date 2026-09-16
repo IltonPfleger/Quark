@@ -2,9 +2,8 @@
 
 namespace QUARK {
 
-template <> struct Traits<Payload> {
+template <> struct Traits<Application> {
   static constexpr bool Virtualization = false;
-  static constexpr bool Unprivileged = false;
 };
 
 template <> struct Traits<Deferred> {

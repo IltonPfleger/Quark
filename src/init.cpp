@@ -1,8 +1,8 @@
 #include <Thread.hpp>
+#include <application/Application.hpp>
 #include <architecture/Timer.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Memory.hpp>
-#include <payload/Payload.hpp>
 #include <utility/Deferred.hpp>
 
 using namespace QUARK;
@@ -12,11 +12,11 @@ extern "C" void init() {
 
   if (CPU::id() == Traits<CPU>::BSP) {
     TraceIn();
-    Payload::reserve();
+    Application::reserve();
     Memory::init();
     Thread::init();
     Deferred::init();
-    Payload::init();
+    Application::init();
   }
 
   if constexpr (Traits<Timer>::Enable)

@@ -4,9 +4,9 @@
 
 namespace QUARK {
 
-class Payload;
+class Application;
 
-template <> struct Traits<Payload> {
+template <> struct Traits<Application> {
   static constexpr bool Virtualization = true;
   static constexpr bool Unprivileged = false;
 };

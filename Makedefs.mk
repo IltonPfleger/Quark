@@ -4,7 +4,7 @@ HERE := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 INCLUDE        := $(HERE)/include
 BUILD          := $(HERE)/build
-PAYLOADS       := $(HERE)/payload
+APPLICATIONS   := $(HERE)/application
 TOOLS          := $(HERE)/tools
 
 SYSTEM         := $(BUILD)/QUARK
@@ -37,13 +37,13 @@ CONSOLE        := kgx -e
 
 ARCH           ?= riscv64
 MACHINE        ?= virt
-PAYLOAD        ?= HelloWorld
+APPLICATION    ?= HelloWorld
 
 CCFLAGS        := -std=c++23
 CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH)/include -I$(HERE)/machine/$(ARCH)/$(MACHINE)/include
 #CCFLAGS        += -Wall -Wextra -Werror -pedantic
 CCFLAGS        += -ffunction-sections -fdata-sections
-CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -O3
+CCFLAGS        += -D__APPLICATION=$(APPLICATION) -O3
 
 LDFLAGS        := --gc-sections
 

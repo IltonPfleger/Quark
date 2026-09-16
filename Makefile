@@ -14,18 +14,18 @@ debug: $(IMAGE)
 gdb:
 	$(GDB) -ex "file $(ELF)" -ex "target extended-remote:1234"
 
-$(IMAGE).bin : $(ELF) $(BUILD)/$(PAYLOAD).elf
+$(IMAGE).bin : $(ELF) $(BUILD)/$(APPLICATION).elf
 	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(ELF) $(IMAGE).bin
-	$(CAT) $(BUILD)/$(PAYLOAD).elf >> $(IMAGE).bin
+	$(CAT) $(BUILD)/$(APPLICATION).elf >> $(IMAGE).bin
 
-$(BUILD)/$(PAYLOAD).elf: $(ELF)
-	$(LD) -e main --just-symbols $(ELF) -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $(BUILD)/$(PAYLOAD).o
+$(BUILD)/$(APPLICATION).elf: $(ELF)
+	$(LD) -e main --just-symbols $(ELF) -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $(BUILD)/$(APPLICATION).o
 
-$(BUILD)/$(PAYLOAD).o:
-	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) $(BUILD)/$(PAYLOAD).o
+$(BUILD)/$(APPLICATION).o:
+	$(MAKE) APPLICATION=$(APPLICATION) -C $(APPLICATIONS) $(BUILD)/$(APPLICATION).o
 
-$(ELF): $(OBJECTS) $(BUILD)/$(PAYLOAD).o
-	$(LD) $(LDFLAGS) `nm -u $(BUILD)/$(PAYLOAD).o 2>/dev/null | awk '{print "-u " $$NF}'` -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $(filter-out $(BUILD)/$(PAYLOAD).o,$^)
+$(ELF): $(OBJECTS) $(BUILD)/$(APPLICATION).o
+	$(LD) $(LDFLAGS) `nm -u $(BUILD)/$(APPLICATION).o 2>/dev/null | awk '{print "-u " $$NF}'` -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $(filter-out $(BUILD)/$(APPLICATION).o,$^)
 
 $(BUILD)/%.o: %.cpp 
 	$(MKDIR) -p $(dir $@)

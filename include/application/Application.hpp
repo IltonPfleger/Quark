@@ -12,7 +12,7 @@
 
 namespace QUARK {
 
-class Payload {
+class Application {
 public:
   static void reserve() {
     Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());

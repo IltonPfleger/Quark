@@ -16,7 +16,7 @@ namespace QUARK {
 class CPU : public ArchitectureCommon::CPU {
 public:
   static constexpr bool Supervisor = Traits<RISCV>::Supervisor;
-  static constexpr bool Virtualization = Traits<Payload>::Virtualization;
+  static constexpr bool Virtualization = Traits<Application>::Virtualization;
 
   using NotSupervisorContext =
       Meta::IF<!Virtualization, QUARK::MachineContext<>,

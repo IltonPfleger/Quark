@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Traits.hpp>
-#include <abi/Handler.hpp>
 #include <architecture/CLINT.hpp>
 #include <architecture/Decoder.hpp>
 #include <architecture/FPU.hpp>
@@ -42,11 +41,6 @@ public:
       csrs<MachineMode::IE>(MachineMode::EI);
     }
 
-    if constexpr (Traits<Payload>::Unprivileged) {
-      PMP::NAPOT<0>(0, 0, PMP::R | PMP::W | PMP::X);
-      TrapHandler::install(8, abi, TrapHandler::Exception);
-    }
-
     if constexpr (Traits<FPU>::Enable) {
       TrapHandler::install(2, fpu, TrapHandler::Exception);
     }
@@ -61,12 +55,6 @@ private:
   static void sbi(ContextFrame *context) {
     CLINT::reset();
     context->pc += 4;
-  }
-
-  static void abi(ContextFrame *c) {
-    c->a0 = reinterpret_cast<uintptr_t>(
-        ABI::Handler::dispatch(static_cast<ABI::Function>(c->a7), &c->a0));
-    c->pc += 4;
   }
 
   static void fpu(ContextFrame *context) {
