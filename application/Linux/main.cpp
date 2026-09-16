@@ -25,8 +25,6 @@ public:
   using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
   using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
-  // using NetworkDevice = Dummy_Ethernet_Controller;
-  // using Network = virtio::Network<NetworkDevice, 0x30200000, 50>;
   using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
