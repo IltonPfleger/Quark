@@ -10,8 +10,9 @@ class Thread {
   friend class PeriodicThread;
 
 public:
+  typedef uintmax_t Flags;
   enum class State { RUNNING, READY, WAITING, FINISHING, FINISHED };
-  enum class Domain { USER, KERNEL };
+  enum : Flags { NONE = 0, STACK = 1 << 0, KERNEL = NONE, USER = STACK };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
@@ -27,8 +28,7 @@ public:
   Thread(const Thread &&) = delete;
   Thread &operator=(Thread &&) = delete;
   Thread &operator=(const Thread &) = delete;
-  Thread(Function, Argument = 0, Criterion = Criterion::NORMAL,
-         Domain = Domain::USER, Process * = nullptr);
+  Thread(Function, Argument = 0, Criterion = Criterion::NORMAL, Flags = USER);
   ~Thread();
 
   static void init();
@@ -49,13 +49,12 @@ private:
   static void epilogue();
 
 private:
-  Chunk stack_;
-  Chunk kstack_;
+  void *stack_;
+  void *kstack_;
   Node node_;
   volatile State state_;
   Context context_;
-  Domain domain_;
-  Meta::IF<Traits<Kernel>::Multitask, Process *, Meta::Empty>::Result owner_;
+  Flags flags_;
 
 private:
   static constinit inline Scheduler s_scheduler;

@@ -110,14 +110,6 @@ public:
       direct(header);
       auto main = reinterpret_cast<Function>(header->e_entry);
       new Thread(main, 0, Thread::Criterion::NORMAL);
-    } else {
-      Process *process = new Process();
-      indirect(process);
-      process->activate();
-      auto main = reinterpret_cast<Function>(header->e_entry);
-      new Thread(main, 0, Thread::Criterion::NORMAL, Thread::Domain::USER,
-                 process);
-      //  indirect(new Process());
     }
 
     TraceOut();

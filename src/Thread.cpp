@@ -16,14 +16,6 @@ void Thread::entry(Function f, Argument a) {
   if (s_previous[CPU::id()])
     epilogue();
 
-  if constexpr (Traits<Payload>::Unprivileged) {
-    if (current->domain_ == Domain::USER) {
-      Context::demote(current->kstack_, current->stack_, f, ABI::Thread::exit,
-                      a);
-      return;
-    }
-  }
-
   CPU::IRQ::enable();
   f(a);
   exit();
@@ -86,26 +78,13 @@ void Thread::epilogue() {
   }
 }
 
-Thread::Thread(Function f, Argument a, Criterion c, Domain d, Process *p)
-    : stack_(
-          Memory::alloc(d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
-          d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
-      kstack_(Memory::alloc(Traits<Thread>::KernelStackSize),
-              Traits<Thread>::KernelStackSize),
-      node_(Node(this, c)), state_(State::READY),
-      context_(kstack_, stack_, entry, f, a), domain_(d) {
+Thread::Thread(Function e, Argument a, Criterion c, Flags f)
+    : stack_(Memory::alloc((f & STACK) * Traits<Thread>::UserStackSize)),
+      kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
+      node_(Node(this, c)), state_(State::READY), flags_(f),
+      context_({kstack_, Traits<Thread>::KernelStackSize},
+               {stack_, Traits<Thread>::UserStackSize}, entry, e, a) {
   TraceIn(this);
-
-  //[&](auto *self) {
-  //  if constexpr (Traits<Kernel>::Multitask) {
-  //    self->owner_ = p;
-  //    if (self->owner_) {
-  //      uintptr_t spa = Memory::virt2phys(self->stack_.start());
-  //      self->stack_ = self->owner_->attach(Chunk(spa,
-  //      self->stack_.length()));
-  //    }
-  //  }
-  //}(this);
 
   {
     CPU::IRQ::Guard _;
@@ -121,8 +100,13 @@ Thread::~Thread() {
 
   join();
 
-  Memory::free(stack_.data(), stack_.length());
-  Memory::free(kstack_.data(), kstack_.length());
+  if (stack_) {
+    Memory::free(stack_, Traits<Thread>::UserStackSize);
+  }
+
+  if (kstack_) {
+    Memory::free(kstack_, Traits<Thread>::KernelStackSize);
+  }
 
   TraceOut();
 }
@@ -150,7 +134,7 @@ void Thread::init() {
   new (&s_scheduler) Scheduler();
 
   for (int i = 0; i < Traits<CPU>::Active; ++i)
-    new Thread(idle, 0, Criterion::IDLE, Domain::KERNEL);
+    new Thread(idle, 0, Criterion::IDLE, KERNEL);
 
   TraceOut();
 }
