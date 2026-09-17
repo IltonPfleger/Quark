@@ -87,11 +87,9 @@ void Thread::epilogue() {
 }
 
 Thread::Thread(Function e, Argument a, Criterion c, Flags f)
-    : stack_(Memory::alloc((f & STACK) * Traits<Thread>::UserStackSize)),
-      kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
+    : stack_(nullptr), kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
       node_(Node(this, c)), state_(State::READY), flags_(f),
-      context_({kstack_, Traits<Thread>::KernelStackSize},
-               {stack_, Traits<Thread>::UserStackSize}, entry, e, a) {
+      context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a) {
   TraceIn(this);
 
   {

@@ -13,13 +13,11 @@ namespace QUARK {
 
 template <typename T, bool ChangeStack> class ContextTemplate {
 public:
-  ContextTemplate(const Chunk &ksp, const Chunk &usp, auto pc, auto a0,
-                  auto a1) {
+  ContextTemplate(const Chunk &ksp, auto pc, auto a0, auto a1) {
     frame_ = reinterpret_cast<ContextFrame *>(ksp.end()) - 1;
     frame_->pc = reinterpret_cast<uint64_t>(pc);
     frame_->a0 = reinterpret_cast<uint64_t>(a0);
     frame_->a1 = reinterpret_cast<uint64_t>(a1);
-    frame_->ksp = usp.end();
     frame_->status = 0;
   }
 

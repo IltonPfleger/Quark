@@ -4,6 +4,7 @@
 #include <Traits.hpp>
 #include <architecture/CLINT.hpp>
 #include <architecture/CPU.hpp>
+#include <architecture/CoreContextHandler.hpp>
 #include <architecture/IPI.hpp>
 #include <architecture/MMU.hpp>
 #include <architecture/Modes.hpp>
@@ -52,6 +53,7 @@ public:
 
   void boot(size_t core, void *entry, void *opaque) {
     CPU::IRQ::disable();
+
     activate();
     restore();
 
@@ -63,6 +65,9 @@ public:
     csrs<MachineMode::STATUS>(MachineMode::TW);
 
     csrw<MachineMode::EPC>(entry);
+
+    uintptr_t origin = CPU::stack() & ~(Traits<Memory>::StackSize - 1);
+    CoreContextHandler<MachineMode>::stack(origin);
 
     CPU::mb();
     CPU::ib();
