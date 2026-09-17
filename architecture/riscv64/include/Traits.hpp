@@ -8,7 +8,9 @@ class RISCV;
 
 template <> struct Traits<RISCV> {
   static constexpr bool Hypervisor = Traits<Application>::Virtualization;
-  static constexpr bool Supervisor = Traits<Kernel>::Multitask;
+  static constexpr bool Supervisor =
+      Traits<Kernel>::Mode == Traits<Kernel>::KERNEL;
+  static constexpr bool MMU = Supervisor;
 
   static_assert(!(Supervisor && Hypervisor));
 };

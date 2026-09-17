@@ -53,7 +53,6 @@ $(HASH): $(TRAITS)
 	@$(MKDIR) -p $(dir $@)
 	@cat $^ | sha256sum > $@
 
-MACH_CCFLAGS := $(CCFLAGS)
 
 $(CONFIG): $(HASH)
 	$(MKDIR) -p $(dir $@)
@@ -61,5 +60,9 @@ $(CONFIG): $(HASH)
 	g++ $(CCFLAGS) $(CONFIG).cpp -o $(CONFIG).elf
 	$(CONFIG).elf > $@
 
+ifneq ($(filter clean,$(MAKECMDGOALS)),clean)
 -include $(CONFIG)
+endif
+
+MACH_CCFLAGS := $(CCFLAGS)
 include $(HERE)/machine/$(ARCH)/$(MACHINE)/Makedefs.mk

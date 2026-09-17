@@ -106,7 +106,7 @@ public:
 
     Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
 
-    if constexpr (!Traits<Kernel>::Multitask) {
+    if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::LIBRARY) {
       direct(header);
       auto main = reinterpret_cast<Function>(header->e_entry);
       new Thread(main, 0, Thread::Criterion::NORMAL);

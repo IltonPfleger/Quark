@@ -12,10 +12,10 @@ echo "template<typename T>"
 echo "concept Printable = requires(std::ostream& os, T v) { os << v; };"
 echo ""
 echo "template<typename T>"
-echo "void print_trait(const char* name, const T& value) {"
+echo "void print(const char* name, const T& value) {"
 echo "    if constexpr (Printable<T>) {"
 echo "        std::cout << name << \" := \";"
-echo "        if constexpr (std::is_same_v<T, long> || std::is_same_v<T, unsigned long>) {"
+echo "        if constexpr (std::is_same_v<T, unsigned long>) {"
 echo "            std::cout << std::hex << std::showbase << value << std::dec;"
 echo "        } else {"
 echo "            std::cout << value;"
@@ -27,16 +27,11 @@ echo "}"
 echo "int main() {"
 
 class=""
-while IFS= read -r line || [ -n "$line" ]; do
+while read -r line; do
     if [[ $line =~ struct[[:space:]]+Traits\<([a-zA-Z0-9_:]+)\> ]]; then
         class="${BASH_REMATCH[1]}"
-    elif [[ $line =~ struct[[:space:]]+Traits\<.*\> ]]; then
-        class=""
-    elif [[ $line =~ static[[:space:]]+constexpr.*[[:space:]]([a-zA-Z0-9_]+)[[:space:]]*= ]]; then
-        member="${BASH_REMATCH[1]}"
-        if [[ -n "$class" ]]; then
-            echo "    print_trait(\"${class}_${member}\", Traits<${class}>::${member});"
-        fi
+    elif [[ -n "$class" && $line =~ static[[:space:]]+constexpr.*[[:space:]]([a-zA-Z0-9_]+)[[:space:]]*= ]]; then
+        echo "    print(\"${class}_${BASH_REMATCH[1]}\", Traits<${class}>::${BASH_REMATCH[1]});"
     fi
 done
 

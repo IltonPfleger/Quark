@@ -26,7 +26,8 @@ class VirtualMachine;
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-  static constexpr bool Multitask = false;
+  enum { LIBRARY, KERNEL };
+  static constexpr int Mode = LIBRARY;
 };
 
 template <> struct Traits<Timer> {

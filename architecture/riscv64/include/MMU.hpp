@@ -287,7 +287,7 @@ public:
   }
 
 private:
-  static constexpr bool Enable = Traits<Kernel>::Multitask;
+  static constexpr bool Enable = Traits<Kernel>::Mode == Traits<Kernel>::KERNEL;
   static constexpr uintmax_t Mode = 8UL << 60;
   static constexpr size_t Mega = 1024 * 1024;
   static constexpr size_t Giga = Mega * 1024;

@@ -77,7 +77,7 @@ __attribute__((naked)) static void jvirtual() {
   if constexpr (Traits<RISCV>::Supervisor) {
     sjump();
 
-    if constexpr (Traits<Kernel>::Multitask) {
+    if constexpr (Traits<RISCV>::MMU) {
       if (CPU::tp() == Traits<CPU>::BSP)
         MMU::prologue();
       CPU::barrier();

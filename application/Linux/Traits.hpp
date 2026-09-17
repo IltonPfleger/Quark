@@ -12,7 +12,7 @@ template <> struct Traits<Application> {
 };
 
 template <> struct Traits<Deferred> {
-  static constexpr size_t Threads = 1;
+  static constexpr uint32_t Threads = 1;
 };
 
 } // namespace QUARK
