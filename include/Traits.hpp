@@ -59,7 +59,7 @@ namespace QUARK {
 
 template <> struct Traits<Thread> {
   static constexpr Hz Frequency = Traits<Timer>::Frequency;
-  static constexpr bool UserStack = Traits<Application>::Virtualization;
+  static constexpr bool UserStack = true;
   static constexpr size_t KernelStackSize = Traits<Memory>::StackSize;
   static constexpr size_t UserStackSize = UserStack ? KernelStackSize : 0;
 };

@@ -1,12 +1,21 @@
 // #include <Semaphore.hpp>
 // #include <Thread.hpp>
 #include <abi/Handler.hpp>
+#include <utility/Console.hpp>
 // #include <memory/Heap.hpp>
 //
 namespace QUARK::ABI {
 
 void *Handler::handler(Operation o, const Arguments a) {
-  //   switch (f) {
+  Console::println("SYSCALL");
+  switch (o) {
+  case READ: {
+    if (a[0] == 0) {
+      Console::print(a[1]);
+    }
+    break;
+  }
+  }
   //   case Function::ABI_THREAD_CONSTRUCTOR: {
   //     auto ff = reinterpret_cast<Thread::Function>(a[0]);
   //     auto aa = reinterpret_cast<Thread::Argument>(a[1]);

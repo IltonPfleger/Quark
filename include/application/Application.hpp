@@ -89,8 +89,6 @@ public:
       if (phdr.p_memsz > phdr.p_filesz)
         memset(ka + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
 
-      Console::println("MAP: ", ua, " ", ka, " ", (void *)pa, " ", length);
-
       process->attach(Chunk(ua, length), Chunk(pa, length));
     }
   }
@@ -108,9 +106,15 @@ public:
 
     if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::LIBRARY) {
       direct(header);
-      auto main = reinterpret_cast<Function>(header->e_entry);
-      new Thread(main, 0, Thread::Criterion::NORMAL);
+    } else {
+      Process *process = new Process();
+      indirect(process);
+      // TODO: REMOVE
+      process->activate();
     }
+
+    auto main = reinterpret_cast<Function>(header->e_entry);
+    new Thread(main, 0, Thread::Criterion::NORMAL);
 
     TraceOut();
   };

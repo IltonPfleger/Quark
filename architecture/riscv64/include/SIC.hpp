@@ -26,7 +26,8 @@ public:
 
 private:
   static void syscall(ContextFrame *context) {
-    ABI::Handler::handler(context->a7, &context->a0);
+    Console::println("SYSCALL");
+    ABI::Handler::handler(context->a0, &context->a1);
   }
 };
 

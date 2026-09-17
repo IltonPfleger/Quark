@@ -15,6 +15,15 @@ void Thread::entry(Function f, Argument a) {
   if (s_previous[CPU::id()])
     epilogue();
 
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+    if (current->flags_ != KERNEL) {
+      const Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
+      const Chunk stack = {current->stack_, Traits<Thread>::UserStackSize};
+      Context::demote(kstack, stack, f, nullptr, a);
+      return;
+    }
+  }
+
   CPU::IRQ::enable();
   f(a);
   exit();
@@ -171,7 +180,6 @@ void Thread::sleep(List *list, Spin *lock) {
 }
 
 void Thread::wakeup(List *list) {
-
   Node *node = list->remove();
   assert(node);
   node->value->state_ = State::READY;

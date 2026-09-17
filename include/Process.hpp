@@ -13,9 +13,8 @@ public:
   ~Process() {}
 
   void attach(const Chunk &va, const Chunk &pa) {
-    assert(va.length() == pa.length(), va.length(), " != ", pa.length());
-    size_t length = va.length();
-    pt_->map(va.start(), pa.start(), length, MMU::PageTable::UserRWX);
+    assert(va.length() == pa.length());
+    pt_->map(va.start(), pa.start(), va.length(), MMU::PageTable::UserRWX);
   }
 
   Chunk attach(const Chunk &pa) {
