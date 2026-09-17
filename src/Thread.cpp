@@ -1,6 +1,5 @@
 #include <Thread.hpp>
 #include <Traits.hpp>
-#include <abi/Thread.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Heap.hpp>
 #include <memory/Memory.hpp>

@@ -1,11 +1,8 @@
-#include <Traits.hpp>
-#include <machine/Machine.hpp>
-#include <utility/Console.hpp>
+#include <abi/Console.hpp>
 
-using namespace QUARK;
+using namespace QUARK::ABI;
 
 int main(int, char *[]) {
   Console::println("Hello World!");
-  assert(false);
   return 0;
 }

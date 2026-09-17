@@ -7,11 +7,11 @@ namespace QUARK {
 
 template <typename Response = void *> class Syscall {
 public:
-  template <typename... Args> Syscall(ABI::Function call, Args &&...args) {
-    static_assert(sizeof...(Args) <= 6);
+  template <typename... Args> Syscall(Args &&...args) {
+    static_assert(sizeof...(Args) <= 7);
 
     constexpr long UNUSED = 0;
-    long argv[6] = {UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED};
+    long argv[7] = {UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED, UNUSED};
 
     if constexpr (sizeof...(Args) > 0) {
       int i = 0;
@@ -24,12 +24,11 @@ public:
     register long a3 asm("a3") = argv[3];
     register long a4 asm("a4") = argv[4];
     register long a5 asm("a5") = argv[5];
+    register long a6 asm("a6") = argv[6];
+    register long a7 asm("a7") = argv[7];
 
-    register long a7 asm("a7") = static_cast<long>(call);
-
-    asm volatile("ecall"
-                 : "+r"(a0)
-                 : "r"(a1), "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(a7)
+    asm volatile("ecall" ::"r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(a4), "r"(a5),
+                 "r"(a6), "r"(a7)
                  : "memory");
 
     if constexpr (!Meta::IsVoid<Response>::Result) {
