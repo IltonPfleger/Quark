@@ -1,24 +1,40 @@
 #pragma once
 
+#include <Thread.hpp>
+#include <Traits.hpp>
 #include <abi/ABI.hpp>
+#include <abi/Console.hpp>
 #include <architecture/Syscall.hpp>
 
 namespace QUARK::ABI {
 
-class Thread {
+class ThreadHandler {
 public:
-  template <typename Function, typename Argment> Thread(Function f, Argment a) {
-    handler_ = Syscall(ABI::Function::ABI_THREAD_CONSTRUCTOR, f, a);
+  ThreadHandler(void *(*function)(void *), void *argument) {
+    function_ = function;
+    argument_ = argument;
+    handler_ = Syscall(ABI::THREAD_CONSTRUCTOR, _start, this);
   }
 
-  ~Thread() { Syscall(ABI::Function::ABI_THREAD_DESTRUCTOR, handler_); }
+  ~ThreadHandler() { Syscall(ABI::THREAD_DESTRUCTOR, handler_); }
 
-  void join() { Syscall(ABI::Function::ABI_THREAD_JOIN, handler_); }
+  void join() { Syscall(ABI::THREAD_JOIN, handler_); }
 
-  static void exit() { Syscall(ABI::Function::ABI_THREAD_EXIT); }
+  static void _start(void *pointer) {
+    ThreadHandler *self = reinterpret_cast<ThreadHandler *>(pointer);
+    self->function_(self->argument_);
+    exit();
+  }
+
+  static void exit() { Syscall(ABI::EXIT); }
 
 private:
+  void *(*function_)(void *);
+  void *argument_;
   void *handler_;
 };
+
+using Thread = Meta::IF<Traits<Kernel>::Mode == Traits<Kernel>::KERNEL,
+                        ThreadHandler, QUARK::Thread>::Result;
 
 }; // namespace QUARK::ABI

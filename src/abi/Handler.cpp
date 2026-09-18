@@ -1,37 +1,54 @@
 // #include <Semaphore.hpp>
 // #include <Thread.hpp>
+#include <Process.hpp>
+#include <Thread.hpp>
 #include <abi/Handler.hpp>
+#include <architecture/MMU.hpp>
+#include <memory/Heap.hpp>
 #include <utility/Console.hpp>
-// #include <memory/Heap.hpp>
-//
+
 namespace QUARK::ABI {
 
 void *Handler::handler(Operation o, const Arguments a) {
-  Console::println("SYSCALL");
   switch (o) {
-  case READ: {
+  case WRITE: {
     if (a[0] == 0) {
-      Console::print(a[1]);
+      uintptr_t pa = MMU::PageTable::virt2phys(a[1]);
+      uintptr_t va = Memory::phys2virt(pa);
+      char character = *reinterpret_cast<char *>(va);
+      QUARK::Console::print(character);
     }
     break;
   }
+
+  case EXIT: {
+    QUARK::Thread::exit();
+    break;
   }
-  //   case Function::ABI_THREAD_CONSTRUCTOR: {
-  //     auto ff = reinterpret_cast<Thread::Function>(a[0]);
-  //     auto aa = reinterpret_cast<Thread::Argument>(a[1]);
-  //     return new (Heap::SYSTEM) Thread(ff, aa);
-  //   }
-  //   case Function::ABI_THREAD_JOIN: {
-  //     reinterpret_cast<Thread *>(a[0])->join();
-  //     break;
-  //   }
+
+  case THREAD_CONSTRUCTOR: {
+    auto function = reinterpret_cast<Thread::Function>(a[0]);
+    auto argument = reinterpret_cast<Thread::Argument>(a[1]);
+    auto critetion = Thread::Criterion::NORMAL;
+    auto flags = Thread::USER;
+    auto process = Process::current();
+    return new Thread(function, argument, critetion, flags, process);
+  }
+
+  case THREAD_JOIN: {
+    reinterpret_cast<Thread *>(a[0])->join();
+    break;
+  }
+
+  case THREAD_DESTRUCTOR: {
+    delete reinterpret_cast<Thread *>(a[0]);
+    break;
+  }
+  }
   //   case Function::ABI_THREAD_EXIT: {
   //     QUARK::Thread::exit();
   //     break;
   //   }
-  //   case Function::ABI_THREAD_DESTRUCTOR: {
-  //     delete reinterpret_cast<Thread *>(a[0]);
-  //     break;
   //   };
   //   case Function::ABI_SEMAPHORE_CONSTRUCTOR: {
   //     return new (Heap::SYSTEM) Semaphore(a[0]);

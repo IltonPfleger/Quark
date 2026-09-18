@@ -10,6 +10,7 @@ namespace QUARK {
 class Process {
 public:
   Process() : pt_(MMU::PageTable::clone()) {};
+
   ~Process() {}
 
   void attach(const Chunk &va, const Chunk &pa) {
@@ -18,12 +19,16 @@ public:
   }
 
   Chunk attach(const Chunk &pa) {
-    uintptr_t va = pt_->find(pa.length());
-    pt_->map(va, pa.start(), pa.length(), MMU::PageTable::UserRWX);
+    const uintptr_t va = pt_->find(pa.length());
+    const auto flags = MMU::PageTable::UserRWX;
+    bool result = pt_->map(va, pa.start(), pa.length(), flags);
+    assert(result);
     return Chunk(va, pa.length());
   }
 
   void activate() { pt_->activate(); }
+
+  static Process *current() { return Thread::running()->process_; }
 
 private:
   MMU::PageTable *pt_;

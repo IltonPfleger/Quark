@@ -19,7 +19,7 @@ $(IMAGE).bin : $(ELF) $(BUILD)/$(APPLICATION).elf
 	$(CAT) $(BUILD)/$(APPLICATION).elf >> $(IMAGE).bin
 
 $(BUILD)/$(APPLICATION).elf: $(ELF)
-	$(LD) -e main --just-symbols $(ELF) -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $(BUILD)/$(APPLICATION).o
+	$(LD) --just-symbols $(ELF) -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $(BUILD)/$(APPLICATION).o
 
 $(BUILD)/$(APPLICATION).o:
 	$(MAKE) APPLICATION=$(APPLICATION) -C $(APPLICATIONS) $(BUILD)/$(APPLICATION).o

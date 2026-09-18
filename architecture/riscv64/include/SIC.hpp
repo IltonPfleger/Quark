@@ -14,7 +14,7 @@ public:
     TrapHandler::init<Traits<Thread>::UserStack>();
 
     if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
-      TrapHandler::install(9, syscall, TrapHandler::Type::Exception);
+      TrapHandler::install(8, syscall, TrapHandler::Type::Exception);
     }
 
     if constexpr (Traits<PLIC>::Enable) {
@@ -26,8 +26,9 @@ public:
 
 private:
   static void syscall(ContextFrame *context) {
-    Console::println("SYSCALL");
-    ABI::Handler::handler(context->a0, &context->a1);
+    void *result = ABI::Handler::handler(context->a0, &context->a1);
+    context->a0 = reinterpret_cast<uintmax_t>(result);
+    context->pc += 4;
   }
 };
 

@@ -1,3 +1,4 @@
+#include <Process.hpp>
 #include <Thread.hpp>
 #include <Traits.hpp>
 #include <machine/Machine.hpp>
@@ -17,9 +18,15 @@ void Thread::entry(Function f, Argument a) {
 
   if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
     if (current->flags_ != KERNEL) {
+      assert(current->process_);
+
+      current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
+
       const Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
-      const Chunk stack = {current->stack_, Traits<Thread>::UserStackSize};
-      Context::demote(kstack, stack, f, nullptr, a);
+      const Chunk stack = current->process_->attach(
+          {Memory::virt2phys(reinterpret_cast<uintptr_t>(current->stack_)),
+           Traits<Thread>::UserStackSize});
+      Context::demote(stack, kstack, f, a);
       return;
     }
   }
@@ -60,6 +67,12 @@ void Thread::dispatch(Thread *previous, Thread *next, Spin *lock) {
 
   next->state_ = State::RUNNING;
 
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+    if (next->process_) {
+      next->process_->activate();
+    }
+  }
+
   Context::swtch(previous->context_, next->context_);
 
   epilogue();
@@ -86,10 +99,11 @@ void Thread::epilogue() {
   }
 }
 
-Thread::Thread(Function e, Argument a, Criterion c, Flags f)
+Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
     : stack_(nullptr), kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
       node_(Node(this, c)), state_(State::READY), flags_(f),
-      context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a) {
+      context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a),
+      process_(p) {
   TraceIn(this);
 
   {
@@ -118,8 +132,10 @@ Thread::~Thread() {
 }
 
 void Thread::join() {
+  assert(running() != this);
+
   while (state_ != State::FINISHED) {
-    reschedule();
+    yield();
   }
 }
 

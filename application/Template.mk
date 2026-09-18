@@ -1,5 +1,6 @@
-SOURCES := $(shell find $(APPLICATION) -name '*.cpp')
-OBJECTS     := $(SOURCES:%=$(BUILD)/$(APPLICATION)/%.o)
+SOURCES      := $(shell find $(APPLICATION) -name '*.cpp')
+SOURCES      += $(APPLICATIONS)/_start.cpp
+OBJECTS      := $(SOURCES:%=$(BUILD)/$(APPLICATION)/%.o)
 DEPENDENCIES := $(OBJECTS:.o=.d)
 
 $(BUILD)/$(APPLICATION).o: $(OBJECTS)

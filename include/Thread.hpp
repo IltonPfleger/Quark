@@ -8,11 +8,12 @@ namespace QUARK {
 
 class Thread {
   friend class PeriodicThread;
+  friend class Process;
 
 public:
   typedef uintmax_t Flags;
   enum class State { RUNNING, READY, WAITING, FINISHING, FINISHED };
-  enum : Flags { NONE = 0, STACK = 1 << 0, KERNEL = NONE, USER = STACK };
+  enum : Flags { NONE = 0, KERNEL = NONE, USER = 1 << 0 };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
@@ -28,7 +29,8 @@ public:
   Thread(const Thread &&) = delete;
   Thread &operator=(Thread &&) = delete;
   Thread &operator=(const Thread &) = delete;
-  Thread(Function, Argument = 0, Criterion = Criterion::NORMAL, Flags = USER);
+  Thread(Function, Argument = 0, Criterion = Criterion::NORMAL, Flags = USER,
+         Process * = nullptr);
   ~Thread();
 
   static void init();
@@ -49,6 +51,7 @@ private:
   static void epilogue();
 
 private:
+  Process *process_;
   void *stack_;
   void *kstack_;
   Node node_;

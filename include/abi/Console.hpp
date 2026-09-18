@@ -11,7 +11,7 @@ namespace QUARK::ABI {
 class ConsoleHandler : public Printer<ConsoleHandler> {
 public:
   static void write(char character) {
-    Syscall<void>(ABI::READ, 0, &character, 1);
+    Syscall<void>(ABI::WRITE, 0, &character, 1);
   }
 };
 

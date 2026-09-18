@@ -103,18 +103,17 @@ public:
     using Function = Thread::Return (*)(Thread::Argument);
 
     Elf_Ehdr *header = reinterpret_cast<Elf_Ehdr *>(image());
+    auto main = reinterpret_cast<Function>(header->e_entry);
 
     if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::LIBRARY) {
       direct(header);
+      new Thread(main, 0, Thread::Criterion::NORMAL);
     } else {
       Process *process = new Process();
       indirect(process);
-      // TODO: REMOVE
+      new Thread(main, 0, Thread::Criterion::NORMAL, Thread::USER, process);
       process->activate();
     }
-
-    auto main = reinterpret_cast<Function>(header->e_entry);
-    new Thread(main, 0, Thread::Criterion::NORMAL);
 
     TraceOut();
   };

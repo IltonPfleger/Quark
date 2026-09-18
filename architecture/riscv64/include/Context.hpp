@@ -21,14 +21,20 @@ public:
     frame_->status = 0;
   }
 
-  __attribute__((naked)) static void demote(const Chunk &ksp, const Chunk &usp,
-                                            auto pc, auto ra, auto a0) {
-    asm("csrr t0, %0; sd %1, %2(t0)" ::"i"(T::SCRATCH), "r"(ksp.end()),
+  // static void demote(uintptr_t sp, size_t spl, uintptr_t ksp, size_t kspl,
+  //                    auto pc, auto a0) {}
+
+  __attribute__((naked)) static void demote(const Chunk &usp, const Chunk &ksp,
+                                            auto pc, auto a0) {
+    auto kspe = ksp.end();
+    auto uspe = usp.end();
+
+    asm("csrr t0, %0; sd %1, %2(t0)" ::"i"(T::SCRATCH), "r"(kspe),
         "i"(__builtin_offsetof(CoreContext, ksp))
         : "t0");
     asm("csrw %0, %1" ::"i"(T::STATUS), "r"(T::PP_U | T::PIRQE));
     asm("csrw %0, %1" ::"i"(T::EPC), "r"(pc));
-    asm("mv ra, %0; mv a0, %1; mv sp, %2" ::"r"(ra), "r"(a0), "r"(usp.end()));
+    asm("mv a0, %0; mv sp, %1" ::"r"(a0), "r"(uspe));
     T::ret();
   }
 

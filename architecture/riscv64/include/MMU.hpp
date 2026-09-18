@@ -67,12 +67,12 @@ public:
       if ((satp >> 60) == 0)
         return va;
 
+      uintptr_t raw = Memory::phys2virt((satp & 0xFFFFFFFFFFF) << 12);
+      PageTable *current = reinterpret_cast<PageTable *>(raw);
+
       uintptr_t vpn2 = (va >> 30) & 0x1FF;
       uintptr_t vpn1 = (va >> 21) & 0x1FF;
       uintptr_t vpn0 = (va >> 12) & 0x1FF;
-
-      uintptr_t root = (satp & 0xFFFFFFFFFFF) << 12;
-      PageTable *current = reinterpret_cast<PageTable *>(root);
 
       uintptr_t pte2 = current->entries_[vpn2];
       assert(pte2 & V);
@@ -80,14 +80,16 @@ public:
         return ((pte2 >> 10) << 12) | (va & 0x3FFFFFFF);
       }
 
-      PageTable *l1 = reinterpret_cast<PageTable *>((pte2 >> 10) << 12);
+      raw = Memory::phys2virt((pte2 >> 10) << 12);
+      PageTable *l1 = reinterpret_cast<PageTable *>(raw);
       uintptr_t pte1 = l1->entries_[vpn1];
       assert(pte1 & V);
       if (pte1 & (R | W | X)) {
         return ((pte1 >> 10) << 12) | (va & 0x1FFFFF);
       }
 
-      PageTable *l0 = reinterpret_cast<PageTable *>((pte1 >> 10) << 12);
+      raw = Memory::phys2virt((pte1 >> 10) << 12);
+      PageTable *l0 = reinterpret_cast<PageTable *>(raw);
       uintptr_t pte0 = l0->entries_[vpn0];
       assert(pte0 & V);
 
@@ -185,6 +187,7 @@ public:
 
     bool map(uintptr_t va, uintptr_t pa, size_t size, Flags flags) {
       while (size) {
+        // Console::println("\n", (void *)va, " ", (void *)pa, " ", size, "\n");
         if ((va % Giga == 0) && (pa % Giga == 0) && size >= Giga) {
           if (!gigapage(va, pa, flags))
             return false;
