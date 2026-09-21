@@ -27,7 +27,7 @@ template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
   enum { LIBRARY, KERNEL };
-  static constexpr int Mode = KERNEL;
+  static constexpr int Mode = LIBRARY;
 };
 
 template <> struct Traits<Timer> {

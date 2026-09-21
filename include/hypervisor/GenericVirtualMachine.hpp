@@ -44,7 +44,7 @@ public:
                                      (offset + Is) % Traits<CPU>::Active))...};
   }
 
-  void boot(size_t core, void *entry, void *opaque) {
+  void boot(size_t core, void *entry, void *opaque) override {
     arguments_[core].cpu = &cpus_[core];
     arguments_[core].core = core;
     arguments_[core].entry = entry;

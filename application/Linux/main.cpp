@@ -5,7 +5,6 @@
 #include <hypervisor/GenericVirtualMachine.hpp>
 #include <hypervisor/fdt/FDT_Builder.hpp>
 #include <hypervisor/virtio/Console.hpp>
-// #include <hypervisor/virtio/Network.hpp>
 #include <machine/Machine.hpp>
 #include <utility/Console.hpp>
 #include <utility/Delay.hpp>

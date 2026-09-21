@@ -1,6 +1,7 @@
 include ../../Makedefs.mk
 
 SOURCES      := $(wildcard *.cpp)
+SOURCES      += ../_start.cpp
 OBJECTS      := $(SOURCES:%=$(BUILD)/$(APPLICATION)/%.o)
 DEPENDENCIES := $(OBJECTS:.o=.d)
 LINUX        := ./linux
