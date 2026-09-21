@@ -1,76 +1,86 @@
-#include <Alarm.hpp>
-#include <Semaphore.hpp>
-#include <Thread.hpp>
-#include <memory/Heap.hpp>
-#include <utility/Console.hpp>
-#include <utility/Debug.hpp>
-#include <utility/Delay.hpp>
+#include <Traits.hpp>
+#include <abi/Console.hpp>
+#include <abi/Semaphore.hpp>
+#include <abi/Thread.hpp>
 
-using namespace QUARK;
+using namespace QUARK::ABI;
 
-static constexpr int Number = 100;
 static constexpr int Iterations = 100;
+static constexpr int Philosophers = 100;
 
-Semaphore *forks[Number];
-Semaphore *console;
-Semaphore *finish;
-Thread *threads[Number];
+class Philosopher {
+public:
+  Philosopher(int id, Semaphore &lock, Semaphore &left, Semaphore &right)
+      : id_(id), lock_(lock), left_(left), right_(right),
+        thread_(dispatch, this) {}
 
-void *philosopher(void *p) {
-  unsigned int id = (unsigned int)(unsigned long)p;
-
-  int iterations = Iterations;
-  int left = id;
-  int right = (id + 1) % Number;
-
-  while (iterations--) {
-    console->p();
-    Console::println("<", CPU::id(), ">", " Filósofo ", id, " está pensando! <",
-                     iterations, ">");
-    console->v();
-
-    Delay(1);
-
-    if (id == Number - 1) {
-      forks[right]->p();
-      forks[left]->p();
-    } else {
-      forks[left]->p();
-      forks[right]->p();
-    }
-
-    console->p();
-    Console::println("<", CPU::id(), ">", " Filósofo ", id, " está comendo! <",
-                     iterations, ">");
-    console->v();
-
-    Delay(1);
-
-    forks[right]->v();
-    forks[left]->v();
+private:
+  static void *dispatch(void *pointer) {
+    reinterpret_cast<Philosopher *>(pointer)->worker();
+    return nullptr;
   }
 
-  return 0;
-}
+  void worker() {
+    int iterations = Iterations;
+    while (iterations--) {
+      lock_.p();
+      Console::println("Filósofo ", id_, " está pensando! <", iterations, ">");
+      lock_.v();
+
+      if (id_ == 0) {
+        right_.p();
+        left_.p();
+      } else {
+        left_.p();
+        right_.p();
+      }
+
+      lock_.p();
+      Console::println("Filósofo ", id_, " está comendo! <", iterations, ">");
+      lock_.v();
+
+      left_.v();
+      right_.v();
+    }
+  }
+
+private:
+  int id_;
+  Semaphore &lock_;
+  Semaphore &left_;
+  Semaphore &right_;
+  Thread thread_;
+};
+
+class Table {
+public:
+  Table() : philosophers_(create()) {
+    for (int i = 0; i < Philosophers; i++) {
+      forks_[i].v();
+    }
+    lock_.v();
+  }
+
+  template <QUARK::size_t... Is>
+  QUARK::Meta::Array<Philosophers, Philosopher>
+  create(QUARK::Meta::IndexSequence<Is...>) {
+    return {
+        Philosopher(Is, lock_, forks_[Is], forks_[(Is + 1) % Philosophers])...};
+  }
+
+  QUARK::Meta::Array<Philosophers, Philosopher> create() {
+    using namespace QUARK::Meta;
+    return create(typename MakeIndexSequence<Philosophers>::Result{});
+  }
+
+private:
+  Semaphore lock_;
+  Semaphore forks_[Philosophers];
+  QUARK::Meta::Array<Philosophers, Philosopher> philosophers_;
+};
 
 int main(int, char *[]) {
   Console::println("Philosophers Dinner:");
-
-  console = new Semaphore(0);
-  finish = new Semaphore(0);
-
-  for (long i = 0; i < Number; i++)
-    forks[i] = new Semaphore(1);
-
-  for (long i = 0; i < Number; i++)
-    threads[i] = new Thread(
-        philosopher, (void *)i,
-        Thread::Criterion(Thread::Criterion::NORMAL, i % Traits<CPU>::Active));
-
-  console->v();
-
-  for (long i = 0; i < Number; i++)
-    threads[i]->join();
-
+  Table PhilosophersDinner;
   Console::println("\nFinished!");
 }

@@ -1,19 +1,27 @@
 #pragma once
 
+#include <Semaphore.hpp>
 #include <abi/ABI.hpp>
 #include <architecture/Syscall.hpp>
 
 namespace QUARK::ABI {
 
-class Semaphore {
-  public:
-    Semaphore(int value = 0) { handler_ = Syscall(ABI::Function::ABI_SEMAPHORE_CONSTRUCTOR, value); }
-    ~Semaphore() { Syscall(ABI::Function::ABI_SEMAPHORE_DESTRUCTOR, handler_); }
-    void p() { Syscall(ABI::Function::ABI_SEMAPHORE_P, handler_); }
-    void v() { Syscall(ABI::Function::ABI_SEMAPHORE_V, handler_); }
+class SemaphoreHandler {
+public:
+  SemaphoreHandler(int value = 0) {
+    handler_ = Syscall(ABI::SEMAPHORE_CONSTRUCTOR, value);
+  }
 
-  private:
-    void *handler_;
+  ~SemaphoreHandler() { Syscall(ABI::SEMAPHORE_DESTRUCTOR, handler_); }
+
+  void p() { Syscall(ABI::SEMAPHORE_P, handler_); }
+  void v() { Syscall(ABI::SEMAPHORE_V, handler_); }
+
+private:
+  void *handler_;
 };
+
+using Semaphore = Meta::IF<Traits<Kernel>::Mode == Traits<Kernel>::KERNEL,
+                           SemaphoreHandler, QUARK::Semaphore>::Result;
 
 }; // namespace QUARK::ABI

@@ -1,6 +1,5 @@
-// #include <Semaphore.hpp>
-// #include <Thread.hpp>
 #include <Process.hpp>
+#include <Semaphore.hpp>
 #include <Thread.hpp>
 #include <abi/Handler.hpp>
 #include <architecture/MMU.hpp>
@@ -44,27 +43,22 @@ void *Handler::handler(Operation o, const Arguments a) {
     delete reinterpret_cast<Thread *>(a[0]);
     break;
   }
+  case SEMAPHORE_CONSTRUCTOR: {
+    return new Semaphore(a[0]);
   }
-  //   case Function::ABI_THREAD_EXIT: {
-  //     QUARK::Thread::exit();
-  //     break;
-  //   }
-  //   };
-  //   case Function::ABI_SEMAPHORE_CONSTRUCTOR: {
-  //     return new (Heap::SYSTEM) Semaphore(a[0]);
-  //   }
-  //   case Function::ABI_SEMAPHORE_P: {
-  //     reinterpret_cast<Semaphore *>(a[0])->p();
-  //     break;
-  //   }
-  //   case Function::ABI_SEMAPHORE_V: {
-  //     reinterpret_cast<Semaphore *>(a[0])->v();
-  //     break;
-  //   }
-  //   case Function::ABI_SEMAPHORE_DESTRUCTOR: {
-  //     delete reinterpret_cast<Semaphore *>(a[0]);
-  //     break;
-  //   }
+  case SEMAPHORE_P: {
+    reinterpret_cast<Semaphore *>(a[0])->p();
+    break;
+  }
+  case SEMAPHORE_V: {
+    reinterpret_cast<Semaphore *>(a[0])->v();
+    break;
+  }
+  case SEMAPHORE_DESTRUCTOR: {
+    delete reinterpret_cast<Semaphore *>(a[0]);
+    break;
+  }
+  }
   //   case Function::ABI_HEAP_NEW: {
   //     return new uint8_t[a[0]];
   //     break;

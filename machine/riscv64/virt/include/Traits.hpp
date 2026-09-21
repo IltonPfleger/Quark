@@ -36,7 +36,7 @@ template <> struct Traits<Memory> {
   static constexpr unsigned Order = 30;
   static constexpr unsigned Size = (1 << Order);
   static constexpr unsigned PageSize = 4096;
-  static constexpr unsigned StackSize = PageSize;
+  static constexpr unsigned StackSize = PageSize * 4;
 };
 
 template <> struct Traits<MemoryMap> {
