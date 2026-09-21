@@ -22,6 +22,7 @@ void Thread::entry(Function f, Argument a) {
 
       current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
 
+      // TODO: Concurrency Error, in Process Attach
       const Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
       const Chunk stack = current->process_->attach(
           {Memory::virt2phys(reinterpret_cast<uintptr_t>(current->stack_)),
