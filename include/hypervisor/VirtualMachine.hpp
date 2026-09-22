@@ -1,8 +1,7 @@
 #ifndef __QUARK_HYPERVISOR_VIRTUAL_MACHINE__
 #define __QUARK_HYPERVISOR_VIRTUAL_MACHINE__
 
-#include <Meta.hpp>
-#include <architecture/VirtualCPU.hpp>
+#include <Traits.hpp>
 #include <memory/Chunk.hpp>
 #include <types.hpp>
 
@@ -23,6 +22,8 @@ public:
   virtual void interrupt(size_t) = 0;
 
   virtual VirtualCPU &cpu(size_t) = 0;
+
+  virtual size_t cpus() const = 0;
 
   virtual const Chunk &memory() const { return memory_; }
 

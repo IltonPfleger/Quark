@@ -1,58 +1,78 @@
+#include <Process.hpp>
 #include <Semaphore.hpp>
 #include <Thread.hpp>
 #include <abi/Handler.hpp>
+#include <architecture/MMU.hpp>
 #include <memory/Heap.hpp>
+#include <utility/Console.hpp>
 
 namespace QUARK::ABI {
 
-void *Handler::dispatch(Function f, const Arguments a) {
-  switch (f) {
-  case Function::ABI_THREAD_CONSTRUCTOR: {
-    auto ff = reinterpret_cast<Thread::Function>(a[0]);
-    auto aa = reinterpret_cast<Thread::Argument>(a[1]);
-    return new (Heap::SYSTEM) Thread(ff, aa);
-  }
-  case Function::ABI_THREAD_JOIN: {
-    reinterpret_cast<Thread *>(a[0])->join();
+void *Handler::handler(Operation o, const Arguments a) {
+  switch (o) {
+  case WRITE: {
+    if (a[0] == 0) {
+      uintptr_t pa = MMU::PageTable::virt2phys(a[1]);
+      uintptr_t va = Memory::phys2virt(pa);
+      char character = *reinterpret_cast<char *>(va);
+      QUARK::Console::print(character);
+    }
     break;
   }
-  case Function::ABI_THREAD_EXIT: {
+
+  case EXIT: {
     QUARK::Thread::exit();
     break;
   }
-  case Function::ABI_THREAD_DESTRUCTOR: {
+
+  case THREAD_CONSTRUCTOR: {
+    auto function = reinterpret_cast<Thread::Function>(a[0]);
+    auto argument = reinterpret_cast<Thread::Argument>(a[1]);
+    auto critetion = Thread::Criterion::NORMAL;
+    auto flags = Thread::USER;
+    auto process = Process::current();
+    return new Thread(function, argument, critetion, flags, process);
+  }
+
+  case THREAD_JOIN: {
+    reinterpret_cast<Thread *>(a[0])->join();
+    break;
+  }
+
+  case THREAD_DESTRUCTOR: {
     delete reinterpret_cast<Thread *>(a[0]);
     break;
-  };
-  case Function::ABI_SEMAPHORE_CONSTRUCTOR: {
-    return new (Heap::SYSTEM) Semaphore(a[0]);
   }
-  case Function::ABI_SEMAPHORE_P: {
+  case SEMAPHORE_CONSTRUCTOR: {
+    return new Semaphore(a[0]);
+  }
+  case SEMAPHORE_P: {
     reinterpret_cast<Semaphore *>(a[0])->p();
     break;
   }
-  case Function::ABI_SEMAPHORE_V: {
+  case SEMAPHORE_V: {
     reinterpret_cast<Semaphore *>(a[0])->v();
     break;
   }
-  case Function::ABI_SEMAPHORE_DESTRUCTOR: {
+  case SEMAPHORE_DESTRUCTOR: {
     delete reinterpret_cast<Semaphore *>(a[0]);
     break;
   }
-  case Function::ABI_HEAP_NEW: {
-    return new uint8_t[a[0]];
-    break;
   }
-  case Function::ABI_HEAP_DELETE: {
-    ::operator delete[](reinterpret_cast<void *>(a[0]), a[1]);
-    break;
-  }
-  default: {
-    assert(false, "Not Available!");
-    break;
-  };
-  }
-
+  //   case Function::ABI_HEAP_NEW: {
+  //     return new uint8_t[a[0]];
+  //     break;
+  //   }
+  //   case Function::ABI_HEAP_DELETE: {
+  //     ::operator delete[](reinterpret_cast<void *>(a[0]), a[1]);
+  //     break;
+  //   }
+  //   default: {
+  //     assert(false, "Not Available!");
+  //     break;
+  //   };
+  //   }
+  //
   return nullptr;
 }
 

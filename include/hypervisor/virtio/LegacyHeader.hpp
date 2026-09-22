@@ -1,13 +1,18 @@
-#pragma once
+#ifndef __QUARK_HYPERVISOR_VIRTIO_LEGACY_HEADER__
+#define __QUARK_HYPERVISOR_VIRTIO_LEGACY_HEADER__
 
-namespace QUARK::virtio {
+#include <types.hpp>
+
+namespace QUARK {
+
+namespace virtio {
 
 class LegacyHeader {
 public:
-  volatile uint32_t magic_value; // 0x000 (R) 'virt'
-  volatile uint32_t version;     // 0x004 (R) 1 for Legacy
-  volatile uint32_t device_id;   // 0x008 (R)
-  volatile uint32_t vendor_id;   // 0x00c (R) 0x554d4551
+  volatile uint32_t magic;     // 0x000 (R) 'virt'
+  volatile uint32_t version;   // 0x004 (R) 1 for Legacy
+  volatile uint32_t device_id; // 0x008 (R)
+  volatile uint32_t vendor_id; // 0x00c (R) 0x554d4551
 
   volatile uint32_t host_features;     // 0x010 (R)
   volatile uint32_t host_features_sel; // 0x014 (W)
@@ -42,4 +47,8 @@ public:
   volatile uint32_t reserved_6[35]; // 0x074 - 0x0fc
 };
 
-} // namespace QUARK::virtio
+} // namespace virtio
+
+} // namespace QUARK
+
+#endif

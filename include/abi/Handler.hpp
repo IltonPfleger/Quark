@@ -6,9 +6,9 @@
 namespace QUARK::ABI {
 
 class Handler {
-  public:
-    using Arguments = uintmax_t *;
-    static void *dispatch(Function, const Arguments);
+public:
+  using Arguments = uintmax_t *;
+  static void *handler(Operation, const Arguments);
 };
 
 } // namespace QUARK::ABI

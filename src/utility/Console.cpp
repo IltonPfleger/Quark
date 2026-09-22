@@ -5,20 +5,15 @@
 
 namespace QUARK {
 
-void Console::print(char c) {
-    if (panicked()) return;
-
-    Device *device = Device::instance();
-
-    if (c == '\n') {
-        device->write('\r');
-    }
-
-    device->write(c);
-}
-
 void Console::panic() { CPU::Atomic::cas(panic_, 0, CPU::id()); }
 
 bool Console::panicked() { return (panic_ && panic_ != CPU::id()); }
+
+void Console::write(char c) {
+  if (panicked())
+    return;
+
+  Device::instance()->write(c);
+}
 
 } // namespace QUARK

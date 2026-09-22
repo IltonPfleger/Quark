@@ -12,11 +12,11 @@ template <> struct Tuple<> {
 };
 
 template <typename Head, typename... Tail> struct Tuple<Head, Tail...> {
-  Head value_;
-  Tuple<Tail...> next_;
+  Head value;
+  Tuple<Tail...> next;
 
   template <typename... Args>
-  constexpr Tuple(Args &&...args) : value_(args...), next_(args...) {}
+  constexpr Tuple(Args &&...args) : value(args...), next(args...) {}
 };
 
 template <typename... Ts> struct Tuple<Pack<Ts...>> : Tuple<Ts...> {
@@ -24,12 +24,12 @@ template <typename... Ts> struct Tuple<Pack<Ts...>> : Tuple<Ts...> {
   constexpr Tuple(Args &&...args) : Tuple<Ts...>(args...) {}
 };
 
-template <typename Function> void forEach(Tuple<> &, Function) {}
+template <typename Function> void for_each(Tuple<> &, Function) {}
 
 template <typename Head, typename... Tail, typename Function>
-void forEach(Tuple<Head, Tail...> &tuple, Function f) {
-  f(tuple.value_);
-  forEach(tuple.next_, f);
+void for_each(Tuple<Head, Tail...> &tuple, Function f) {
+  f(tuple.value);
+  for_each(tuple.next, f);
 }
 
 } // namespace QUARK::Meta

@@ -4,14 +4,14 @@
 
 namespace QUARK {
 
-class Payload;
+class Application;
 class Thread;
 class Machine;
 class Timer;
 class FixedCore;
 class RR;
 class Kernel;
-class Payload;
+class Application;
 class Debug;
 class Alarm;
 class Console;
@@ -21,11 +21,13 @@ class Scheduler;
 class Monitor;
 class Deferred;
 class Process;
+class VirtualMachine;
 
 template <typename T> struct Traits;
 
 template <> struct Traits<Kernel> {
-  static constexpr bool Multitask = false;
+  enum { LIBRARY, KERNEL };
+  static constexpr int Mode = KERNEL;
 };
 
 template <> struct Traits<Timer> {
@@ -50,18 +52,16 @@ template <> struct Traits<Scheduler> {
 
 } // namespace QUARK
 
+#include <application/Traits.hpp>
 #include <machine/Traits.hpp>
-#include <payload/Traits.hpp>
 
 namespace QUARK {
 
 template <> struct Traits<Thread> {
   static constexpr Hz Frequency = Traits<Timer>::Frequency;
-  static constexpr bool UserStack =
-      Traits<Payload>::Virtualization || Traits<Payload>::Unprivileged;
+  static constexpr bool UserStack = true;
   static constexpr size_t KernelStackSize = Traits<Memory>::StackSize;
-  static constexpr size_t UserStackSize =
-      UserStack ? Traits<Memory>::StackSize : 0;
+  static constexpr size_t UserStackSize = UserStack ? KernelStackSize : 0;
 };
 
 } // namespace QUARK

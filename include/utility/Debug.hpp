@@ -2,17 +2,11 @@
 
 #include <utility/Console.hpp>
 
-#define assert(expression, ...)                                                \
-  if constexpr (QUARK::Traits<QUARK::Debug>::Error) {                          \
-    if (!(expression)) [[unlikely]] {                                          \
-      QUARK::Console::panic();                                                 \
-      QUARK::Console::println("\n[ASSERT] ", __PRETTY_FUNCTION__);             \
-      QUARK::Console::println(#expression);                                    \
-      __VA_OPT__(QUARK::Console::println(__VA_ARGS__);)                        \
-      for (;;)                                                                 \
-        ;                                                                      \
-    }                                                                          \
-  }
+extern "C" void failure(bool, const char *, const char *, int);
+
+#define assert(condition, ...)                                                 \
+  if constexpr (QUARK::Traits<QUARK::Debug>::Error)                            \
+    failure(!(condition), #condition, __FILE__, __LINE__);
 
 // ********** Traces **********
 

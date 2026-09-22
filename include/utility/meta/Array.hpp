@@ -1,7 +1,9 @@
 #ifndef __QUARK_UTILITY_META_ARRAY__
 #define __QUARK_UTILITY_META_ARRAY__
 
-namespace QUARK::Meta {
+namespace QUARK {
+
+namespace Meta {
 
 template <unsigned N, typename T> struct Array {
   constexpr T &operator[](unsigned i) { return data[i]; }
@@ -26,6 +28,8 @@ template <typename T> struct Array<0, T> {
   constexpr const T *end() const { return nullptr; }
 };
 
-} // namespace QUARK::Meta
+} // namespace Meta
+
+} // namespace QUARK
 
 #endif

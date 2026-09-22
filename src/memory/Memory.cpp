@@ -32,14 +32,14 @@ void Memory::init() {
 }
 
 uintptr_t Memory::virt2phys(uintptr_t address) {
-  if constexpr (Traits<Kernel>::Multitask) {
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
     return address - (Traits<MemoryMap>::RamStart - __amm.start());
   }
   return address;
 }
 
 uintptr_t Memory::phys2virt(uintptr_t address) {
-  if constexpr (Traits<Kernel>::Multitask) {
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
     return address + (Traits<MemoryMap>::RamStart - __amm.start());
   }
   return address;

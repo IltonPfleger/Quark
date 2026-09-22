@@ -4,14 +4,13 @@ HERE := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 INCLUDE        := $(HERE)/include
 BUILD          := $(HERE)/build
-PAYLOADS       := $(HERE)/payload
+APPLICATIONS   := $(HERE)/application
 TOOLS          := $(HERE)/tools
 
 SYSTEM         := $(BUILD)/QUARK
 IMAGE          := $(BUILD)/Image
 CONFIG         := $(BUILD)/Config
-KERNEL_ELF     := $(BUILD)/QUARK.elf
-KERNEL_BINARY  := $(BUILD)/QUARK.bin
+ELF            := $(BUILD)/QUARK.elf
 
 CONFIGURATOR   := $(TOOLS)/TraitsLoggerGenerator
 TRAITS         := $(shell find $(HERE) -name "Traits.hpp")
@@ -34,15 +33,19 @@ MAKE           := make
 RM             := rm
 TRUNCATE       := truncate
 QEMU           := qemu-system-riscv64
+CONSOLE        := kgx -e
 
 ARCH           ?= riscv64
 MACHINE        ?= virt
-PAYLOAD        ?= HelloWorld
+APPLICATION    ?= HelloWorld
 
 CCFLAGS        := -std=c++23
-CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH) -I$(HERE)/machine/$(ARCH)/$(MACHINE)
+CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH)/include -I$(HERE)/machine/$(ARCH)/$(MACHINE)/include
 #CCFLAGS        += -Wall -Wextra -Werror -pedantic
-CCFLAGS        += -D__PAYLOAD=$(PAYLOAD) -O3 -g
+CCFLAGS        += -ffunction-sections -fdata-sections
+CCFLAGS        += -D__APPLICATION=$(APPLICATION) -g
+
+LDFLAGS        := --gc-sections
 
 build: $(IMAGE)
 
@@ -50,7 +53,6 @@ $(HASH): $(TRAITS)
 	@$(MKDIR) -p $(dir $@)
 	@cat $^ | sha256sum > $@
 
-MACH_CCFLAGS := $(CCFLAGS)
 
 $(CONFIG): $(HASH)
 	$(MKDIR) -p $(dir $@)
@@ -58,5 +60,9 @@ $(CONFIG): $(HASH)
 	g++ $(CCFLAGS) $(CONFIG).cpp -o $(CONFIG).elf
 	$(CONFIG).elf > $@
 
+ifneq ($(filter clean,$(MAKECMDGOALS)),clean)
 -include $(CONFIG)
+endif
+
+MACH_CCFLAGS := $(CCFLAGS)
 include $(HERE)/machine/$(ARCH)/$(MACHINE)/Makedefs.mk

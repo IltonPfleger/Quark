@@ -1,6 +1,6 @@
+#include <Process.hpp>
 #include <Thread.hpp>
 #include <Traits.hpp>
-#include <abi/Thread.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Heap.hpp>
 #include <memory/Memory.hpp>
@@ -16,10 +16,18 @@ void Thread::entry(Function f, Argument a) {
   if (s_previous[CPU::id()])
     epilogue();
 
-  if constexpr (Traits<Payload>::Unprivileged) {
-    if (current->domain_ == Domain::USER) {
-      Context::demote(current->kstack_, current->stack_, f, ABI::Thread::exit,
-                      a);
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+    if (current->flags_ != KERNEL) {
+      assert(current->process_);
+
+      current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
+
+      // TODO: Concurrency Error, in Process Attach
+      const Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
+      const Chunk stack = current->process_->attach(
+          {Memory::virt2phys(reinterpret_cast<uintptr_t>(current->stack_)),
+           Traits<Thread>::UserStackSize});
+      Context::demote(stack, kstack, f, a);
       return;
     }
   }
@@ -60,6 +68,12 @@ void Thread::dispatch(Thread *previous, Thread *next, Spin *lock) {
 
   next->state_ = State::RUNNING;
 
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+    if (next->process_) {
+      next->process_->activate();
+    }
+  }
+
   Context::swtch(previous->context_, next->context_);
 
   epilogue();
@@ -86,26 +100,12 @@ void Thread::epilogue() {
   }
 }
 
-Thread::Thread(Function f, Argument a, Criterion c, Domain d, Process *p)
-    : stack_(
-          Memory::alloc(d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
-          d == Domain::USER ? Traits<Thread>::UserStackSize : 0),
-      kstack_(Memory::alloc(Traits<Thread>::KernelStackSize),
-              Traits<Thread>::KernelStackSize),
-      node_(Node(this, c)), state_(State::READY),
-      context_(kstack_, stack_, entry, f, a), domain_(d) {
+Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
+    : stack_(nullptr), kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
+      node_(Node(this, c)), state_(State::READY), flags_(f),
+      context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a),
+      process_(p) {
   TraceIn(this);
-
-  //[&](auto *self) {
-  //  if constexpr (Traits<Kernel>::Multitask) {
-  //    self->owner_ = p;
-  //    if (self->owner_) {
-  //      uintptr_t spa = Memory::virt2phys(self->stack_.start());
-  //      self->stack_ = self->owner_->attach(Chunk(spa,
-  //      self->stack_.length()));
-  //    }
-  //  }
-  //}(this);
 
   {
     CPU::IRQ::Guard _;
@@ -121,15 +121,22 @@ Thread::~Thread() {
 
   join();
 
-  Memory::free(stack_.data(), stack_.length());
-  Memory::free(kstack_.data(), kstack_.length());
+  if (stack_) {
+    Memory::free(stack_, Traits<Thread>::UserStackSize);
+  }
+
+  if (kstack_) {
+    Memory::free(kstack_, Traits<Thread>::KernelStackSize);
+  }
 
   TraceOut();
 }
 
 void Thread::join() {
+  assert(running() != this);
+
   while (state_ != State::FINISHED) {
-    reschedule();
+    yield();
   }
 }
 
@@ -150,7 +157,7 @@ void Thread::init() {
   new (&s_scheduler) Scheduler();
 
   for (int i = 0; i < Traits<CPU>::Active; ++i)
-    new Thread(idle, 0, Criterion::IDLE, Domain::KERNEL);
+    new Thread(idle, 0, Criterion::IDLE, KERNEL);
 
   TraceOut();
 }
@@ -188,7 +195,6 @@ void Thread::sleep(List *list, Spin *lock) {
 }
 
 void Thread::wakeup(List *list) {
-
   Node *node = list->remove();
   assert(node);
   node->value->state_ = State::READY;

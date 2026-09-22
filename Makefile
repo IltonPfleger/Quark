@@ -1,45 +1,42 @@
 include Makedefs.mk
 
-KERNEL_SOURCES       := $(shell find src -name '*.cpp' | grep -v -E 'architecture|machine|abi')
-KERNEL_SOURCES 	     += $(shell find src/architecture/$(ARCH) -name '*.cpp')
-KERNEL_SOURCES 	     += $(shell find src/machine/$(ARCH)/$(MACHINE) -name '*.cpp')
-KERNEL_SOURCES       += $(if $(Payload_Unprivileged),$(shell find src/abi -name '*.cpp'))
-KERNEL_OBJECTS       := $(patsubst src/%.cpp,$(BUILD)/%.o,$(KERNEL_SOURCES))
-KERNEL_DEPENDENCIES  := $(KERNEL_OBJECTS:.o=.d)
-PAYLOAD_ELF          := $(BUILD)/$(PAYLOAD).elf
+SOURCES       := $(shell find src -name '*.cpp')
+SOURCES 	  += $(shell find architecture/$(ARCH)/src -name '*.cpp')
+OBJECTS       := $(patsubst %.cpp,$(BUILD)/%.o,$(SOURCES))
+DEPENDENCIES  := $(OBJECTS:.o=.d)
 
 run: $(IMAGE)
-	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
+	$(CONSOLE) $(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $<
 
 debug: $(IMAGE)
 	-$(QEMU) -M $(MACHINE) -smp $(CPU_Count) -bios none -nographic -m $(Memory_Size)b -kernel $< -S -gdb tcp::1234
 
 gdb:
-	$(GDB) -ex "file $(KERNEL_ELF)" -ex "target extended-remote:1234"
+	$(GDB) -ex "file $(ELF)" -ex "target extended-remote:1234"
 
-$(IMAGE).bin: $(KERNEL_BINARY) 
-	$(MV) $^ $@
+$(IMAGE).bin : $(ELF) $(BUILD)/$(APPLICATION).elf
+	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(ELF) $(IMAGE).bin
+	$(CAT) $(BUILD)/$(APPLICATION).elf >> $(IMAGE).bin
 
-$(KERNEL_BINARY) : $(KERNEL_ELF) $(PAYLOAD_ELF)
-	$(OBJCOPY) -O binary --set-section-flags .bss=alloc,load,contents $(KERNEL_ELF) $(KERNEL_BINARY)
-	$(CAT) $(PAYLOAD_ELF) >> $(KERNEL_BINARY)
+$(BUILD)/$(APPLICATION).elf: $(ELF)
+	$(LD) --just-symbols $(ELF) -Ttext=$(MemoryMap_Application) --image-base=$(MemoryMap_Application) -o $@ $(BUILD)/$(APPLICATION).o
 
-$(PAYLOAD_ELF): $(KERNEL_ELF)
-	$(MAKE) PAYLOAD=$(PAYLOAD) -C $(PAYLOADS) all
+$(BUILD)/$(APPLICATION).o:
+	$(MAKE) APPLICATION=$(APPLICATION) -C $(APPLICATIONS) $(BUILD)/$(APPLICATION).o
 
-$(KERNEL_ELF): $(KERNEL_OBJECTS)
-	$(LD) -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $^
+$(ELF): $(OBJECTS) $(BUILD)/$(APPLICATION).o
+	$(LD) $(LDFLAGS) `nm -u $(BUILD)/$(APPLICATION).o 2>/dev/null | awk '{print "-u " $$NF}'` -T Linker.ld --defsym=__BOOT__=$(MemoryMap_Boot) -o $@ $(filter-out $(BUILD)/$(APPLICATION).o,$^)
 
-$(BUILD)/%.o: src/%.cpp 
+$(BUILD)/%.o: %.cpp 
 	$(MKDIR) -p $(dir $@)
 	$(CC) $(MACH_CCFLAGS) -MMD -MP -c $< -o $@
 
 %.bin: %.elf 
 	$(OBJCOPY) -O binary $< $@
 
-$(KERNEL_OBJECTS): $(CONFIG)
+$(OBJECTS): $(CONFIG)
 
 clean:
 	$(RM) -rf build
 
--include $(KERNEL_DEPENDENCIES)
+-include $(DEPENDENCIES)

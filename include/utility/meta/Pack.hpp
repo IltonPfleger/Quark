@@ -1,7 +1,9 @@
 #ifndef __QUARK_UTILITY_META_PACK__
 #define __QUARK_UTILITY_META_PACK__
 
-namespace QUARK::Meta {
+namespace QUARK {
+
+namespace Meta {
 
 template <typename...> struct Pack {};
 
@@ -17,6 +19,8 @@ struct PackIndex<Pack<Head, Tail...>, Index> {
   using Result = typename PackIndex<Pack<Tail...>, Index - 1>::Result;
 };
 
-} // namespace QUARK::Meta
+} // namespace Meta
+
+} // namespace QUARK
 
 #endif

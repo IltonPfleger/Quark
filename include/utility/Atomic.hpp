@@ -10,8 +10,6 @@ template <typename T> class Atomic {
 public:
   constexpr Atomic(T value = 0) : value_(value) {}
 
-  T load() const { return CPU::Atomic::load(value_); }
-
   T finc()
     requires Meta::Integer<T>
   {
@@ -24,49 +22,41 @@ public:
     return CPU::Atomic::fdec(value_);
   }
 
+  T fand(T mask) {
+    while (true) {
+      T current = load();
+      T desired = current & mask;
+      if (cas(current, desired))
+        return current;
+    }
+  }
+
+  T fior(T mask) {
+    while (true) {
+      T current = load();
+      T desired = current | mask;
+      if (cas(current, desired))
+        return current;
+    }
+  }
+
   bool tsl() { return CPU::Atomic::tsl(value_); }
 
   bool cas(T &expected, T desired) {
     return CPU::Atomic::cas(value_, expected, desired);
   }
 
-  T exchange(T desired) { return CPU::Atomic::exchange(value_, desired); }
-
   void store(T value) { CPU::Atomic::store(value_, value); }
 
-  T operator++()
-    requires Meta::Integer<T>
-  {
-    return finc();
-  }
+  T load() const { return CPU::Atomic::load(value_); }
 
-  T operator--()
-    requires Meta::Integer<T>
-  {
-    return fdec();
-  }
+  T operator++() { return finc(); }
 
-  T operator|=(T mask)
-    requires Meta::Integer<T>
-  {
-    while (true) {
-      T current = load();
-      T desired = current | mask;
-      if (cas(current, desired))
-        return desired;
-    }
-  }
+  T operator--() { return fdec(); }
 
-  T operator&=(T mask)
-    requires Meta::Integer<T>
-  {
-    while (true) {
-      T current = load();
-      T desired = current & mask;
-      if (cas(current, desired))
-        return desired;
-    }
-  }
+  T operator|=(T mask) { return fior(mask) | mask; }
+
+  T operator&=(T mask) { return fand(mask) & mask; }
 
   operator T() const { return load(); }
 
