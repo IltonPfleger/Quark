@@ -25,6 +25,8 @@ class CacheController;
 class Ethernet;
 class PMU;
 class FPU;
+class Thermometer;
+class Thermometer0;
 
 template <typename> class DesignWare_I2C_Controller;
 template <typename> class AXP15060_Controller;
@@ -32,6 +34,7 @@ template <typename> class SiFiveU74_L2_CacheController;
 template <typename> class NS16550;
 template <typename> class DWC_Ether_QoS;
 template <typename> class IPMS_CANFD;
+template <typename> class JH7110_Thermometer;
 
 template <> struct Traits<Machine> {
   static constexpr const char NAME[] = "VisionFive2";
@@ -84,6 +87,7 @@ template <> struct Traits<MemoryMap> {
   static constexpr unsigned long AONCRG = 0x17000000;
   static constexpr unsigned long SYS_SYSCON = 0x13030000;
   static constexpr unsigned long AON_SYSCON = 0x17010000;
+  static constexpr unsigned long THERMOMETER = 0x120E0000;
 };
 
 /* ********** CacheController ********** */
@@ -190,6 +194,17 @@ template <> struct Traits<PMIC0> {
 
 template <> struct Traits<PMIC> {
   typedef Meta::TypeList<AXP15060_Controller<PMIC0>> Devices;
+  static constexpr unsigned int NumberOfDevices = Devices::Length;
+};
+
+/* ********** Thermometer ********** */
+template <> struct Traits<Thermometer0> {
+  static constexpr bool Enable = true;
+  static constexpr unsigned long Address = Traits<MemoryMap>::THERMOMETER;
+};
+
+template <> struct Traits<Thermometer> {
+  typedef Meta::TypeList<JH7110_Thermometer<Thermometer0>> Devices;
   static constexpr unsigned int NumberOfDevices = Devices::Length;
 };
 

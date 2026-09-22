@@ -58,4 +58,9 @@ using Nanosecond = Duration<1000000000>;
 typedef uintmax_t Hz;
 typedef uintmax_t Tick;
 
+typedef intmax_t Celsius;
+typedef intmax_t Milicelsius;
+
+typedef uintmax_t Kelvin;
+
 } // namespace QUARK
