@@ -2,7 +2,7 @@
 #define __QUARK_HYPERVISOR_GENERIC_VIRTUAL_MACHINE__
 
 #include <Meta.hpp>
-#include <Semaphore.hpp>
+#include <synchronization/Semaphore.hpp>
 #include <Thread.hpp>
 #include <architecture/VirtualCPU.hpp>
 #include <hypervisor/VirtualInterruptController.hpp>

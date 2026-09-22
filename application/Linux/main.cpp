@@ -75,7 +75,7 @@ public:
 
       builder.begin("chosen");
       {
-        builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi ");
+        builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi");
 
         uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
         uint64_t end = start + initrd.length();

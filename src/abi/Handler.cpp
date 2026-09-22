@@ -1,5 +1,5 @@
 #include <Process.hpp>
-#include <Semaphore.hpp>
+#include <synchronization/Semaphore.hpp>
 #include <Thread.hpp>
 #include <abi/Handler.hpp>
 #include <architecture/MMU.hpp>

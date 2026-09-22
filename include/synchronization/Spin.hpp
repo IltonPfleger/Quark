@@ -1,5 +1,5 @@
-#ifndef __QUARK_SPIN__
-#define __QUARK_SPIN__
+#ifndef __QUARK_SYNCHRONIZATION_SPIN__
+#define __QUARK_SYNCHRONIZATION_SPIN__
 
 #include <architecture/CPU.hpp>
 #include <types.hpp>

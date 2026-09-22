@@ -1,9 +1,8 @@
 #ifndef __QUARK_UTILITY_DEFERRED__
 #define __QUARK_UTILITY_DEFERRED__
 
-#include <Semaphore.hpp>
-#include <Spin.hpp>
 #include <Traits.hpp>
+#include <synchronization/Semaphore.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/collections/FIFO.hpp>
 

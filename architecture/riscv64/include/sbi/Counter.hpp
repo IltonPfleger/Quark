@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Alarm.hpp>
-#include <Semaphore.hpp>
+#include <synchronization/Semaphore.hpp>
 #include <architecture/CLINT.hpp>
 #include <architecture/Context.hpp>
 #include <architecture/VirtualCPU.hpp>

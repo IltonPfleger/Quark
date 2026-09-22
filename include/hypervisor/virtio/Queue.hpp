@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Spin.hpp>
 #include <hypervisor/virtio/flags.hpp>
 #include <types.hpp>
 #include <utility/Debug.hpp>

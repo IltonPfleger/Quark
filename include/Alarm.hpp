@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Semaphore.hpp>
+#include <synchronization/Semaphore.hpp>
 #include <utility/collections/Node.hpp>
 #include <utility/collections/OrderedList.hpp>
 

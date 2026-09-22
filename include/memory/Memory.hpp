@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Spin.hpp>
 #include <Traits.hpp>
 #include <memory/allocators/Buddy.hpp>
+#include <synchronization/Spin.hpp>
 
 namespace QUARK {
 

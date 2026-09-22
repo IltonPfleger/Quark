@@ -1,9 +1,9 @@
 #ifndef __QUARK_RISCV64_IPI__
 #define __QUARK_RISCV64_IPI__
 
-#include <Mutex.hpp>
 #include <architecture/CLINT.hpp>
 #include <architecture/ContextFrame.hpp>
+#include <synchronization/Mutex.hpp>
 
 namespace QUARK {
 
@@ -44,7 +44,7 @@ public:
   }
 
 private:
-  static Meta::Array<Traits<CPU>::Count, Message> channels_;
+  static constinit Meta::Array<Traits<CPU>::Count, Message> channels_;
 };
 
 inline Meta::Array<Traits<CPU>::Count, IPI::Message> IPI::channels_{};

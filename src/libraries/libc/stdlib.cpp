@@ -1,9 +1,8 @@
+#include <architecture/CPU.hpp>
 #include <libraries/libc/stdlib.h>
 #include <memory/Heap.hpp>
 
 using namespace QUARK;
-
-// extern "C" void *malloc(size_t size) { return new uint8_t[size]; }
 
 extern "C" long atol(const char *str) {
   long result = 0;
@@ -26,7 +25,5 @@ extern "C" int atexit(void (*)(void)) { return 0; }
 
 extern "C" [[noreturn]]
 void __cxa_pure_virtual() {
-  assert(false);
-  while (1)
-    ;
+  CPU::halt();
 }

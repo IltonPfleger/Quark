@@ -1,7 +1,7 @@
 #ifndef __QUARK_SCHEDULER_FIXED_CORE__
 #define __QUARK_SCHEDULER_FIXED_CORE__
 
-#include <Spin.hpp>
+#include <synchronization/Spin.hpp>
 #include <types.hpp>
 #include <utility/Console.hpp>
 #include <utility/collections/FIFO.hpp>

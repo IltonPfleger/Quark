@@ -1,5 +1,4 @@
 #include <Alarm.hpp>
-#include <Spin.hpp>
 #include <architecture/Timer.hpp>
 #include <utility/Console.hpp>
 
