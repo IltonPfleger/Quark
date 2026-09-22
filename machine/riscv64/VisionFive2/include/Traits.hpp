@@ -56,6 +56,9 @@ template <> struct Traits<Memory> {
 };
 
 template <> struct Traits<MemoryMap> {
+  static constexpr bool HigherMapping =
+      Traits<Kernel>::Mode == Traits<Kernel>::KERNEL;
+
   static constexpr unsigned long PhysicalRamStart = 0x40000000;
   static constexpr unsigned long PhysicalRamEnd =
       PhysicalRamStart + Traits<Memory>::Size;
@@ -65,14 +68,15 @@ template <> struct Traits<MemoryMap> {
       VirtualRamStart + Traits<Memory>::Size;
 
   static constexpr unsigned long RamStart =
-      Traits<Kernel>::Multitask ? VirtualRamStart : PhysicalRamStart;
+      HigherMapping ? VirtualRamStart : PhysicalRamStart;
+
   static constexpr unsigned long RamEnd =
-      Traits<Kernel>::Multitask ? VirtualRamEnd : PhysicalRamEnd;
+      HigherMapping ? VirtualRamEnd : PhysicalRamEnd;
 
   static constexpr unsigned long Boot = RamStart;
+
   static constexpr unsigned long Application =
-      Traits<Kernel>::Multitask ? 0x800000000
-                                : (RamStart + Traits<Memory>::Size / 2);
+      HigherMapping ? 0x800000000 : (RamStart + Traits<Memory>::Size / 2);
 
   /* *** MMIO *** */
   static constexpr unsigned long MMIO = 0x00000000;

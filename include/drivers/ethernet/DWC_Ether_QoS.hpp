@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Mutex.hpp>
 #include <architecture/CPU.hpp>
 #include <architecture/IC.hpp>
 #include <drivers/Driver.hpp>
@@ -8,6 +7,7 @@
 #include <libraries/libc/string.h>
 #include <machine/Machine.hpp>
 #include <memory/Heap.hpp>
+#include <synchronization/Mutex.hpp>
 #include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
 #include <utility/Deferred.hpp>
