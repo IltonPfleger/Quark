@@ -5,6 +5,7 @@
 #include <drivers/clock/JH7110_Clock_Controller.hpp>
 #include <drivers/dvfs/JH7110_DVFS_Controller.hpp>
 #include <machine/GPIO.hpp>
+#include <machine/Thermometer.hpp>
 
 namespace QUARK {
 
@@ -62,6 +63,14 @@ public:
           Clock_Controller::SYSCRG_CLK_RSTN_U0_CAN_CTRL_CORE);
       Clock_Controller::reset(
           Clock_Controller::SYSCRG_CLK_RSTN_U0_CAN_CTRL_TIMER);
+      /* ---***--- Thermometer ---***--- */
+      Clock_Controller::enable(
+          Clock_Controller::SYSCRG_CLK_TEMPERATURE_SENSOR_ABP);
+      Clock_Controller::enable(Clock_Controller::SYSCRG_CLK_TEMPERATURE_SENSOR);
+      Clock_Controller::reset(
+          Clock_Controller::SYSCRG_CLK_RSTN_U0_TEMP_SENSOR_RSTN_APB);
+      Clock_Controller::reset(
+          Clock_Controller::SYSCRG_CLK_RSTN_U0_TEMP_SENSOR_RSTN_TEMP);
       GPIO::map(GPIO::OutputSignal::GPO_SYS_IOMUX_U0_CAN_CTRL_TXD, 42);
       GPIO::map(GPIO::InputSignal::GPI_SYS_IOMUX_U0_CAN_CTRL_RXD, 43);
       GPIO::map(GPIO::OutputSignal::GPO_SYS_IOMUX_U0_CAN_CTRL_STB, 47);
@@ -70,6 +79,7 @@ public:
     auto initializer = []<typename T>() { return T::init(); };
     Meta::forEach(Traits<CacheController>::Devices{}, initializer);
     Meta::forEach(Traits<UART>::Devices{}, initializer);
+    Meta::forEach(Traits<Thermometer>::Devices{}, initializer);
   }
 
   static void shutdown() { CPU::halt(); }
