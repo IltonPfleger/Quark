@@ -8,11 +8,11 @@
 
 namespace QUARK::ABI {
 
-void *Handler::handler(Operation o, const Arguments a) {
-  switch (o) {
+void *Handler::handler(Operation operation, const Arguments args) {
+  switch (operation) {
   case WRITE: {
-    if (a[0] == 0) {
-      uintptr_t pa = MMU::PageTable::virt2phys(a[1]);
+    if (args[0] == 0) {
+      uintptr_t pa = MMU::PageTable::virt2phys(args[1]);
       uintptr_t va = Memory::phys2virt(pa);
       char character = *reinterpret_cast<char *>(va);
       QUARK::Console::print(character);
@@ -26,8 +26,8 @@ void *Handler::handler(Operation o, const Arguments a) {
   }
 
   case THREAD_CONSTRUCTOR: {
-    auto function = reinterpret_cast<Thread::Function>(a[0]);
-    auto argument = reinterpret_cast<Thread::Argument>(a[1]);
+    auto function = reinterpret_cast<Thread::Function>(args[0]);
+    auto argument = reinterpret_cast<Thread::Argument>(args[1]);
     auto critetion = Thread::Criterion::NORMAL;
     auto flags = Thread::USER;
     auto process = Process::current();
@@ -36,36 +36,36 @@ void *Handler::handler(Operation o, const Arguments a) {
   }
 
   case THREAD_JOIN: {
-    reinterpret_cast<Thread *>(a[0])->join();
+    reinterpret_cast<Thread *>(args[0])->join();
     break;
   }
 
   case THREAD_DESTRUCTOR: {
-    free(reinterpret_cast<Thread *>(a[0]));
+    free(reinterpret_cast<Thread *>(args[0]));
     break;
   }
   case SEMAPHORE_CONSTRUCTOR: {
-    return new (Heap::SYSTEM) Semaphore(a[0]);
+    return new (Heap::SYSTEM) Semaphore(args[0]);
   }
   case SEMAPHORE_P: {
-    reinterpret_cast<Semaphore *>(a[0])->p();
+    reinterpret_cast<Semaphore *>(args[0])->p();
     break;
   }
   case SEMAPHORE_V: {
-    reinterpret_cast<Semaphore *>(a[0])->v();
+    reinterpret_cast<Semaphore *>(args[0])->v();
     break;
   }
   case SEMAPHORE_DESTRUCTOR: {
-    free(reinterpret_cast<Semaphore *>(a[0]));
+    free(reinterpret_cast<Semaphore *>(args[0]));
     break;
   }
   }
   //   case Function::ABI_HEAP_NEW: {
-  //     return new uint8_t[a[0]];
+  //     return new uint8_t[args[0]];
   //     break;
   //   }
   //   case Function::ABI_HEAP_DELETE: {
-  //     ::operator delete[](reinterpret_cast<void *>(a[0]), a[1]);
+  //     ::operator delete[](reinterpret_cast<void *>(args[0]), args[1]);
   //     break;
   //   }
   //   default: {

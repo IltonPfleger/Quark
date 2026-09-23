@@ -1,4 +1,5 @@
-#pragma once
+#ifndef __QUARK_MEMORY_HEAP__
+#define __QUARK_MEMORY_HEAP__
 
 #include <Traits.hpp>
 #include <memory/Memory.hpp>
@@ -22,10 +23,11 @@ namespace QUARK {
 
 template <typename T> inline void free(T *pointer) {
   static_assert(!Meta::Same<T, void>::Result);
-  if (pointer) {
-    pointer->~T();
-    QUARK::Memory::free(pointer, sizeof(T));
-  }
+  assert(pointer);
+  pointer->~T();
+  QUARK::Memory::free(pointer, sizeof(T));
 }
 
 } // namespace QUARK
+
+#endif
