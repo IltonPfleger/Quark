@@ -53,8 +53,8 @@ private:
       cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
     }
 
-    assert(rank < 2, rank);
-    assert(cpu < NumberOfCores, cpu);
+    assert(rank < 2);
+    assert(cpu < NumberOfCores);
 
     cpu_ = cpu;
     rank_ = rank;

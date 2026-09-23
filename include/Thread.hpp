@@ -8,6 +8,7 @@ namespace QUARK {
 
 class Thread {
   friend class PeriodicThread;
+  friend class VirtualCPU;
   friend class Process;
 
 public:
@@ -60,7 +61,7 @@ private:
   Flags flags_;
 
 private:
-  static constinit inline Scheduler s_scheduler;
+  static constinit inline Scheduler scheduler_;
   static inline volatile unsigned int s_count;
   static inline Thread *volatile s_previous[Traits<CPU>::Active];
   static inline Spin *volatile s_spin[Traits<CPU>::Active];

@@ -11,7 +11,10 @@ public:
   constexpr Mutex() : Semaphore(1) {}
   constexpr ~Mutex() {}
 
-  void acquire() { p(); }
+  void acquire() {
+    p();
+    assert(this->value_ <= 0);
+  }
 
   void release() { v(); }
 

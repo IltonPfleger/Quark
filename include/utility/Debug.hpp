@@ -4,7 +4,7 @@
 
 extern "C" void failure(bool, const char *, const char *, int);
 
-#define assert(condition, ...)                                                 \
+#define assert(condition)                                                      \
   if constexpr (QUARK::Traits<QUARK::Debug>::Error)                            \
     failure(!(condition), #condition, __FILE__, __LINE__);
 

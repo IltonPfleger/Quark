@@ -57,17 +57,17 @@ public:
     activate();
     restore();
 
-    csrc<MachineMode::STATUS>(SupervisorMode::PIRQE | SupervisorMode::IRQE |
-                              MachineMode::PP);
-
-    csrs<MachineMode::STATUS>(MachineMode::PP_S | MachineMode::PIRQE);
-
+    csrc<MachineMode::STATUS>(SupervisorMode::PIRQE);
+    csrc<MachineMode::STATUS>(SupervisorMode::IRQE);
+    csrc<MachineMode::STATUS>(MachineMode::PP);
+    csrs<MachineMode::STATUS>(MachineMode::PP_S);
+    csrs<MachineMode::STATUS>(MachineMode::PIRQE);
     csrs<MachineMode::STATUS>(MachineMode::TW);
 
     csrw<MachineMode::EPC>(entry);
 
-    uintptr_t origin = CPU::stack() & ~(Traits<Memory>::StackSize - 1);
-    CoreContextHandler<MachineMode>::stack(origin);
+    uintptr_t stack = reinterpret_cast<uintptr_t>(Thread::running()->kstack_);
+    CoreContextHandler<MachineMode>::stack(stack);
 
     CPU::mb();
     CPU::ib();

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Semaphore.hpp>
 #include <abi/ABI.hpp>
 #include <architecture/Syscall.hpp>
+#include <synchronization/Semaphore.hpp>
 
 namespace QUARK::ABI {
 

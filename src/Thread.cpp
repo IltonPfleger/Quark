@@ -8,7 +8,7 @@
 
 namespace QUARK {
 
-Thread *Thread::running() { return s_scheduler.current(); }
+Thread *Thread::running() { return scheduler_.current(); }
 
 void Thread::entry(Function f, Argument a) {
   Thread *current = running();
@@ -85,7 +85,7 @@ void Thread::epilogue() {
 
   switch (previous->state_) {
   case State::READY:
-    s_scheduler.insert(&previous->node_);
+    scheduler_.insert(&previous->node_);
     break;
   case State::WAITING:
     assert(lock);
@@ -110,7 +110,7 @@ Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
   {
     CPU::IRQ::Guard _;
     CPU::Atomic::finc(s_count);
-    s_scheduler.insert(&node_);
+    scheduler_.insert(&node_);
   }
 
   TraceOut();
@@ -145,7 +145,7 @@ void Thread::exit() {
 
   Thread *previous = running();
 
-  Node *next = s_scheduler.remove();
+  Node *next = scheduler_.remove();
   previous->state_ = State::FINISHING;
 
   dispatch(previous, next->value);
@@ -154,16 +154,14 @@ void Thread::exit() {
 void Thread::init() {
   TraceIn();
 
-  new (&s_scheduler) Scheduler();
-
   for (int i = 0; i < Traits<CPU>::Active; ++i)
-    new Thread(idle, 0, Criterion::IDLE, KERNEL);
+    new (Heap::SYSTEM) Thread(idle, 0, Criterion::IDLE, KERNEL);
 
   TraceOut();
 }
 
 void Thread::run() {
-  Thread *next = s_scheduler.remove()->value;
+  Thread *next = scheduler_.remove()->value;
   Context::load(next->context_);
 }
 
@@ -174,7 +172,7 @@ void Thread::reschedule() {
 
   Thread *previous = running();
 
-  Node *next = s_scheduler.remove(Criterion::NORMAL);
+  Node *next = scheduler_.remove(Criterion::NORMAL);
 
   if (next) {
     previous->state_ = State::READY;
@@ -189,7 +187,7 @@ void Thread::sleep(List *list, Spin *lock) {
   {
     CPU::IRQ::Guard _;
     previous->state_ = State::WAITING;
-    Node *next = s_scheduler.remove();
+    Node *next = scheduler_.remove();
     dispatch(previous, next->value, lock);
   }
 }
@@ -201,7 +199,7 @@ void Thread::wakeup(List *list) {
 
   {
     CPU::IRQ::Guard _;
-    s_scheduler.insert(node);
+    scheduler_.insert(node);
   }
 }
 

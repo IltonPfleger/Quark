@@ -17,9 +17,7 @@ public:
   }
 
   static void bind(CoreContext *source) { csrw<T::SCRATCH>(source); }
-  static CoreContext *current() {
-    return reinterpret_cast<CoreContext *>(csrr<T::SCRATCH>());
-  }
+  static CoreContext *current() { return reinterpret_cast<CoreContext *>(csrr<T::SCRATCH>()); }
   static void stack(uintptr_t sp) { current()->ksp = sp; }
   static size_t cpu() { return current()->core; }
 

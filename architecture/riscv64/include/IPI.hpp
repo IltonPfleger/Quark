@@ -12,9 +12,10 @@ public:
   using Handler = void (*)(void *);
 
   struct Message {
-    Handler handler{nullptr};
     Mutex lock{};
-    uintptr_t arguments[8]{};
+    Handler handler{nullptr};
+    uintptr_t arguments[8];
+    bool pending{false};
   };
 
   template <typename... Args>
@@ -22,9 +23,11 @@ public:
     static_assert(sizeof...(Args) <= 8);
     assert(hartid <= Traits<CPU>::Count);
 
-    auto &message = IPI::channels_[hartid];
+    Message &message = channel(hartid);
 
     message.lock.acquire();
+
+    message.pending = true;
 
     message.handler = handler;
 
@@ -39,15 +42,24 @@ public:
     size_t hartid = mhartid();
     CLINT::ipi(hartid, 0);
     CPU::mbr();
-    channels_[hartid].handler(&channels_[hartid].arguments);
-    channels_[hartid].lock.release();
+
+    Message &message = channel(hartid);
+
+    if (message.pending) {
+      message.pending = false;
+      message.handler(&message.arguments);
+      message.lock.release();
+    }
   }
 
 private:
-  static constinit Meta::Array<Traits<CPU>::Count, Message> channels_;
+  static Message &channel(size_t i = mhartid()) {
+    static constinit Meta::Array<Traits<CPU>::Count, Message> channels_{};
+    return channels_[i];
+  }
 };
 
-inline Meta::Array<Traits<CPU>::Count, IPI::Message> IPI::channels_{};
+// inline Meta::Array<Traits<CPU>::Count, IPI::Message> IPI::channels_{};
 
 } // namespace QUARK
 

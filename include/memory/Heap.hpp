@@ -10,14 +10,22 @@ struct HeapHeader {
   size_t size;
 };
 
+enum class Heap { SYSTEM };
+
 }; // namespace QUARK
 
-extern "C" void *malloc(QUARK::size_t);
-extern "C" void free(void *);
+inline void *operator new(QUARK::size_t size, QUARK::Heap) {
+  return QUARK::Memory::alloc(size);
+}
 
-inline void *operator new(QUARK::size_t size) { return malloc(size); }
-inline void *operator new[](QUARK::size_t size) { return malloc(size); }
-inline void operator delete(void *pointer) { free(pointer); }
-inline void operator delete[](void *pointer) { free(pointer); }
-inline void operator delete[](void *pointer, QUARK::size_t) { free(pointer); }
-inline void operator delete(void *pointer, QUARK::size_t) { free(pointer); }
+namespace QUARK {
+
+template <typename T> inline void free(T *pointer) {
+  static_assert(!Meta::Same<T, void>::Result);
+  if (pointer) {
+    pointer->~T();
+    QUARK::Memory::free(pointer, sizeof(T));
+  }
+}
+
+} // namespace QUARK

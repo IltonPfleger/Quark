@@ -1,9 +1,9 @@
 #include <Process.hpp>
-#include <synchronization/Semaphore.hpp>
 #include <Thread.hpp>
 #include <abi/Handler.hpp>
 #include <architecture/MMU.hpp>
 #include <memory/Heap.hpp>
+#include <synchronization/Semaphore.hpp>
 #include <utility/Console.hpp>
 
 namespace QUARK::ABI {
@@ -31,7 +31,8 @@ void *Handler::handler(Operation o, const Arguments a) {
     auto critetion = Thread::Criterion::NORMAL;
     auto flags = Thread::USER;
     auto process = Process::current();
-    return new Thread(function, argument, critetion, flags, process);
+    return new (Heap::SYSTEM)
+        Thread(function, argument, critetion, flags, process);
   }
 
   case THREAD_JOIN: {
@@ -40,11 +41,11 @@ void *Handler::handler(Operation o, const Arguments a) {
   }
 
   case THREAD_DESTRUCTOR: {
-    delete reinterpret_cast<Thread *>(a[0]);
+    free(reinterpret_cast<Thread *>(a[0]));
     break;
   }
   case SEMAPHORE_CONSTRUCTOR: {
-    return new Semaphore(a[0]);
+    return new (Heap::SYSTEM) Semaphore(a[0]);
   }
   case SEMAPHORE_P: {
     reinterpret_cast<Semaphore *>(a[0])->p();
@@ -55,7 +56,7 @@ void *Handler::handler(Operation o, const Arguments a) {
     break;
   }
   case SEMAPHORE_DESTRUCTOR: {
-    delete reinterpret_cast<Semaphore *>(a[0]);
+    free(reinterpret_cast<Semaphore *>(a[0]));
     break;
   }
   }

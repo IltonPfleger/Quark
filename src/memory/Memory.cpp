@@ -57,7 +57,7 @@ void *Memory::alloc(size_t size) {
 
   void *chunk = allocator_.remove(size);
 
-  assert(chunk, "Out of Memory!");
+  assert(chunk);
 
   TraceOut(chunk);
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <synchronization/Mutex.hpp>
 #include <utility/collections/UnorderedList.hpp>
 
 namespace QUARK {

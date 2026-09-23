@@ -25,8 +25,8 @@ private:
 
     size_t index = irq2index(id, type);
 
-    assert(index < NumberOfHandlers, index);
-    assert(handlers_[index], index, " ", id);
+    assert(index < NumberOfHandlers);
+    assert(handlers_[index]);
 
     handlers_[index](c);
   }
@@ -41,7 +41,7 @@ private:
 public:
   static void install(size_t id, Handler handler, Type type = Interrupt) {
     size_t index = irq2index(id, type);
-    assert(index < NumberOfHandlers, index);
+    assert(index < NumberOfHandlers);
     handlers_[index] = handler;
   };
 

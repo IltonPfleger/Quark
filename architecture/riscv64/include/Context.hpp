@@ -21,9 +21,6 @@ public:
     frame_->status = 0;
   }
 
-  // static void demote(uintptr_t sp, size_t spl, uintptr_t ksp, size_t kspl,
-  //                    auto pc, auto a0) {}
-
   __attribute__((naked)) static void demote(const Chunk &usp, const Chunk &ksp,
                                             auto pc, auto a0) {
     auto kspe = ksp.end();
