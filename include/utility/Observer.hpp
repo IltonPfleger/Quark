@@ -38,8 +38,6 @@ template <typename... Args> class Observer {
 public:
   Observer() : node_(this) {}
 
-  virtual ~Observer() = default;
-
   virtual void update(Args... args) = 0;
 
 private:

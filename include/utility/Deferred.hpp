@@ -88,7 +88,7 @@ public:
 
   static void init() {
     for (size_t i = 0; i < kThreads; ++i)
-      workers[i] = new Worker(i);
+      workers[i] = new (Heap::SYSTEM) Worker(i);
   }
 
   static bool schedule(Deferred &work) {

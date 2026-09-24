@@ -19,6 +19,11 @@ struct PackIndex<Pack<Head, Tail...>, Index> {
   using Result = typename PackIndex<Pack<Tail...>, Index - 1>::Result;
 };
 
+template <typename... Ts, typename Function>
+void forEach(Pack<Ts...>, Function f) {
+  (f(static_cast<Ts *>(nullptr)), ...);
+}
+
 } // namespace Meta
 
 } // namespace QUARK

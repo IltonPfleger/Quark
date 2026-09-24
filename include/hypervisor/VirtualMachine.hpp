@@ -11,8 +11,6 @@ class VirtualMachine {
 public:
   explicit VirtualMachine(Chunk chunk) : memory_(Meta::Move(chunk)) {}
 
-  virtual ~VirtualMachine() = default;
-
   virtual void boot(uintmax_t, void *, void *) = 0;
 
   virtual bool read(uintptr_t, void *, size_t) = 0;

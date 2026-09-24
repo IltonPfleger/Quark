@@ -12,7 +12,7 @@
 
 namespace QUARK::virtio {
 
-template <typename DEVICE, uintptr_t ADDRESS, uint32_t IRQ>
+template <typename DEVICE, uintptr_t ADDRESS, size_t IRQ>
 class Console : public Handler, public Observer<const char *, size_t> {
   friend Handler;
 

@@ -18,19 +18,23 @@ __attribute__((section(".__linux__"), used)) static uint8_t LINUX[32 * MB];
 __attribute__((section(".__initrd__"), used)) static uint8_t INITRD[16 * MB];
 
 class LinuxLauncher {
-public:
   static constexpr uint32_t CPUS = Traits<CPU>::Active;
 
-  using SerialDevice = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-  using Serial = virtio::Console<SerialDevice, 0x30000000, 32>;
-  using InterruptController = VirtualPLIC<CPUS, 0xc000000>;
-  using LinuxMachine = GenericVirtualMachine<CPUS, Serial, InterruptController>;
+public:
+  using pSerial = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+  using vSerial = virtio::Console<pSerial, 0x30000000, 32>;
+
+  using vPLIC = VirtualPLIC<CPUS, 0xc000000>;
+
+  using ExternalDevices = Meta::Pack<vSerial>;
+
+  using LinuxMachine = GenericVirtualMachine<CPUS, vSerial, vPLIC>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
                 Span<const uint8_t> initrd, size_t offset)
-      : size_(size) {
+      : size_(size), start_(static_cast<uint8_t *>(Memory::alloc(size_))),
+        vm_(start_, size_, offset) {
 
-    start_ = reinterpret_cast<uint8_t *>(Memory::alloc(size_));
     uint8_t *end = start_ + size_;
     uint8_t *current = start_;
 
@@ -51,8 +55,7 @@ public:
 
     Console::println("\n *** Linux is at core ", CPU::id(), " ***");
 
-    LinuxMachine *vm = new LinuxMachine(start_, size_, offset);
-    vm->boot(0, start_, opaque);
+    vm_.boot(0, start_, opaque);
   }
 
   static unsigned char *align(unsigned char *pointer, long alignment) {
@@ -181,18 +184,30 @@ public:
         }
         builder.end();
 
-        builder.begin("virtio@30000000");
-        {
-          uint64_t address = 0x30000000;
-          uint32_t irq = 32;
-          uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), 0x00,
-                             0x1000};
-          builder.add("compatible", "virtio,mmio");
-          builder.add("reg", regs, 4);
-          builder.add("interrupts", irq);
-          builder.add("interrupt-parent", 0x02);
-        }
-        builder.end();
+        auto add =
+            [&]<template <typename, auto, auto> class DEVICE, typename DRIVER,
+                auto ADDRESS, auto IRQ>(const DEVICE<DRIVER, ADDRESS, IRQ> *) {
+              char name[32] = "virtio@";
+              size_t position = 7;
+
+              for (int i = 28; i >= 0; i -= 4) {
+                uint8_t nibble = (ADDRESS >> i) & 0xF;
+                name[position++] =
+                    (nibble < 10) ? ('0' + nibble) : ('a' + (nibble - 10));
+              }
+              name[position] = '\0';
+
+              uint32_t regs[] = {CPU::hi32(ADDRESS), CPU::lo32(ADDRESS), 0x00,
+                                 0x1000};
+
+              builder.begin(name);
+              builder.add("compatible", "virtio,mmio");
+              builder.add("reg", regs, 4);
+              builder.add("interrupts", IRQ);
+              builder.add("interrupt-parent", 0x02);
+              builder.end();
+            };
+        Meta::forEach(ExternalDevices{}, add);
       }
       builder.end();
     }
@@ -206,6 +221,7 @@ public:
 private:
   size_t size_;
   uint8_t *start_;
+  LinuxMachine vm_;
 };
 
 int main() {
@@ -214,7 +230,7 @@ int main() {
   Span<const uint8_t> kernel(LINUX, sizeof(LINUX));
   Span<const uint8_t> initramfs(INITRD, sizeof(INITRD));
 
-  new LinuxLauncher(128 * 1024 * 1024, kernel, initramfs, 0);
+  new (Heap::SYSTEM) LinuxLauncher(128 * 1024 * 1024, kernel, initramfs, 0);
 
   return 0;
 }
