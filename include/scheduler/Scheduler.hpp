@@ -10,40 +10,38 @@
 namespace QUARK {
 
 class Scheduler {
-  public:
-    using Criterion = typename Traits<Scheduler>::Criterion;
-    using Node      = collections::Node<Thread *, Criterion>;
+public:
+  using Criterion = typename Traits<Scheduler>::Criterion;
+  using Node = collections::Node<Thread *, Criterion>;
 
-    constexpr Scheduler()
-        : _heads{},
-          _collection() {}
+  constexpr Scheduler() : _heads{}, _collection() {}
 
-    Node *remove(int threshold = Criterion::IDLE) {
-        Node *next = _collection.remove(threshold);
+  Thread *remove(int threshold = Criterion::IDLE) {
+    Node *next = _collection.remove(threshold);
 
-        if (next) {
-            head(next->value);
-            return next;
-        }
-
-        assert(threshold != Criterion::IDLE);
-        return nullptr;
+    if (next) {
+      head(next->value);
+      return next->value;
     }
 
-    void insert(Node *node) {
-        assert(node);
-        _collection.insert(node->criterion, node);
-    }
+    assert(threshold != Criterion::IDLE);
+    return nullptr;
+  }
 
-    Thread *current() { return head(); }
+  void insert(Node *node) {
+    assert(node);
+    _collection.insert(node->criterion, node);
+  }
 
-  private:
-    Thread *head() { return _heads[CPU::id()]; }
-    void head(Thread *thread) { _heads[CPU::id()] = thread; }
+  Thread *current() { return head(); }
 
-  private:
-    Thread *volatile _heads[Traits<CPU>::Active];
-    typename Criterion::template Collection<Node> _collection;
+private:
+  Thread *head() { return _heads[CPU::id()]; }
+  void head(Thread *thread) { _heads[CPU::id()] = thread; }
+
+private:
+  Thread *volatile _heads[Traits<CPU>::Active];
+  typename Criterion::template Collection<Node> _collection;
 };
 
 } // namespace QUARK

@@ -44,12 +44,14 @@ public:
   static void onTick();
   static void exit();
   void join();
+  void kill();
 
 private:
   static void entry(Function, Argument);
   static void dispatch(Thread *, Thread *, Spin * = 0);
   static Return idle(Argument);
   static void epilogue();
+  static Thread *next(decltype(Criterion::IDLE) = Criterion::IDLE);
 
 private:
   Process *process_;

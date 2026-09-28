@@ -31,6 +31,12 @@ public:
         cpus_(cpus(Meta::MakeIndexSequence<CORES>{})), devices_(*this),
         threads_(threads(Meta::MakeIndexSequence<CORES>{}, offset)) {}
 
+  ~GenericVirtualMachine() { poweroff(Meta::MakeIndexSequence<CORES>{}); }
+
+  template <size_t... Is> void poweroff(Meta::IndexSequence<Is...>) {
+    (threads_[Is].kill(), ...);
+  }
+
   template <size_t... Is>
   Meta::Array<CORES, VirtualCPU> cpus(Meta::IndexSequence<Is...>) {
     return {((void)Is, VirtualCPU(this))...};

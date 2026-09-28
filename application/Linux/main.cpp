@@ -229,8 +229,11 @@ int main() {
 
   Span<const uint8_t> kernel(LINUX, sizeof(LINUX));
   Span<const uint8_t> initramfs(INITRD, sizeof(INITRD));
+  const size_t memory = 128 * 1024 * 1024;
 
-  new (Heap::SYSTEM) LinuxLauncher(128 * 1024 * 1024, kernel, initramfs, 0);
+  auto *linux = new (Heap::SYSTEM) LinuxLauncher(memory, kernel, initramfs, 0);
+
+  // free(linux);
 
   return 0;
 }

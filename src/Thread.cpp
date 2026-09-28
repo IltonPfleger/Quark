@@ -140,15 +140,17 @@ void Thread::join() {
   }
 }
 
+void Thread::kill() {}
+
 void Thread::exit() {
   CPU::IRQ::disable();
 
   Thread *previous = running();
 
-  Node *next = scheduler_.remove();
+  Thread *next = Thread::next();
   previous->state_ = State::FINISHING;
 
-  dispatch(previous, next->value);
+  dispatch(previous, next);
 }
 
 void Thread::init() {
@@ -161,22 +163,25 @@ void Thread::init() {
 }
 
 void Thread::run() {
-  Thread *next = scheduler_.remove()->value;
+  Thread *next = Thread::next();
   Context::load(next->context_);
 }
 
 void Thread::yield() { Thread::reschedule(); }
 
 void Thread::reschedule() {
-  CPU::IRQ::Guard _;
-
   Thread *previous = running();
 
-  Node *next = scheduler_.remove(Criterion::NORMAL);
+  {
+    CPU::IRQ::Guard _;
 
-  if (next) {
+    Thread *next = Thread::next(Criterion::NORMAL);
+
+    if (!next)
+      return;
+
     previous->state_ = State::READY;
-    dispatch(previous, next->value);
+    dispatch(previous, next);
   }
 }
 
@@ -187,8 +192,8 @@ void Thread::sleep(List *list, Spin *lock) {
   {
     CPU::IRQ::Guard _;
     previous->state_ = State::WAITING;
-    Node *next = scheduler_.remove();
-    dispatch(previous, next->value, lock);
+    Thread *next = Thread::next();
+    dispatch(previous, next, lock);
   }
 }
 
@@ -201,6 +206,10 @@ void Thread::wakeup(List *list) {
     CPU::IRQ::Guard _;
     scheduler_.insert(node);
   }
+}
+
+Thread *Thread::next(decltype(Criterion::IDLE) criterion) {
+  return scheduler_.remove(criterion);
 }
 
 } // namespace QUARK
