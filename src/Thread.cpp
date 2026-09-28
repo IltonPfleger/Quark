@@ -13,7 +13,7 @@ Thread *Thread::running() { return scheduler_.current(); }
 void Thread::entry(Function f, Argument a) {
   Thread *current = running();
 
-  if (s_previous[CPU::id()])
+  if (previous_[CPU::id()])
     epilogue();
 
   if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
@@ -61,8 +61,8 @@ void Thread::dispatch(Thread *previous, Thread *next, Spin *lock) {
   assert(next);
   assert(next != previous);
 
-  s_previous[CPU::id()] = previous;
-  s_spin[CPU::id()] = lock;
+  previous_[CPU::id()] = previous;
+  spin_[CPU::id()] = lock;
 
   CPU::mb();
 
@@ -80,8 +80,8 @@ void Thread::dispatch(Thread *previous, Thread *next, Spin *lock) {
 }
 
 void Thread::epilogue() {
-  Thread *previous = s_previous[CPU::id()];
-  Spin *lock = s_spin[CPU::id()];
+  Thread *previous = previous_[CPU::id()];
+  Spin *lock = spin_[CPU::id()];
 
   switch (previous->state_) {
   case State::READY:

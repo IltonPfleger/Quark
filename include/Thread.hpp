@@ -65,8 +65,8 @@ private:
 private:
   static constinit inline Scheduler scheduler_;
   static inline volatile unsigned int s_count;
-  static inline Thread *volatile s_previous[Traits<CPU>::Active];
-  static inline Spin *volatile s_spin[Traits<CPU>::Active];
+  static inline Thread *volatile previous_[Traits<CPU>::Active];
+  static inline Spin *volatile spin_[Traits<CPU>::Active];
 };
 
 } // namespace QUARK
