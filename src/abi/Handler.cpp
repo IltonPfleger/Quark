@@ -19,12 +19,10 @@ void *Handler::handler(Operation operation, const Arguments args) {
     }
     break;
   }
-
   case EXIT: {
     QUARK::Thread::exit();
     break;
   }
-
   case THREAD_CONSTRUCTOR: {
     auto function = reinterpret_cast<Thread::Function>(args[0]);
     auto argument = reinterpret_cast<Thread::Argument>(args[1]);
@@ -34,12 +32,10 @@ void *Handler::handler(Operation operation, const Arguments args) {
     return new (Heap::SYSTEM)
         Thread(function, argument, critetion, flags, process);
   }
-
   case THREAD_JOIN: {
     reinterpret_cast<Thread *>(args[0])->join();
     break;
   }
-
   case THREAD_DESTRUCTOR: {
     free(reinterpret_cast<Thread *>(args[0]));
     break;
@@ -57,6 +53,14 @@ void *Handler::handler(Operation operation, const Arguments args) {
   }
   case SEMAPHORE_DESTRUCTOR: {
     free(reinterpret_cast<Semaphore *>(args[0]));
+    break;
+  }
+  case ALLOC: {
+    return Memory::alloc(args[0]);
+    break;
+  }
+  case FREE: {
+    Memory::free(reinterpret_cast<void *>(args[0]), args[1]);
     break;
   }
   }

@@ -1,6 +1,6 @@
+#include <abi/Heap.hpp>
 #include <abi/Semaphore.hpp>
 #include <abi/Thread.hpp>
-#include <memory/Heap.hpp>
 
 using namespace QUARK::ABI;
 
@@ -20,10 +20,10 @@ public:
 
     while (self->iterations_--) {
       int size = random(self->max_);
-      void *raw = QUARK::Memory::alloc(size);
+      void *raw = malloc(size);
       auto *buffer = reinterpret_cast<uint8_t *>(raw);
       buffer[0] = buffer[size - 1] = 0b10101010;
-      QUARK::free(buffer, size);
+      free(buffer);
     }
 
     return nullptr;
