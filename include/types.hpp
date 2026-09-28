@@ -4,6 +4,8 @@
 
 namespace QUARK {
 
+namespace Types {
+
 typedef Meta::IF<sizeof(long) == 8, long, void>::Result int64_t;
 typedef Meta::IF<sizeof(unsigned long) == 8, unsigned long, void>::Result
     uint64_t;
@@ -58,9 +60,8 @@ using Nanosecond = Duration<1000000000>;
 typedef uintmax_t Hz;
 typedef uintmax_t Tick;
 
-typedef intmax_t Celsius;
-typedef intmax_t Milicelsius;
+} // namespace Types
 
-typedef uintmax_t Kelvin;
+using namespace Types;
 
 } // namespace QUARK

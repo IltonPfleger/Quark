@@ -79,6 +79,10 @@ template <typename T, typename L> Execute(T &&, L &&) -> Execute<T, L>;
 /* -------------------------------------------------------------------------
  */
 
+template <typename T> struct IsTrivial {
+  static constexpr bool Result = __is_trivial(T);
+};
+
 template <typename T> struct IsInteger {
   static constexpr bool Result = false;
 };

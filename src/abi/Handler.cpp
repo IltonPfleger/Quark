@@ -60,20 +60,6 @@ void *Handler::handler(Operation operation, const Arguments args) {
     break;
   }
   }
-  //   case Function::ABI_HEAP_NEW: {
-  //     return new uint8_t[args[0]];
-  //     break;
-  //   }
-  //   case Function::ABI_HEAP_DELETE: {
-  //     ::operator delete[](reinterpret_cast<void *>(args[0]), args[1]);
-  //     break;
-  //   }
-  //   default: {
-  //     assert(false, "Not Available!");
-  //     break;
-  //   };
-  //   }
-  //
   return nullptr;
 }
 

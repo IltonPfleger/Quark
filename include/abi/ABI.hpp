@@ -1,14 +1,19 @@
-#pragma once
+#ifndef __QUARK_ABI_ABI__
+#define __QUARK_ABI_ABI__
+
+#include <types.hpp>
 
 namespace QUARK::ABI {
+
+using namespace QUARK::Types;
 
 typedef int Operation;
 enum : Operation {
   READ,
   WRITE,
 
-  // ABI_HEAP_NEW,
-  // ABI_HEAP_DELETE,
+  ALLOC,
+  FREE,
 
   THREAD_CONSTRUCTOR,
   THREAD_DESTRUCTOR,
@@ -22,3 +27,5 @@ enum : Operation {
 };
 
 } // namespace QUARK::ABI
+
+#endif

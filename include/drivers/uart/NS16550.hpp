@@ -16,7 +16,7 @@ template <typename Tag> class NS16550 : public Observed<const char *, size_t> {
   static constexpr unsigned int BaudDivisor = Clock / (16 * BaudRate);
 
 private:
-  NS16550() { 
+  NS16550() {
     Address[LCR] = LCR_DLAB;
     Address[DLL] = static_cast<uint8_t>(BaudDivisor & 0xFF);
     Address[DLM] = static_cast<uint8_t>((BaudDivisor >> 8) & 0xFF);
@@ -96,7 +96,7 @@ public:
   }
 
 private:
-  static inline volatile uint8_t * const Address =
+  static inline volatile uint8_t *const Address =
       reinterpret_cast<uint8_t *>(Traits::Address);
 };
 

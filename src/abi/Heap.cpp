@@ -1,7 +1,12 @@
 // #include <memory/Heap.hpp>
 //
 // extern "C" void *malloc(QUARK::size_t size) {
+//   if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+//
+//   }
+//
 //   using namespace QUARK;
+//
 //   if (size == 0)
 //     return nullptr;
 //   void *raw = Memory::alloc(size + sizeof(HeapHeader));
