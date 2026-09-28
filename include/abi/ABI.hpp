@@ -6,6 +6,7 @@
 namespace QUARK::ABI {
 
 using namespace QUARK::Types;
+namespace Meta = QUARK::Meta;
 
 typedef int Operation;
 enum : Operation {
