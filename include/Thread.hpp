@@ -13,8 +13,9 @@ class Thread {
 
 public:
   typedef uintmax_t Flags;
+
   enum class State { RUNNING, READY, WAITING, FINISHING, FINISHED };
-  enum : Flags { NONE = 0, KERNEL = NONE, USER = 1 << 0 };
+  enum : Flags { KERNEL = 0, USER = 1 << 0, SUCCESS = 1 << 1, ERROR = 1 << 2 };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;

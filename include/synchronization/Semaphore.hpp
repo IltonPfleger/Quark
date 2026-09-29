@@ -15,9 +15,7 @@ public:
 
   void p() {
     CPU::IRQ::Guard _;
-
     this->acquire();
-
     if (CPU::Atomic::fdec(value_) <= 0) {
       Thread::sleep(&waiting_, this);
     } else {

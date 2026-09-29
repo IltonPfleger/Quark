@@ -17,17 +17,19 @@ void Thread::entry(Function f, Argument a) {
     epilogue();
 
   if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+    Process *process = current->process_;
+
     if (current->flags_ != KERNEL) {
-      assert(current->process_);
+      assert(process);
 
       current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
 
       // TODO: Concurrency Error, in Process Attach
-      const Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
-      const Chunk stack = current->process_->attach(
-          {Memory::virt2phys(reinterpret_cast<uintptr_t>(current->stack_)),
-           Traits<Thread>::UserStackSize});
-      Context::demote(stack, kstack, f, a);
+      Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
+      uintptr_t istack = reinterpret_cast<uintptr_t>(current->stack_);
+      uintptr_t pstack = Memory::virt2phys(istack);
+      Chunk ustack = process->attach({pstack, Traits<Thread>::UserStackSize});
+      Context::demote(ustack, kstack, f, a);
       return;
     }
   }
@@ -200,8 +202,8 @@ void Thread::sleep(List *list, Spin *lock) {
 void Thread::wakeup(List *list) {
   Node *node = list->remove();
   assert(node);
+  assert(node->value->state_ == State::WAITING);
   node->value->state_ = State::READY;
-
   {
     CPU::IRQ::Guard _;
     scheduler_.insert(node);
