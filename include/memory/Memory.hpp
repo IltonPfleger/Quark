@@ -18,7 +18,7 @@ public:
   static uintptr_t phys2virt(uintptr_t);
 
 private:
-  static inline Allocator allocator_;
+  static constinit inline Allocator allocator_;
   static inline Spin spin_;
 };
 

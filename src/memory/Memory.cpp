@@ -13,9 +13,8 @@ void Memory::init() {
 
   TraceIn();
 
-  new (&allocator_) Allocator();
-
-  for (uintptr_t c = RamEnd - PageSize; c >= RamStart; c -= PageSize) {
+  for (uintptr_t c = RamEnd; c > RamStart;) {
+    c -= PageSize;
     Chunk page(c, PageSize);
     if (page.overlaps(BootInformation::all()))
       continue;

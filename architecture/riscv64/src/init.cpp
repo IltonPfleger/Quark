@@ -128,9 +128,10 @@ _init() {
   // Setup System Boot Info
   if (core == Traits<CPU>::BSP) {
     new (&__amm) decltype(__amm)(position, Traits<Memory>::Size);
-    new (&__bmm) decltype(__bmm)(Traits<MemoryMap>::RamEnd,
-                                 Traits<Memory>::StackSize *
-                                     Traits<CPU>::Active);
+    new (&__bmm) decltype(__bmm)(
+        Traits<MemoryMap>::RamEnd -
+            Traits<Memory>::StackSize * Traits<CPU>::Active,
+        Traits<Memory>::StackSize * Traits<CPU>::Active);
   }
 
   CPU::barrier();

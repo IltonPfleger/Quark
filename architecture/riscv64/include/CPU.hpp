@@ -48,7 +48,10 @@ public:
     asm("fence.i" ::: "memory");
   }
 
-  __attribute__((always_inline)) static void halt() { asm("1: wfi; j 1b"); }
+  __attribute__((naked)) [[noreturn]] static void halt() {
+    asm("1: wfi; j 1b");
+    __builtin_unreachable();
+  }
 
   __attribute__((always_inline)) static auto idle() { asm("wfi"); }
 
