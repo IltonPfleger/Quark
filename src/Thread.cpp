@@ -58,13 +58,12 @@ Thread::Return Thread::idle(Argument) {
   return 0;
 }
 
-void Thread::dispatch(Thread *previous, Thread *next, Spin *lock) {
+void Thread::dispatch(Thread *previous, Thread *next) {
   assert(previous);
   assert(next);
   assert(next != previous);
 
   previous_[CPU::id()] = previous;
-  spin_[CPU::id()] = lock;
 
   CPU::mb();
 
@@ -83,15 +82,16 @@ void Thread::dispatch(Thread *previous, Thread *next, Spin *lock) {
 
 void Thread::epilogue() {
   Thread *previous = previous_[CPU::id()];
-  Spin *lock = spin_[CPU::id()];
+  List *volatile &blocking = blocking_[CPU::id()];
 
   switch (previous->state_) {
   case State::READY:
     scheduler_.insert(&previous->node_);
     break;
   case State::WAITING:
-    assert(lock);
-    lock->release();
+    assert(blocking);
+    blocking->insert(&previous->node_);
+    blocking = nullptr;
     break;
   case State::FINISHING:
     CPU::Atomic::fdec(s_count);
@@ -187,27 +187,37 @@ void Thread::reschedule() {
   }
 }
 
-void Thread::sleep(List *list, Spin *lock) {
+void Thread::sleep(List *list) {
   Thread *previous = running();
-  list->insert(&previous->node_);
 
   {
     CPU::IRQ::Guard _;
+    blocking_[CPU::id()] = list;
     previous->state_ = State::WAITING;
-    Thread *next = Thread::next();
-    dispatch(previous, next, lock);
+    dispatch(previous, Thread::next());
   }
 }
 
-void Thread::wakeup(List *list) {
-  Node *node = list->remove();
-  assert(node);
+bool Thread::wakeup(List *list) {
+  Node *node;
+
+  {
+    CPU::IRQ::Guard _;
+    node = list->remove();
+  }
+
+  if (!node)
+    return false;
+
   assert(node->value->state_ == State::WAITING);
   node->value->state_ = State::READY;
+
   {
     CPU::IRQ::Guard _;
     scheduler_.insert(node);
   }
+
+  return true;
 }
 
 Thread *Thread::next(decltype(Criterion::IDLE) criterion) {

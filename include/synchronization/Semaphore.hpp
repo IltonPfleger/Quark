@@ -14,21 +14,14 @@ public:
   ~Semaphore() { assert(value_ >= 0); }
 
   void p() {
-    CPU::IRQ::Guard _;
-    this->acquire();
-    if (CPU::Atomic::fdec(value_) <= 0) {
-      Thread::sleep(&waiting_, this);
-    } else {
-      this->release();
-    }
+    if (CPU::Atomic::fdec(value_) <= 0)
+      Thread::sleep(&waiting_);
   }
 
   void v() {
-    CPU::IRQ::Guard _;
-    this->acquire();
     if (CPU::Atomic::finc(value_) < 0)
-      Thread::wakeup(&waiting_);
-    this->release();
+      while (!Thread::wakeup(&waiting_))
+        ;
   }
 
 protected:

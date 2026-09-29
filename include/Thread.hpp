@@ -20,7 +20,7 @@ public:
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
   using Node = Scheduler::Node;
-  using List = collections::FIFO<Node>;
+  using List = collections::FIFO<Node, Spin>;
 
   using Return = void *;
   using Argument = void *;
@@ -38,8 +38,8 @@ public:
   static void init();
   static Thread *running();
   static void run();
-  static void sleep(List *, Spin *);
-  static void wakeup(List *);
+  static void sleep(List *);
+  static bool wakeup(List *);
   static void yield();
   static void reschedule();
   static void onTick();
@@ -49,7 +49,7 @@ public:
 
 private:
   static void entry(Function, Argument);
-  static void dispatch(Thread *, Thread *, Spin * = 0);
+  static void dispatch(Thread *, Thread *);
   static Return idle(Argument);
   static void epilogue();
   static Thread *next(decltype(Criterion::IDLE) = Criterion::IDLE);
@@ -67,7 +67,7 @@ private:
   static constinit inline Scheduler scheduler_;
   static inline volatile unsigned int s_count;
   static inline Thread *volatile previous_[Traits<CPU>::Active];
-  static inline Spin *volatile spin_[Traits<CPU>::Active];
+  static inline List *volatile blocking_[Traits<CPU>::Active];
 };
 
 } // namespace QUARK
