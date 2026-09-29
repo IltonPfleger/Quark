@@ -14,8 +14,8 @@ class Thread {
 public:
   typedef uintmax_t Flags;
 
-  enum class State { RUNNING, READY, WAITING, FINISHING, FINISHED };
-  enum : Flags { KERNEL = 0, USER = 1 << 0, SUCCESS = 1 << 1, ERROR = 1 << 2 };
+  enum class State { RUNNING, READY, BLOCKED, FINISHING, FINISHED };
+  enum : Flags { KERNEL = 0, USER = 1 };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
@@ -45,7 +45,6 @@ public:
   static void onTick();
   static void exit();
   void join();
-  void kill();
 
 private:
   static void entry(Function, Argument);
@@ -61,13 +60,13 @@ private:
   Node node_;
   volatile State state_;
   Context context_;
+  List *blocking_;
   Flags flags_;
 
 private:
   static constinit inline Scheduler scheduler_;
   static inline volatile unsigned int s_count;
   static inline Thread *volatile previous_[Traits<CPU>::Active];
-  static inline List *volatile blocking_[Traits<CPU>::Active];
 };
 
 } // namespace QUARK

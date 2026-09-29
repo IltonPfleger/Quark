@@ -10,7 +10,9 @@ class Machine {
 public:
   static void init() {
     auto initializer = []<typename T>() { return T::init(); };
-    Meta::forEach(Traits<UART>::Devices{}, initializer);
+    if (CPU::id() == Traits<CPU>::BSP) {
+      Meta::forEach(Traits<UART>::Devices{}, initializer);
+    }
   }
 
   static void shutdown() { CPU::halt(); }

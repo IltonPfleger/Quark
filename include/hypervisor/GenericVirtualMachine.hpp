@@ -34,7 +34,7 @@ public:
   ~GenericVirtualMachine() { poweroff(Meta::MakeIndexSequence<CORES>{}); }
 
   template <size_t... Is> void poweroff(Meta::IndexSequence<Is...>) {
-    (threads_[Is].kill(), ...);
+    //(threads_[Is].kill(), ...);
   }
 
   template <size_t... Is>

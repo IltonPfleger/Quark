@@ -82,16 +82,14 @@ void Thread::dispatch(Thread *previous, Thread *next) {
 
 void Thread::epilogue() {
   Thread *previous = previous_[CPU::id()];
-  List *volatile &blocking = blocking_[CPU::id()];
 
   switch (previous->state_) {
   case State::READY:
     scheduler_.insert(&previous->node_);
     break;
-  case State::WAITING:
-    assert(blocking);
-    blocking->insert(&previous->node_);
-    blocking = nullptr;
+  case State::BLOCKED:
+    assert(previous->blocking_);
+    previous->blocking_->insert(&previous->node_);
     break;
   case State::FINISHING:
     CPU::Atomic::fdec(s_count);
@@ -142,8 +140,6 @@ void Thread::join() {
   }
 }
 
-void Thread::kill() {}
-
 void Thread::exit() {
   CPU::IRQ::disable();
 
@@ -189,11 +185,11 @@ void Thread::reschedule() {
 
 void Thread::sleep(List *list) {
   Thread *previous = running();
+  previous->blocking_ = list;
 
   {
     CPU::IRQ::Guard _;
-    blocking_[CPU::id()] = list;
-    previous->state_ = State::WAITING;
+    previous->state_ = State::BLOCKED;
     dispatch(previous, Thread::next());
   }
 }
@@ -209,8 +205,9 @@ bool Thread::wakeup(List *list) {
   if (!node)
     return false;
 
-  assert(node->value->state_ == State::WAITING);
+  assert(node->value->state_ == State::BLOCKED);
   node->value->state_ = State::READY;
+  node->value->blocking_ = nullptr;
 
   {
     CPU::IRQ::Guard _;

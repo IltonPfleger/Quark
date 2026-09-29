@@ -2,12 +2,11 @@
 #define __QUARK_SYNCHRONIZATION_SEMAPHORE__
 
 #include <Thread.hpp>
-#include <synchronization/Spin.hpp>
 #include <utility/Debug.hpp>
 
 namespace QUARK {
 
-class Semaphore : Spin {
+class Semaphore {
 public:
   constexpr Semaphore(uint32_t value = 0) : value_(value), waiting_() {}
 
