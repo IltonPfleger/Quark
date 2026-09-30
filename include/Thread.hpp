@@ -22,7 +22,7 @@ public:
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
   using Node = Scheduler::Node;
-  using List = collections::UnorderedList<Node, Spin>;
+  using List = collections::FIFO<Node, Spin>;
 
   using Return = void *;
   using Argument = void *;

@@ -144,31 +144,6 @@ void Thread::join() {
 void Thread::kill() {
   flags_ = DEAD;
   join();
-
-  // TraceIn(this);
-
-  // while (state_ != State::FINISHED) {
-  //   if (state_ == State::BLOCKED) {
-  //     List *list = blocking_;
-  //     bool removed = false;
-
-  //    if (list) {
-  //      CPU::IRQ::Guard _;
-  //      removed = list->remove(&this->node_);
-  //    }
-
-  //    if (removed) {
-  //      state_ = State::READY;
-  //      blocking_ = nullptr;
-  //      {
-  //        CPU::IRQ::Guard _;
-  //        scheduler_.insert(&this->node_);
-  //      }
-  //    }
-  //  }
-  //  Thread::yield();
-  //}
-  // Console::println("KILLED");
 }
 
 void Thread::exit() {
@@ -199,7 +174,7 @@ void Thread::yield() { Thread::reschedule(); }
 void Thread::reschedule() {
   Thread *previous = running();
 
-  if (previous->flags_ == DEAD) {
+  if (previous->flags_ == DEAD) [[unlikely]] {
     Thread::exit();
   }
 

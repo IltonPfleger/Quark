@@ -14,17 +14,17 @@ public:
   using Size = size_t;
 
 public:
-  constexpr Span() : _data(nullptr), _length(0) {}
+  constexpr Span() : data_(nullptr), length_(0) {}
 
-  constexpr Span(T *data, size_t length) : _data(data), _length(length) {}
+  constexpr Span(T *data, size_t length) : data_(data), length_(length) {}
 
   template <size_t N>
-  constexpr Span(T (&array)[N]) : _data(array), _length(N) {}
+  constexpr Span(T (&array)[N]) : data_(array), length_(N) {}
 
 public:
   [[nodiscard]]
   constexpr auto data(this auto &&self) {
-    return self._data;
+    return self.data_;
   }
 
   [[nodiscard]]
@@ -39,19 +39,19 @@ public:
 
   [[nodiscard]]
   constexpr operator const void *() const {
-    return static_cast<const void *>(_data);
+    return static_cast<const void *>(data_);
   }
 
   [[nodiscard]]
   constexpr operator void *()
     requires(!Meta::Const<T>)
   {
-    return static_cast<void *>(_data);
+    return static_cast<void *>(data_);
   }
 
   [[nodiscard]]
   constexpr size_t length(this auto &&self) {
-    return self._length;
+    return self.length_;
   }
 
   [[nodiscard]]
@@ -61,10 +61,10 @@ public:
 
   [[nodiscard]]
   constexpr bool operator==(const Span &other) const {
-    if (_length != other._length)
+    if (length_ != other.length_)
       return false;
-    for (size_t i = 0; i < _length; i++)
-      if (!(_data[i] == other._data[i]))
+    for (size_t i = 0; i < length_; i++)
+      if (!(data_[i] == other.data_[i]))
         return false;
     return true;
   }
@@ -74,9 +74,14 @@ public:
     return !(*this == other);
   }
 
+  [[nodiscard]]
+  constexpr uintptr_t pointer() {
+    return reinterpret_cast<uintptr_t>(data_);
+  }
+
 private:
-  T *_data;
-  size_t _length;
+  T *data_;
+  size_t length_;
 };
 
 } // namespace QUARK

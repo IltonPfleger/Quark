@@ -14,21 +14,186 @@ using namespace QUARK;
 
 constexpr size_t MB = 1024 * 1024;
 
-__attribute__((section(".__linux__"), used)) static uint8_t LINUX[32 * MB];
-__attribute__((section(".__initrd__"), used)) static uint8_t INITRD[16 * MB];
+__attribute__((section(".__linux__"), used)) static uint8_t __guest[32 * MB];
+__attribute__((section(".__initrd__"), used)) static uint8_t __initrd[16 * MB];
 
-class LinuxLauncher {
-  static constexpr uint32_t CPUS = Traits<CPU>::Active;
+class LinuxFlattenedDeviceTree {
+  template <typename> struct VirtioDeviceParser;
+  template <template <typename, auto, auto> class D, typename M, auto A, auto I>
+  struct VirtioDeviceParser<D<M, A, I>> {
+    static constexpr auto Address = A;
+    static constexpr auto IRQ = I;
+  };
 
 public:
-  using pSerial = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
-  using vSerial = virtio::Console<pSerial, 0x30000000, 32>;
+  LinuxFlattenedDeviceTree(void *buffer, size_t capacity)
+      : builder_(buffer, capacity) {}
 
-  using vPLIC = VirtualPLIC<CPUS, 0xc000000>;
+  void begin() {
+    builder_.begin("");
+    builder_.add("#address-cells", 2);
+    builder_.add("#size-cells", 2);
+    builder_.add("compatible", "riscv-virtio");
+    builder_.add("model", "riscv-virtio,qemu");
+  }
 
-  using ExternalDevices = Meta::Pack<vSerial>;
+  void chosen(Span<const uint8_t> initrd) {
+    builder_.begin("chosen");
+    builder_.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi");
 
-  using LinuxMachine = GenericVirtualMachine<CPUS, vSerial, vPLIC>;
+    uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
+    uint64_t end = start + initrd.length();
+
+    uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
+    uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
+
+    builder_.add("linux,initrd-start", regs0, 2);
+    builder_.add("linux,initrd-end", regs1, 2);
+
+    builder_.end();
+  }
+
+  template <size_t CPUS> void cpus() {
+    builder_.begin("cpus");
+    builder_.add("#address-cells", 1);
+    builder_.add("#size-cells", 0u);
+    builder_.add("timebase-frequency", 4000000);
+
+    for (uint32_t core = 0; core < CPUS; ++core) {
+      char name[16] = "cpu@";
+      size_t length = 4;
+
+      if (core == 0) {
+        name[length++] = '0';
+      } else {
+        char temporary[10];
+        uint32_t digits = 0;
+        uint32_t value = core;
+
+        while (value) {
+          temporary[digits++] = '0' + (value % 10);
+          value /= 10;
+        }
+
+        while (digits)
+          name[length++] = temporary[--digits];
+      }
+
+      name[length] = '\0';
+
+      builder_.begin(name);
+      builder_.add("device_type", "cpu");
+      builder_.add("reg", core);
+      builder_.add("status", "okay");
+      builder_.add("compatible", "riscv");
+      builder_.add("riscv,isa", "rv64imafdcsu");
+      builder_.add("mmu-type", "riscv,sv39");
+
+      builder_.begin("interrupt-controller");
+      builder_.add("#interrupt-cells", 1);
+      builder_.add("interrupt-controller");
+      builder_.add("compatible", "riscv,cpu-intc");
+      builder_.add("phandle", 0x10 + core);
+      builder_.end();
+
+      builder_.end();
+    }
+
+    builder_.end();
+  }
+
+  void memory(Span<const uint8_t> memory) {
+    builder_.begin("memory");
+    builder_.add("device_type", "memory");
+
+    uintptr_t address = memory.pointer();
+    uintptr_t size = memory.length();
+
+    uint32_t regs[] = {CPU::hi32(address), CPU::lo32(address), CPU::hi32(size),
+                       CPU::lo32(size)};
+
+    builder_.add("reg", regs, 4);
+    builder_.end();
+  }
+
+  template <typename PLIC, typename... IO> void soc() {
+    builder_.begin("soc");
+    builder_.add("#address-cells", 2);
+    builder_.add("#size-cells", 2);
+    builder_.add("compatible", "simple-bus");
+    builder_.add("ranges");
+
+    plic(static_cast<const PLIC *>(nullptr));
+    devices<IO...>();
+
+    builder_.end();
+  }
+
+  void end() {
+    builder_.end();
+    builder_.finish();
+  }
+
+private:
+  template <template <auto, auto> class P, size_t C, uintptr_t A>
+  void plic(const P<C, A> *) {
+    builder_.begin("interrupt-controller@c000000");
+
+    builder_.add("compatible", "riscv,plic0");
+
+    uint32_t regs[] = {0x00, A, 0x00, 0x4000000};
+    builder_.add("reg", regs, 4);
+
+    builder_.add("interrupt-controller");
+    builder_.add("#interrupt-cells", 1);
+    builder_.add("riscv,ndev", 0x35);
+
+    uint32_t interrupts[C * 2];
+
+    for (uint32_t core = 0; core < C; ++core) {
+      interrupts[core * 2] = 0x10 + core;
+      interrupts[core * 2 + 1] = 9;
+    }
+
+    builder_.add("interrupts-extended", interrupts, C * 2);
+    builder_.add("phandle", 0x02);
+    builder_.end();
+  }
+
+  template <typename... IO> void devices() {
+    (virtio(static_cast<const IO *>(nullptr)), ...);
+  }
+
+  template <typename D> void virtio(const D *) {
+    constexpr auto A = VirtioDeviceParser<D>::Address;
+    constexpr auto I = VirtioDeviceParser<D>::IRQ;
+    char name[24] = "virtio@";
+    constexpr char hex[] = "0123456789abcdef";
+
+    for (size_t i = 0; i < 16; ++i)
+      name[7 + i] = hex[(A >> ((15 - i) * 4)) & 0xf];
+
+    name[23] = '\0';
+
+    uint32_t regs[] = {CPU::hi32(A), CPU::lo32(A), 0x00, 0x1000};
+
+    builder_.begin(name);
+    builder_.add("compatible", "virtio,mmio");
+    builder_.add("reg", regs, 4);
+    builder_.add("interrupts", I);
+    builder_.add("interrupt-parent", 0x02);
+    builder_.end();
+  }
+
+private:
+  FDT_Builder builder_;
+};
+
+template <size_t CPUS, typename... IO> class LinuxLauncher {
+public:
+  using PLIC = VirtualPLIC<CPUS, 0xc000000>;
+  using ExternalDevices = Meta::Pack<IO...>;
+  using VirtualMachine = GenericVirtualMachine<CPUS, PLIC, IO...>;
 
   LinuxLauncher(size_t size, Span<const uint8_t> kernel,
                 Span<const uint8_t> initrd, size_t offset)
@@ -53,8 +218,6 @@ public:
 
     void *opaque = fdt(current, remaining, Span(address, initrd.length()));
 
-    Console::println("\n *** Linux is at core ", CPU::id(), " ***");
-
     vm_.boot(0, start_, opaque);
   }
 
@@ -65,177 +228,29 @@ public:
   }
 
   void *fdt(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
-    FDT_Builder builder(buffer, capacity);
-
-    uint64_t memory = reinterpret_cast<uint64_t>(start_);
-
-    builder.begin("");
-    {
-      builder.add("#address-cells", 2);
-      builder.add("#size-cells", 2);
-      builder.add("compatible", "riscv-virtio");
-      builder.add("model", "riscv-virtio,qemu");
-
-      builder.begin("chosen");
-      {
-        builder.add("bootargs", "console=hvc0 loglevel=8 earlycon=sbi");
-
-        uint64_t start = reinterpret_cast<uint64_t>(initrd.data());
-        uint64_t end = start + initrd.length();
-
-        uint32_t regs0[] = {CPU::hi32(start), CPU::lo32(start)};
-        uint32_t regs1[] = {CPU::hi32(end), CPU::lo32(end)};
-
-        builder.add("linux,initrd-start", regs0, 2);
-        builder.add("linux,initrd-end", regs1, 2);
-      }
-      builder.end();
-
-      builder.begin("cpus");
-      {
-        builder.add("#address-cells", 1);
-        builder.add("#size-cells", 0u);
-        builder.add("timebase-frequency", 4000000);
-
-        for (uint32_t core = 0; core < CPUS; core++) {
-          char name[16];
-          size_t length = 4;
-          name[0] = 'c';
-          name[1] = 'p';
-          name[2] = 'u';
-          name[3] = '@';
-
-          if (core == 0) {
-            name[length++] = '0';
-          } else {
-            char temporary[10];
-            uint32_t digits = 0;
-            uint32_t value = core;
-
-            while (value) {
-              temporary[digits++] = '0' + (value % 10);
-              value /= 10;
-            }
-
-            while (digits) {
-              name[length++] = temporary[--digits];
-            }
-          }
-          name[length] = '\0';
-
-          builder.begin(name);
-          {
-            builder.add("device_type", "cpu");
-            builder.add("reg", core);
-            builder.add("status", "okay");
-            builder.add("compatible", "riscv");
-            builder.add("riscv,isa", "rv64imafdcsu");
-            builder.add("mmu-type", "riscv,sv39");
-
-            builder.begin("interrupt-controller");
-            {
-              builder.add("#interrupt-cells", 1);
-              builder.add("interrupt-controller");
-              builder.add("compatible", "riscv,cpu-intc");
-              builder.add("phandle", 0x10 + core);
-            }
-            builder.end();
-          }
-          builder.end();
-        }
-      }
-      builder.end();
-
-      builder.begin("memory");
-      {
-        builder.add("device_type", "memory");
-        uint32_t regs[] = {CPU::hi32(memory), CPU::lo32(memory),
-                           CPU::hi32(size_), CPU::lo32(size_)};
-        builder.add("reg", regs, 4);
-      }
-      builder.end();
-
-      builder.begin("soc");
-      {
-        builder.add("#address-cells", 2);
-        builder.add("#size-cells", 2);
-        builder.add("compatible", "simple-bus");
-        builder.add("ranges");
-
-        builder.begin("interrupt-controller@c000000");
-        {
-          builder.add("compatible", "riscv,plic0");
-
-          uint32_t regs0[] = {0x00, 0xc000000, 0x00, 0x4000000};
-          builder.add("reg", regs0, 4);
-
-          builder.add("interrupt-controller");
-          builder.add("#interrupt-cells", 1);
-          builder.add("riscv,ndev", 0x35);
-
-          uint32_t plic[CPUS * 2];
-          for (uint32_t core = 0; core < CPUS; core++) {
-            uint32_t phandle = 0x10 + core;
-            plic[core * 2] = phandle;
-            plic[core * 2 + 1] = 9;
-          }
-          builder.add("interrupts-extended", plic, CPUS * 2);
-          builder.add("phandle", 0x02);
-        }
-        builder.end();
-
-        auto add =
-            [&]<template <typename, auto, auto> class DEVICE, typename DRIVER,
-                auto ADDRESS, auto IRQ>(const DEVICE<DRIVER, ADDRESS, IRQ> *) {
-              char name[32] = "virtio@";
-              size_t position = 7;
-
-              for (int i = 28; i >= 0; i -= 4) {
-                uint8_t nibble = (ADDRESS >> i) & 0xF;
-                name[position++] =
-                    (nibble < 10) ? ('0' + nibble) : ('a' + (nibble - 10));
-              }
-              name[position] = '\0';
-
-              uint32_t regs[] = {CPU::hi32(ADDRESS), CPU::lo32(ADDRESS), 0x00,
-                                 0x1000};
-
-              builder.begin(name);
-              builder.add("compatible", "virtio,mmio");
-              builder.add("reg", regs, 4);
-              builder.add("interrupts", IRQ);
-              builder.add("interrupt-parent", 0x02);
-              builder.end();
-            };
-        Meta::forEach(ExternalDevices{}, add);
-      }
-      builder.end();
-    }
-    builder.end();
-
-    builder.finish();
-
+    LinuxFlattenedDeviceTree fdt(buffer, capacity);
+    fdt.begin();
+    fdt.chosen(initrd);
+    fdt.cpus<CPUS>();
+    fdt.memory(Span(const_cast<const uint8_t *>(start_), size_));
+    fdt.soc<PLIC, IO...>();
+    fdt.end();
     return buffer;
   }
 
 private:
   size_t size_;
   uint8_t *start_;
-  LinuxMachine vm_;
+  VirtualMachine vm_;
 };
 
 int main() {
-  TraceIn();
-
-  Span<const uint8_t> kernel(LINUX, sizeof(LINUX));
-  Span<const uint8_t> initramfs(INITRD, sizeof(INITRD));
-  const size_t memory = 128 * 1024 * 1024;
-
-  auto *linux = new (Heap::SYSTEM) LinuxLauncher(memory, kernel, initramfs, 0);
-
-  Delay delay(2'000'000);
-
-  free(linux);
-
+  Span<const uint8_t> kernel(__guest, sizeof(__guest));
+  Span<const uint8_t> initramfs(__initrd, sizeof(__initrd));
+  using pUART = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
+  using vUART = virtio::Console<pUART, 0x30000000, 32>;
+  using Launcher = LinuxLauncher<Traits<CPU>::Active, vUART>;
+  Launcher launcher(128 * MB, kernel, initramfs, 0);
+  Delay delay(4'000'000);
   return 0;
 }
