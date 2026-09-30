@@ -1,14 +1,13 @@
 #include <Process.hpp>
 #include <Thread.hpp>
 #include <Traits.hpp>
+#include <architecture/IPI.hpp>
 #include <machine/Machine.hpp>
 #include <memory/Heap.hpp>
 #include <memory/Memory.hpp>
 #include <utility/Debug.hpp>
 
 namespace QUARK {
-
-Thread *Thread::running() { return scheduler_.current(); }
 
 void Thread::entry(Function f, Argument a) {
   Thread *current = running();
@@ -40,7 +39,9 @@ void Thread::entry(Function f, Argument a) {
 }
 
 Thread::Return Thread::idle(Argument) {
-  while (s_count > Traits<CPU>::Active) {
+  while (counter_ > Traits<CPU>::Active + Traits<Deferred>::Threads) {
+    // Console::println(counter_, " ",
+    //                  Traits<CPU>::Active + Traits<Deferred>::Threads);
     reschedule();
   }
 
@@ -92,7 +93,7 @@ void Thread::epilogue() {
     previous->blocking_->insert(&previous->node_);
     break;
   case State::FINISHING:
-    CPU::Atomic::fdec(s_count);
+    CPU::Atomic::fdec(counter_);
     previous->state_ = State::FINISHED;
     break;
   default:
@@ -109,7 +110,7 @@ Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
 
   {
     CPU::IRQ::Guard _;
-    CPU::Atomic::finc(s_count);
+    CPU::Atomic::finc(counter_);
     scheduler_.insert(&node_);
   }
 
@@ -117,7 +118,7 @@ Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
 }
 
 Thread::~Thread() {
-  TraceIn();
+  TraceIn(this);
 
   join();
 
@@ -140,14 +141,42 @@ void Thread::join() {
   }
 }
 
-void Thread::exit() {
-  CPU::IRQ::disable();
+void Thread::kill() {
+  flags_ = DEAD;
+  join();
 
+  // TraceIn(this);
+
+  // while (state_ != State::FINISHED) {
+  //   if (state_ == State::BLOCKED) {
+  //     List *list = blocking_;
+  //     bool removed = false;
+
+  //    if (list) {
+  //      CPU::IRQ::Guard _;
+  //      removed = list->remove(&this->node_);
+  //    }
+
+  //    if (removed) {
+  //      state_ = State::READY;
+  //      blocking_ = nullptr;
+  //      {
+  //        CPU::IRQ::Guard _;
+  //        scheduler_.insert(&this->node_);
+  //      }
+  //    }
+  //  }
+  //  Thread::yield();
+  //}
+  // Console::println("KILLED");
+}
+
+void Thread::exit() {
   Thread *previous = running();
 
+  CPU::IRQ::disable();
   Thread *next = Thread::next();
   previous->state_ = State::FINISHING;
-
   dispatch(previous, next);
 }
 
@@ -169,6 +198,10 @@ void Thread::yield() { Thread::reschedule(); }
 
 void Thread::reschedule() {
   Thread *previous = running();
+
+  if (previous->flags_ == DEAD) {
+    Thread::exit();
+  }
 
   {
     CPU::IRQ::Guard _;
@@ -218,7 +251,19 @@ bool Thread::wakeup(List *list) {
 }
 
 Thread *Thread::next(decltype(Criterion::IDLE) criterion) {
-  return scheduler_.remove(criterion);
+  while (Node *next = scheduler_.remove(criterion)) {
+    if (next->value->flags_ == DEAD) [[unlikely]] {
+      next->value->state_ = State::FINISHED;
+      CPU::Atomic::fdec(counter_);
+      continue;
+    }
+    current_[CPU::id()] = next->value;
+    return next->value;
+  }
+  assert(criterion != Criterion::IDLE);
+  return nullptr;
 }
+
+Thread *Thread::running() { return current_[CPU::id()]; }
 
 } // namespace QUARK

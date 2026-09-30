@@ -15,11 +15,10 @@ template <size_t CORES, typename... DEVICES>
 class GenericVirtualMachine : public VirtualMachine {
   struct Arguments {
     constexpr Arguments()
-        : cpu(nullptr), semaphore(0), core(0), entry(nullptr), opaque(nullptr) {
-    }
+        : cpu(nullptr), latch(0), core(0), entry(nullptr), opaque(nullptr) {}
 
     VirtualCPU *cpu;
-    Semaphore semaphore;
+    Semaphore latch;
     size_t core;
     void *entry;
     void *opaque;
@@ -34,7 +33,8 @@ public:
   ~GenericVirtualMachine() { poweroff(Meta::MakeIndexSequence<CORES>{}); }
 
   template <size_t... Is> void poweroff(Meta::IndexSequence<Is...>) {
-    //(threads_[Is].kill(), ...);
+    (arguments_[Is].latch.v(), ...);
+    (threads_[Is].kill(), ...);
   }
 
   template <size_t... Is>
@@ -55,7 +55,7 @@ public:
     arguments_[core].core = core;
     arguments_[core].entry = entry;
     arguments_[core].opaque = opaque;
-    arguments_[core].semaphore.v();
+    arguments_[core].latch.v();
   }
 
   bool read(uintptr_t address, void *destination, size_t length) override {
@@ -103,8 +103,12 @@ public:
 
   static void *worker(void *pointer) {
     Arguments *arguments = reinterpret_cast<Arguments *>(pointer);
-    arguments->semaphore.p();
-    arguments->cpu->boot(arguments->core, arguments->entry, arguments->opaque);
+    arguments->latch.p();
+    VirtualCPU *cpu = arguments->cpu;
+
+    if (cpu)
+      cpu->boot(arguments->core, arguments->entry, arguments->opaque);
+
     return nullptr;
   };
 

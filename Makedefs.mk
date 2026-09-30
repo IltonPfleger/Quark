@@ -43,7 +43,7 @@ CCFLAGS        := -std=c++23
 CCFLAGS        += -I$(HERE) -I$(INCLUDE) -I$(HERE)/architecture/$(ARCH)/include -I$(HERE)/machine/$(ARCH)/$(MACHINE)/include
 #CCFLAGS        += -Wall -Wextra -Werror -pedantic
 CCFLAGS        += -ffunction-sections -fdata-sections
-CCFLAGS        += -D__APPLICATION=$(APPLICATION) -g
+CCFLAGS        += -D__APPLICATION=$(APPLICATION) -g -O3
 
 LDFLAGS        := --gc-sections
 

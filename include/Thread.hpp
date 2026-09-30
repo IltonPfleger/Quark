@@ -3,6 +3,8 @@
 #include <Traits.hpp>
 #include <architecture/CPU.hpp>
 #include <scheduler/Scheduler.hpp>
+#include <utility/Atomic.hpp>
+#include <utility/collections/UnorderedList.hpp>
 
 namespace QUARK {
 
@@ -15,12 +17,12 @@ public:
   typedef uintmax_t Flags;
 
   enum class State { RUNNING, READY, BLOCKED, FINISHING, FINISHED };
-  enum : Flags { KERNEL = 0, USER = 1 };
+  enum : Flags { KERNEL, USER, DEAD };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
   using Node = Scheduler::Node;
-  using List = collections::FIFO<Node, Spin>;
+  using List = collections::UnorderedList<Node, Spin>;
 
   using Return = void *;
   using Argument = void *;
@@ -42,9 +44,9 @@ public:
   static bool wakeup(List *);
   static void yield();
   static void reschedule();
-  static void onTick();
   static void exit();
   void join();
+  void kill();
 
 private:
   static void entry(Function, Argument);
@@ -61,11 +63,12 @@ private:
   volatile State state_;
   Context context_;
   List *blocking_;
-  Flags flags_;
+  Atomic<Flags> flags_;
 
 private:
   static constinit inline Scheduler scheduler_;
-  static inline volatile unsigned int s_count;
+  static inline volatile unsigned int counter_;
+  static inline Thread *volatile current_[Traits<CPU>::Active];
   static inline Thread *volatile previous_[Traits<CPU>::Active];
 };
 

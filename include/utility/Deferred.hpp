@@ -15,9 +15,7 @@ class Deferred {
 
   class Worker {
   public:
-    Worker(size_t id = 0) : running_(true), thread_(dispatcher, this) {
-      (void)id;
-    }
+    Worker(size_t = 0) : running_(true), thread_(dispatcher, this) {}
     ~Worker() { running_ = false; }
 
     bool insert(Deferred &work) {
@@ -62,6 +60,9 @@ class Deferred {
 
 private:
   void increment(List &list, Semaphore &semaphore) {
+    if (stopping_)
+      return;
+
     if (pending_.finc() == 0) {
       {
         CPU::IRQ::Guard _;
@@ -79,12 +80,22 @@ private:
         list.insert(&this->element_);
       }
       semaphore.v();
+    } else if (stopping_) {
+      latch_.v();
     }
   }
 
 public:
   Deferred(Function function = nullptr, void *argument = nullptr)
-      : element_(this), function_(function), argument_(argument), pending_(0) {}
+      : element_(this), function_(function), argument_(argument), pending_(0),
+        stopping_(false) {}
+
+  ~Deferred() {
+    stopping_ = true;
+    if (pending_ == 0)
+      return;
+    latch_.p();
+  }
 
   static void init() {
     for (size_t i = 0; i < kThreads; ++i)
@@ -115,6 +126,8 @@ private:
   Function function_;
   void *argument_;
   Atomic<int> pending_;
+  volatile bool stopping_;
+  Semaphore latch_;
 
   static constexpr size_t kThreads = Traits<Deferred>::Threads;
 

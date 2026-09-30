@@ -1,4 +1,3 @@
-#include <Thread.hpp>
 #include <architecture/CPU.hpp>
 #include <machine/UART.hpp>
 #include <utility/Console.hpp>

@@ -14,18 +14,10 @@ public:
   using Criterion = typename Traits<Scheduler>::Criterion;
   using Node = collections::Node<Thread *, Criterion>;
 
-  constexpr Scheduler() : _heads{}, _collection() {}
+  constexpr Scheduler() : _collection() {}
 
-  Thread *remove(int threshold = Criterion::IDLE) {
-    Node *next = _collection.remove(threshold);
-
-    if (next) {
-      head(next->value);
-      return next->value;
-    }
-
-    assert(threshold != Criterion::IDLE);
-    return nullptr;
+  Node *remove(decltype(Criterion::IDLE) threshold) {
+    return _collection.remove(threshold);
   }
 
   void insert(Node *node) {
@@ -33,14 +25,7 @@ public:
     _collection.insert(node->criterion, node);
   }
 
-  Thread *current() { return head(); }
-
 private:
-  Thread *head() { return _heads[CPU::id()]; }
-  void head(Thread *thread) { _heads[CPU::id()] = thread; }
-
-private:
-  Thread *volatile _heads[Traits<CPU>::Active];
   typename Criterion::template Collection<Node> _collection;
 };
 

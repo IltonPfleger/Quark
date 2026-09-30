@@ -233,7 +233,9 @@ int main() {
 
   auto *linux = new (Heap::SYSTEM) LinuxLauncher(memory, kernel, initramfs, 0);
 
-  // free(linux);
+  Delay delay(2'000'000);
+
+  free(linux);
 
   return 0;
 }

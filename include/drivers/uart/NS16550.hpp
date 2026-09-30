@@ -2,7 +2,6 @@
 #define __QUARK_DRIVERS_UART_NS16550__
 
 #include <architecture/IC.hpp>
-#include <utility/Atomic.hpp>
 #include <utility/Debug.hpp>
 #include <utility/Observer.hpp>
 
