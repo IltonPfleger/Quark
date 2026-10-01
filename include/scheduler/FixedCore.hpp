@@ -5,6 +5,7 @@
 #include <types.hpp>
 #include <utility/Console.hpp>
 #include <utility/collections/FIFO.hpp>
+#include <utility/collections/MPSC.hpp>
 
 namespace QUARK {
 
@@ -37,7 +38,7 @@ public:
     }
 
   private:
-    collections::FIFO<Node, Spin> queues_[NumberOfCores][2];
+    collections::MPSC<Node> queues_[NumberOfCores][2];
   };
 
   operator uint8_t() { return rank(); }

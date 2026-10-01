@@ -158,6 +158,8 @@ void Thread::exit() {
 void Thread::init() {
   TraceIn();
 
+  new (&scheduler_) Scheduler();
+
   for (int i = 0; i < Traits<CPU>::Active; ++i)
     new (Heap::SYSTEM) Thread(idle, 0, Criterion::IDLE, KERNEL);
 

@@ -16,25 +16,27 @@ template <typename V = void, typename C = void, bool P = false> struct Node {
 
   template <typename T, typename U>
     requires(!Meta::IsVoid<V>::Result)
-  Node(T &&t, U &&u)
+  constexpr Node(T &&t, U &&u)
       : value(static_cast<V &&>(t)), criterion(static_cast<C &&>(u)),
-        next(nullptr) {}
+        previous(), next(nullptr) {}
 
   template <typename T>
     requires(!Meta::IsVoid<V>::Result)
-  Node(T &&t) : value(static_cast<V &&>(t)), criterion(), next(nullptr) {}
+  constexpr Node(T &&t)
+      : value(static_cast<V &&>(t)), criterion(), previous(), next(nullptr) {}
 
   template <typename T>
     requires Meta::IsVoid<V>::Result
-  Node(T &&t) : value(), criterion(static_cast<T &&>(t)), next(nullptr) {}
+  constexpr Node(T &&t)
+      : value(), criterion(static_cast<T &&>(t)), previous(), next(nullptr) {}
 
-  Node() : value(), criterion(), next(nullptr) {}
+  constexpr Node() : value(), criterion(), previous(), next(nullptr) {}
 
 public:
-  [[no_unique_address]] Value value;
-  [[no_unique_address]] Criterion criterion;
-  [[no_unique_address]] Previous previous;
-  Next next;
+  [[no_unique_address]] Value value{};
+  [[no_unique_address]] Criterion criterion{};
+  [[no_unique_address]] Previous previous{};
+  Next next{nullptr};
 };
 
 } // namespace collections

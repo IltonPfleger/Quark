@@ -28,6 +28,10 @@ public:
     return result;
   }
 
+  template <typename T> static T exchange(T &reference, T value) {
+    return __atomic_exchange_n(&reference, value, __ATOMIC_ACQ_REL);
+  }
+
   template <typename T>
   static bool cas(T &value, Meta::Remove<T>::Result expected,
                   Meta::Remove<T>::Result desired) {

@@ -66,7 +66,7 @@ private:
   Atomic<Flags> flags_;
 
 private:
-  static constinit inline Scheduler scheduler_;
+  static inline Scheduler scheduler_;
   static inline volatile unsigned int counter_;
   static inline Thread *volatile current_[Traits<CPU>::Active];
   static inline Thread *volatile previous_[Traits<CPU>::Active];

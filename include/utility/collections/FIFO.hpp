@@ -13,8 +13,6 @@ public:
   FIFO &operator=(FIFO &&other) = delete;
 
   void insert(T *node) {
-    assert(!node->next);
-
     lock();
 
     node->next = nullptr;
