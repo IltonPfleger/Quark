@@ -62,7 +62,7 @@ template <> struct Traits<MemoryMap> {
   static constexpr unsigned long Boot = RamStart;
 
   static constexpr unsigned long Application =
-      HigherMapping ? 0x800000000 : (RamStart + Traits<Memory>::Size / 2);
+      HigherMapping ? 0x800000000 : (RamStart + 128 * 1024 * 1024);
 
   static constexpr unsigned long MMIO = 0x00000000;
   static constexpr unsigned long UART0 = 0x10000000;

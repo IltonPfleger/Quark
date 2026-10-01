@@ -15,6 +15,6 @@ $(BUILD)/$(APPLICATION).o: $(OBJECTS)
 
 $(BUILD)/$(APPLICATION)/%.cpp.o: %.cpp $(CONFIG)
 	@mkdir -p $(dir $@)
-	$(CC) $(MACH_CCFLAGS) -I../include -MMD -MP -c $< -o $@
+	$(CC) $(MACH_CCFLAGS) -I../include -I. -MMD -MP -c $< -o $@
 
 -include $(DEPENDENCIES)

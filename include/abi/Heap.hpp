@@ -46,4 +46,7 @@ extern "C" inline void free(void *pointer) {
   }
 }
 
+inline void *operator new(QUARK::size_t size) { return malloc(size); }
+inline void *operator new[](QUARK::size_t size) { return malloc(size); }
+
 #endif

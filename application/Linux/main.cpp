@@ -1,7 +1,9 @@
 #include <Thread.hpp>
 #include <Traits.hpp>
+#include <abi/Heap.hpp>
 #include <architecture/CPU.hpp>
 #include <architecture/VirtualPLIC.hpp>
+#include <external.hpp>
 #include <hypervisor/GenericVirtualMachine.hpp>
 #include <hypervisor/fdt/FDT_Builder.hpp>
 #include <hypervisor/virtio/Console.hpp>
@@ -11,11 +13,6 @@
 #include <utility/Span.hpp>
 
 using namespace QUARK;
-
-constexpr size_t MB = 1024 * 1024;
-
-__attribute__((section(".__linux__"), used)) static uint8_t __guest[32 * MB];
-__attribute__((section(".__initrd__"), used)) static uint8_t __initrd[16 * MB];
 
 class LinuxFlattenedDeviceTree {
   template <typename> struct VirtioDeviceParser;
@@ -191,24 +188,23 @@ private:
 
 template <size_t CPUS, typename... IO> class LinuxLauncher {
 public:
+  using Buffer = Span<const uint8_t>;
   using PLIC = VirtualPLIC<CPUS, 0xc000000>;
-  using ExternalDevices = Meta::Pack<IO...>;
   using VirtualMachine = GenericVirtualMachine<CPUS, PLIC, IO...>;
 
-  LinuxLauncher(size_t size, Span<const uint8_t> kernel,
-                Span<const uint8_t> initrd, size_t offset)
-      : size_(size), start_(static_cast<uint8_t *>(Memory::alloc(size_))),
-        vm_(start_, size_, offset) {
+  LinuxLauncher(size_t size, Buffer kernel, Buffer initrd, size_t offset)
+      : size_(size), start_(new uint8_t[size_]), vm_(start_, size_, offset) {
 
     uint8_t *end = start_ + size_;
     uint8_t *current = start_;
 
+    current = align(current, 4 * 1024 * 1024);
+    kernel_ = current;
     memcpy(current, kernel, kernel.length());
     current += kernel.length();
-    current = align(current, 8);
-    current += 32 * MB;
+    current = start_ + (size_ / 2);
 
-    const uint8_t *address = current;
+    const uint8_t *second = current;
     memcpy(current, initrd, initrd.length());
     current += initrd.length();
 
@@ -216,9 +212,9 @@ public:
 
     size_t remaining = size_ - (current - start_);
 
-    void *opaque = fdt(current, remaining, Span(address, initrd.length()));
+    void *opaque = fdt(current, remaining, Span(second, initrd.length()));
 
-    vm_.boot(0, start_, opaque);
+    vm_.boot(0, kernel_, opaque);
   }
 
   static unsigned char *align(unsigned char *pointer, long alignment) {
@@ -227,7 +223,7 @@ public:
     return reinterpret_cast<unsigned char *>(address);
   }
 
-  void *fdt(void *buffer, size_t capacity, Span<const uint8_t> initrd) {
+  void *fdt(void *buffer, size_t capacity, Buffer initrd) {
     LinuxFlattenedDeviceTree fdt(buffer, capacity);
     fdt.begin();
     fdt.chosen(initrd);
@@ -241,6 +237,7 @@ public:
 private:
   size_t size_;
   uint8_t *start_;
+  uint8_t *kernel_;
   VirtualMachine vm_;
 };
 
@@ -250,7 +247,7 @@ int main() {
   using pUART = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
   using vUART = virtio::Console<pUART, 0x30000000, 32>;
   using Launcher = LinuxLauncher<Traits<CPU>::Active, vUART>;
-  Launcher launcher(128 * MB, kernel, initramfs, 0);
+  Launcher launcher(128 * 1024 * 1024, kernel, initramfs, 0);
   Delay delay(4'000'000);
   return 0;
 }

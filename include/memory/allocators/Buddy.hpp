@@ -40,18 +40,37 @@ public:
     return node;
   }
 
-  void insert(void *p, size_t size) {
-    uintptr_t address = reinterpret_cast<uintptr_t>(p);
+  void insert(void *pointer, size_t size) {
+    uintptr_t address = reinterpret_cast<uintptr_t>(pointer);
+    constexpr size_t minimum = 1ULL << MINIMUM;
+    constexpr size_t maximum = 1ULL << MAXIMUM;
+
+    while (size >= minimum) {
+      size_t current = minimum;
+
+      while ((current << 1) <= size && (current << 1) <= maximum &&
+             !(address & ((current << 1) - 1))) {
+        current <<= 1;
+      }
+
+      insert(address, current);
+      address += current;
+      size -= current;
+    }
+  }
+
+private:
+  void insert(uintptr_t address, size_t size) {
     size_t n = bucket(size);
 
-    assert(size > 0);
-    assert((address & ((1 << log2ceil(size)) - 1)) == 0);
+    assert(n <= Maximum);
+    assert((address & ((1ULL << log2ceil(size)) - 1)) == 0);
 
     while (n < Maximum) {
       uintptr_t b = buddy(address, n);
-      Node *buddy_node = reinterpret_cast<Node *>(b);
+      Node *buddy = reinterpret_cast<Node *>(b);
 
-      if (!free_[n].remove(buddy_node))
+      if (!free_[n].remove(buddy))
         break;
 
       if (b < address)
@@ -62,7 +81,6 @@ public:
     free_[n].insert(reinterpret_cast<Node *>(address));
   }
 
-private:
   constexpr static size_t log2ceil(size_t size) {
     size_t l = 0;
     while ((1ULL << l) < size)
