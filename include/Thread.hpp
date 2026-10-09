@@ -63,6 +63,7 @@ private:
   volatile State state_;
   Context context_;
   List *blocking_;
+  List *joining_;
   Atomic<Flags> flags_;
 
 private:

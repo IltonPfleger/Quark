@@ -40,8 +40,6 @@ void Thread::entry(Function f, Argument a) {
 
 Thread::Return Thread::idle(Argument) {
   while (counter_ > Traits<CPU>::Active + Traits<Deferred>::Threads) {
-    // Console::println(counter_, " ",
-    //                  Traits<CPU>::Active + Traits<Deferred>::Threads);
     reschedule();
   }
 
@@ -105,7 +103,7 @@ Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
     : stack_(nullptr), kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
       node_(Node(this, c)), state_(State::READY), flags_(f),
       context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a),
-      process_(p) {
+      blocking_(nullptr), joining_(nullptr), process_(p) {
   TraceIn(this);
 
   {
@@ -133,25 +131,43 @@ Thread::~Thread() {
   TraceOut();
 }
 
-void Thread::join() {
-  assert(running() != this);
-
-  while (state_ != State::FINISHED) {
-    yield();
-  }
-}
-
 void Thread::kill() {
   flags_ = DEAD;
   join();
+}
+
+void Thread::join() {
+  Thread *previous = running();
+
+  assert(previous != this);
+  assert(!joining_);
+
+  List list;
+  joining_ = &list;
+
+  CPU::mb();
+
+  while (state_ == State::FINISHING)
+    Thread::yield();
+
+  if (state_ == State::FINISHED) {
+    joining_ = nullptr;
+    return;
+  }
+
+  Thread::sleep(&list);
 }
 
 void Thread::exit() {
   Thread *previous = running();
 
   CPU::IRQ::disable();
-  Thread *next = Thread::next();
   previous->state_ = State::FINISHING;
+
+  while (previous->joining_ && !Thread::wakeup(previous->joining_))
+    ;
+
+  Thread *next = Thread::next();
   dispatch(previous, next);
 }
 

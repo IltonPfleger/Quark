@@ -38,7 +38,7 @@ public:
     }
 
   private:
-    collections::MPSC<Node> queues_[NumberOfCores][2];
+    collections::FIFO<Node, Spin> queues_[NumberOfCores][2];
   };
 
   operator uint8_t() { return rank(); }
