@@ -147,11 +147,10 @@ void Thread::join() {
 
   CPU::mb();
 
-  while (state_ == State::FINISHING)
-    Thread::yield();
-
-  if (state_ == State::FINISHED) {
+  if (state_ == State::FINISHING | state_ == State::FINISHED) {
     joining_ = nullptr;
+    while (state_ == State::FINISHING)
+      Thread::yield();
     return;
   }
 
@@ -162,6 +161,7 @@ void Thread::exit() {
   Thread *previous = running();
 
   CPU::IRQ::disable();
+
   previous->state_ = State::FINISHING;
 
   while (previous->joining_ && !Thread::wakeup(previous->joining_))
