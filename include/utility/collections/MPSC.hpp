@@ -17,8 +17,12 @@ public:
 
   void insert(T *element) {
     element->next = nullptr;
+
+    CPU::mbw();
+
     T *previous = CPU::Atomic::exchange(tail_, element);
     previous->next = element;
+
     CPU::mbw();
   }
 
@@ -40,9 +44,10 @@ public:
       return tail;
     }
 
-    T *real_tail = tail_;
-    if (tail != real_tail) {
-      while ((next = tail->next) == nullptr) {
+    T *real = tail_;
+    if (tail != real) {
+      while ((next = static_cast<volatile T *>(tail)->next) == nullptr) {
+        CPU::mbr();
       }
       head_ = next;
       return tail;

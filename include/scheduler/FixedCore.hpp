@@ -16,14 +16,23 @@ public:
 
   static constexpr uint32_t NumberOfCores = Traits<CPU>::Active;
 
-  FixedCore(uint8_t rank = NORMAL, uint32_t cpu = ANY, ...) {
-    build(rank, cpu);
-    TraceIn(this->rank(), this->cpu());
-    TraceOut();
+  constexpr FixedCore(uint8_t rank = NORMAL, uint32_t cpu = ANY, ...) {
+    if (!__builtin_is_constant_evaluated()) {
+      if (rank == IDLE && cpu == ANY) {
+        cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
+      } else if (cpu == ANY) {
+        cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
+      }
+      assert(rank < 2);
+      assert(cpu < NumberOfCores);
+    }
+
+    cpu_ = cpu;
+    rank_ = rank;
   }
 
-  FixedCore(const FixedCore &) = default;
-  FixedCore &operator=(const FixedCore &) = default;
+  constexpr FixedCore(const FixedCore &) = default;
+  constexpr FixedCore &operator=(const FixedCore &) = default;
 
   template <typename Node> struct Collection {
     void insert(const FixedCore &fc, Node *node) {
@@ -38,7 +47,7 @@ public:
     }
 
   private:
-    collections::FIFO<Node, Spin> queues_[NumberOfCores][2];
+    collections::MPSC<Node> queues_[NumberOfCores][2];
   };
 
   operator uint8_t() { return rank(); }
@@ -46,20 +55,6 @@ public:
 private:
   uint32_t cpu() const { return cpu_; }
   uint8_t rank() const { return rank_; }
-
-  void build(uint8_t rank, uint32_t cpu) {
-    if (rank == IDLE && cpu == ANY) {
-      cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
-    } else if (cpu == ANY) {
-      cpu = CPU::Atomic::finc(counter_) % NumberOfCores;
-    }
-
-    assert(rank < 2);
-    assert(cpu < NumberOfCores);
-
-    cpu_ = cpu;
-    rank_ = rank;
-  }
 
 private:
   static constinit inline uint32_t counter_ = 0;
