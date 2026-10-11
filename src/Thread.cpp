@@ -23,10 +23,9 @@ void Thread::entry(Function f, Argument a) {
 
       current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
 
-      // TODO: Concurrency Error, in Process Attach
-      Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
       uintptr_t istack = reinterpret_cast<uintptr_t>(current->stack_);
       uintptr_t pstack = Memory::virt2phys(istack);
+      Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
       Chunk ustack = process->attach({pstack, Traits<Thread>::UserStackSize});
       Context::demote(ustack, kstack, f, a);
       return;
