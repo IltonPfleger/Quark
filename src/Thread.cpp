@@ -186,10 +186,7 @@ void Thread::init() {
   TraceOut();
 }
 
-void Thread::run() {
-  Thread *next = Thread::next();
-  next->context_.dispatch();
-}
+void Thread::run() { Thread::next()->context_.dispatch(); }
 
 void Thread::yield() { Thread::reschedule(); }
 
@@ -211,7 +208,6 @@ void Thread::reschedule() {
 
 void Thread::sleep(List *list) {
   Thread *previous = running();
-
   previous->blocking_ = list;
 
   {

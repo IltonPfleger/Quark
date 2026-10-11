@@ -3,7 +3,7 @@
 
 #include <synchronization/Spin.hpp>
 #include <types.hpp>
-#include <utility/collections/FIFO.hpp>
+#include <utility/collections/MPSC.hpp>
 
 namespace QUARK {
 
@@ -46,7 +46,7 @@ public:
     }
 
   private:
-    collections::FIFO<Node, Spin> queues_[NumberOfCores][2];
+    collections::MPSC<Node> queues_[NumberOfCores][2];
   };
 
 private:
