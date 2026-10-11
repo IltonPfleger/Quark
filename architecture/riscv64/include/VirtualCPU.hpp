@@ -1,5 +1,5 @@
-#ifndef __QUARK_RISCV64_VIRTUAL_CPU__
-#define __QUARK_RISCV64_VIRTUAL_CPU__
+#ifndef QUARK_RISCV64_VIRTUAL_CPU_HPP
+#define QUARK_RISCV64_VIRTUAL_CPU_HPP
 
 #include <Traits.hpp>
 #include <architecture/CLINT.hpp>
@@ -111,19 +111,12 @@ public:
     if (!current)
       return;
 
-    if (CLINT::mtime() >= current->registers_.mtimecmp) {
-      csrs<MachineMode::IP>(STI);
-    } else {
-      csrc<MachineMode::IP>(STI);
-    }
-
-    const uintmax_t external =
-        -((current->flags_.fand(~EXTERNAL) & EXTERNAL) != 0);
-
-    const uintmax_t software =
-        -((current->flags_.fand(~SOFTWARE) & SOFTWARE) != 0);
-
-    csrs<MachineMode::IP>((SEI & external) | (SSI & software));
+    bool elapsed = CLINT::mtime() >= current->registers_.mtimecmp;
+    uintmax_t external = -((current->flags_.fand(~EXTERNAL) & EXTERNAL) != 0);
+    uintmax_t software = -((current->flags_.fand(~SOFTWARE) & SOFTWARE) != 0);
+    uintmax_t sip = (STI * elapsed) | (SEI & external) | (SSI & software);
+    csrc<MachineMode::IP>(STI);
+    csrs<MachineMode::IP>(sip);
   }
 
   static void mtimecmp(uintmax_t mtimecmp) {

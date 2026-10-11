@@ -16,9 +16,9 @@ void Thread::entry(Function f, Argument a) {
     epilogue();
 
   if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
-    Process *process = current->process_;
-
     if (current->flags_ != KERNEL) {
+      Process *process = current->process_;
+
       assert(process);
 
       current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
@@ -248,7 +248,6 @@ Thread *Thread::next(decltype(Criterion::IDLE) criterion) {
   }
 
   Thread *next = node->value;
-
   current_[CPU::id()] = next;
   return next;
 }
