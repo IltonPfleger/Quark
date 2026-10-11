@@ -13,49 +13,35 @@ namespace QUARK {
 
 template <size_t CORES, typename... DEVICES>
 class GenericVirtualMachine : public VirtualMachine {
-  struct Arguments {
-    constexpr Arguments()
-        : cpu(nullptr), latch(0), core(0), entry(nullptr), opaque(nullptr) {}
-
-    VirtualCPU *cpu;
-    Semaphore latch;
-    size_t core;
-    void *entry;
-    void *opaque;
-  };
-
 public:
   GenericVirtualMachine(void *entry, size_t size, size_t offset)
-      : VirtualMachine(Chunk(entry, size)), arguments_(),
-        cpus_(cpus(Meta::MakeIndexSequence<CORES>{})), devices_(*this),
-        threads_(threads(Meta::MakeIndexSequence<CORES>{}, offset)) {}
+      : VirtualMachine(Chunk(entry, size)),
+        cpus_(create(Meta::MakeIndexSequence<CORES>{}, offset)),
+        devices_(*this) {}
 
-  ~GenericVirtualMachine() { poweroff(Meta::MakeIndexSequence<CORES>{}); }
+  ~GenericVirtualMachine() = default;
 
-  template <size_t... Is> void poweroff(Meta::IndexSequence<Is...>) {
-    (arguments_[Is].latch.v(), ...);
-    (threads_[Is].kill(), ...);
-  }
+  //~GenericVirtualMachine() {
+  //  for (int i = 0; i < CORES; i++) {
+  //  }
+  //  poweroff(Meta::MakeIndexSequence<CORES>{});
+  //}
+
+  // template <size_t... Is> void poweroff(Meta::IndexSequence<Is...>) {
+  //   (arguments_[Is].latch.v(), ...);
+  //   (threads_[Is].kill(), ...);
+  // }
 
   template <size_t... Is>
-  Meta::Array<CORES, VirtualCPU> cpus(Meta::IndexSequence<Is...>) {
-    return {((void)Is, VirtualCPU(this))...};
-  }
-
-  template <size_t... Is>
-  Meta::Array<CORES, Thread> threads(Meta::IndexSequence<Is...>,
-                                     size_t offset) {
-    return {Thread(worker, &arguments_[Is],
-                   Thread::Criterion(Thread::Criterion::NORMAL,
-                                     (offset + Is) % Traits<CPU>::Active))...};
+  Meta::Array<CORES, VirtualCPU> create(Meta::IndexSequence<Is...>,
+                                        size_t offset) {
+    return {VirtualCPU(
+        this, Thread::Criterion(Thread::Criterion::NORMAL,
+                                (offset + Is) % Traits<CPU>::Active))...};
   }
 
   void boot(size_t core, void *entry, void *opaque) override {
-    arguments_[core].cpu = &cpus_[core];
-    arguments_[core].core = core;
-    arguments_[core].entry = entry;
-    arguments_[core].opaque = opaque;
-    arguments_[core].latch.v();
+    cpus_[core].boot(core, entry, opaque);
   }
 
   bool read(uintptr_t address, void *destination, size_t length) override {
@@ -101,22 +87,9 @@ public:
 
   size_t cpus() const override { return CORES; }
 
-  static void *worker(void *pointer) {
-    Arguments *arguments = reinterpret_cast<Arguments *>(pointer);
-    arguments->latch.p();
-    VirtualCPU *cpu = arguments->cpu;
-
-    if (cpu)
-      cpu->boot(arguments->core, arguments->entry, arguments->opaque);
-
-    return nullptr;
-  };
-
 private:
-  Arguments arguments_[CORES];
   Meta::Array<CORES, VirtualCPU> cpus_;
   Meta::Tuple<DEVICES...> devices_;
-  Meta::Array<CORES, Thread> threads_;
 };
 
 } // namespace QUARK

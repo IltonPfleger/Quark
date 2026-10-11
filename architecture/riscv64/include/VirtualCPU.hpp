@@ -15,7 +15,7 @@
 
 namespace QUARK {
 
-class VirtualCPU {
+class VirtualCPU : Semaphore, Thread {
   struct Registers {
     uint64_t mtimecmp = ~0ULL;
     uint64_t sscratch = 0;
@@ -49,30 +49,21 @@ public:
     SOFTWARE = 1ULL << 3,
   };
 
-  VirtualCPU(VirtualMachine *vm) : core_(-1), registers_(), vm_(vm) {}
+  VirtualCPU(VirtualMachine *vm, Thread::Criterion criterion)
+      : Semaphore(0), Thread(entry, this, criterion), core_(-1), registers_(),
+        vm_(vm) {}
 
-  void boot(size_t core, void *entry, void *opaque) {
-    CPU::IRQ::disable();
+  ~VirtualCPU() {
+    Semaphore::v();
+    Thread::kill();
+  }
 
-    activate();
-    restore();
-
-    csrc<MachineMode::STATUS>(SupervisorMode::PIRQE);
-    csrc<MachineMode::STATUS>(SupervisorMode::IRQE);
-    csrc<MachineMode::STATUS>(MachineMode::PP);
-    csrs<MachineMode::STATUS>(MachineMode::PP_S);
-    csrs<MachineMode::STATUS>(MachineMode::PIRQE);
-    csrs<MachineMode::STATUS>(MachineMode::TW);
-
-    csrw<MachineMode::EPC>(entry);
-
-    uintptr_t stack = reinterpret_cast<uintptr_t>(Thread::running()->kstack_);
-    CoreContextHandler<MachineMode>::stack(stack);
-
-    CPU::mb();
-    CPU::ib();
-
-    dispatch(core, opaque);
+  void boot(size_t hartid, void *entry, void *opaque) {
+    hartid_ = hartid;
+    entry_ = entry;
+    opaque_ = opaque;
+    CPU::mbw();
+    this->v();
   }
 
   static void kick(size_t core, void *entry, void *opaque) {
@@ -261,6 +252,35 @@ private:
     }
   }
 
+  static void *entry(void *pointer) {
+    VirtualCPU *self = reinterpret_cast<VirtualCPU *>(pointer);
+    self->p();
+    CPU::mbr();
+
+    CPU::IRQ::disable();
+
+    self->activate();
+    self->restore();
+
+    csrc<MachineMode::STATUS>(SupervisorMode::PIRQE);
+    csrc<MachineMode::STATUS>(SupervisorMode::IRQE);
+    csrc<MachineMode::STATUS>(MachineMode::PP);
+    csrs<MachineMode::STATUS>(MachineMode::PP_S);
+    csrs<MachineMode::STATUS>(MachineMode::PIRQE);
+    csrs<MachineMode::STATUS>(MachineMode::TW);
+
+    csrw<MachineMode::EPC>(self->entry_);
+
+    uintptr_t stack = reinterpret_cast<uintptr_t>(Thread::running()->kstack_);
+    CoreContextHandler<MachineMode>::stack(stack);
+
+    CPU::ib();
+
+    dispatch(self->hartid_, self->opaque_);
+
+    return nullptr;
+  }
+
   static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
   static VirtualCPU *current() { return current_[CPU::id()]; }
 
@@ -272,6 +292,10 @@ private:
   Atomic<uintmax_t> flags_;
   Registers registers_;
   VirtualMachine *vm_;
+
+  void *entry_;
+  uint32_t hartid_;
+  void *opaque_;
 };
 
 } // namespace QUARK
