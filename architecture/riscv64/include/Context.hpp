@@ -21,6 +21,11 @@ public:
     frame_->status = 0;
   }
 
+  void dispatch() {
+    auto *load = static_cast<void (*)()>(&ContextTemplate::load);
+    asm("mv sp, %0; jr %1" ::"r"(this->frame_), "r"(load));
+  }
+
   __attribute__((naked)) static void demote(const Chunk &usp, const Chunk &ksp,
                                             auto pc, auto a0) {
     auto kspe = ksp.end();
@@ -33,13 +38,6 @@ public:
     asm("csrw %0, %1" ::"i"(T::EPC), "r"(pc));
     asm("mv a0, %0; mv sp, %1" ::"r"(a0), "r"(uspe));
     T::ret();
-  }
-
-  static void load(ContextTemplate &next) {
-    asm volatile("mv sp, %0; jr %1"
-                 :
-                 : "r"(next.frame_),
-                   "r"(static_cast<void (*)()>(&ContextTemplate::load)));
   }
 
   static void epilogue(ContextTemplate &previous, ContextTemplate &next) {

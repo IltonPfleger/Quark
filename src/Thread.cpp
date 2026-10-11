@@ -81,6 +81,7 @@ void Thread::dispatch(Thread *previous, Thread *next) {
 
 void Thread::epilogue() {
   Thread *previous = previous_[CPU::id()];
+  assert(previous);
 
   switch (previous->state_) {
   case State::READY:
@@ -97,6 +98,10 @@ void Thread::epilogue() {
   default:
     break;
   }
+
+  if (running()->flags_ == DEAD) [[unlikely]] {
+    exit();
+  }
 }
 
 Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
@@ -104,7 +109,7 @@ Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
       node_(Node(this, c)), state_(State::READY), flags_(f),
       context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a),
       blocking_(nullptr), joining_(nullptr), process_(p) {
-  TraceIn(this);
+  TraceIn(this, (uint8_t)c);
 
   {
     CPU::IRQ::Guard _;
@@ -151,10 +156,10 @@ void Thread::join() {
     joining_ = nullptr;
     while (state_ == State::FINISHING)
       Thread::yield();
-    return;
+  } else {
+    Thread::sleep(&list);
+    joining_ = nullptr;
   }
-
-  Thread::sleep(&list);
 }
 
 void Thread::exit() {
@@ -167,8 +172,7 @@ void Thread::exit() {
   while (previous->joining_ && !Thread::wakeup(previous->joining_))
     ;
 
-  Thread *next = Thread::next();
-  dispatch(previous, next);
+  dispatch(previous, Thread::next());
 }
 
 void Thread::init() {
@@ -184,17 +188,13 @@ void Thread::init() {
 
 void Thread::run() {
   Thread *next = Thread::next();
-  Context::load(next->context_);
+  next->context_.dispatch();
 }
 
 void Thread::yield() { Thread::reschedule(); }
 
 void Thread::reschedule() {
   Thread *previous = running();
-
-  if (previous->flags_ == DEAD) [[unlikely]] {
-    Thread::exit();
-  }
 
   {
     CPU::IRQ::Guard _;
@@ -211,6 +211,7 @@ void Thread::reschedule() {
 
 void Thread::sleep(List *list) {
   Thread *previous = running();
+
   previous->blocking_ = list;
 
   {
@@ -244,17 +245,17 @@ bool Thread::wakeup(List *list) {
 }
 
 Thread *Thread::next(decltype(Criterion::IDLE) criterion) {
-  while (Node *next = scheduler_.remove(criterion)) {
-    if (next->value->flags_ == DEAD) [[unlikely]] {
-      next->value->state_ = State::FINISHED;
-      CPU::Atomic::fdec(counter_);
-      continue;
-    }
-    current_[CPU::id()] = next->value;
-    return next->value;
+  Node *node = scheduler_.remove(criterion);
+
+  if (!node) {
+    assert(criterion != Criterion::IDLE);
+    return nullptr;
   }
-  assert(criterion != Criterion::IDLE);
-  return nullptr;
+
+  Thread *next = node->value;
+
+  current_[CPU::id()] = next;
+  return next;
 }
 
 Thread *Thread::running() { return current_[CPU::id()]; }

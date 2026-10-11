@@ -17,12 +17,12 @@ public:
   typedef uintmax_t Flags;
 
   enum class State { RUNNING, READY, BLOCKED, FINISHING, FINISHED };
-  enum : Flags { KERNEL, USER, DEAD };
+  enum : Flags { NONE = 0, KERNEL = 1, USER = 2, DEAD = 3 };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
   using Node = Scheduler::Node;
-  using List = collections::MPSC<Node>;
+  using List = collections::FIFO<Node, Spin>;
 
   using Return = void *;
   using Argument = void *;

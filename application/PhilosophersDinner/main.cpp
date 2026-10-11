@@ -5,7 +5,7 @@
 
 using namespace QUARK::ABI;
 
-static constexpr int Iterations = 100;
+static constexpr int Iterations = 10;
 static constexpr int Philosophers = 100;
 
 class Philosopher {

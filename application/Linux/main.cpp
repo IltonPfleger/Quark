@@ -248,6 +248,6 @@ int main() {
   using vUART = virtio::Console<pUART, 0x30000000, 32>;
   using Launcher = LinuxLauncher<Traits<CPU>::Active, vUART>;
   Launcher launcher(128 * 1024 * 1024, kernel, initramfs, 0);
-  Delay delay(4'000'000);
+  Delay delay(5'000'000);
   return 0;
 }
