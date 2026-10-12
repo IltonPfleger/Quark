@@ -67,15 +67,15 @@ public:
   }
 
   static void kick(size_t core, void *entry, void *opaque) {
-    assert(current());
-    current()->vm_->boot(core, entry, opaque);
+    assert(running());
+    running()->vm_->boot(core, entry, opaque);
   }
 
   void set_external_interrupt_pending() {
     int core = core_;
     flags_ |= EXTERNAL;
 
-    if (current() == this) {
+    if (running() == this) {
       update();
     } else if (core >= 0) {
       IPI::send(core, update);
@@ -83,67 +83,74 @@ public:
   }
 
   void clear_external_interrupt_pending() {
-    assert(current() == this);
+    assert(running() == this);
     csrc<MachineMode::IP>(SEI);
   }
 
   static bool set_software_interrupt_pending(size_t hartid) {
-    if (!current() || hartid >= current()->vm_->cpus())
+    VirtualCPU *running = VirtualCPU::running();
+
+    if (!running || hartid >= running->vm_->cpus())
       return false;
 
-    current()->vm_->cpu(hartid).set_software_interrupt_pending();
+    running->vm_->cpu(hartid).set_software_interrupt_pending();
 
     return true;
   }
 
   static void update(void * = nullptr) {
-    VirtualCPU *current = VirtualCPU::current();
+    VirtualCPU *running = VirtualCPU::running();
 
-    if (!current)
+    if (!running)
       return;
 
-    bool elapsed = CLINT::mtime() >= current->registers_.mtimecmp;
-    uintmax_t external = -((current->flags_.fand(~EXTERNAL) & EXTERNAL) != 0);
-    uintmax_t software = -((current->flags_.fand(~SOFTWARE) & SOFTWARE) != 0);
+    bool elapsed = CLINT::mtime() >= running->registers_.mtimecmp;
+    uintmax_t external = -((running->flags_.fand(~EXTERNAL) & EXTERNAL) != 0);
+    uintmax_t software = -((running->flags_.fand(~SOFTWARE) & SOFTWARE) != 0);
     uintmax_t sip = (STI * elapsed) | (SEI & external) | (SSI & software);
     csrc<MachineMode::IP>(STI);
     csrs<MachineMode::IP>(sip);
   }
 
   static void mtimecmp(uintmax_t mtimecmp) {
-    assert(current());
-    current()->registers_.mtimecmp = mtimecmp;
+    VirtualCPU *running = VirtualCPU::running();
+    assert(running);
+    running->registers_.mtimecmp = mtimecmp;
     update();
   }
 
   static bool read(uintptr_t address, uint32_t *destination) {
-    assert(current());
-    return current()->vm_->read(address, destination, sizeof(uint32_t));
+    VirtualCPU *running = VirtualCPU::running();
+    assert(running);
+    return running->vm_->read(address, destination, sizeof(uint32_t));
   }
 
   static bool write(uintptr_t address, uint32_t source) {
-    assert(current());
-    return current()->vm_->write(address, &source, sizeof(uint32_t));
+    VirtualCPU *running = VirtualCPU::running();
+    assert(running);
+    return running->vm_->write(address, &source, sizeof(uint32_t));
   }
 
   static bool sb(uintmax_t address, uint8_t source) {
-    assert(current());
-    if (!current()->vm_->memory().contains(Chunk(address, 1))) [[unlikely]]
+    VirtualCPU *running = VirtualCPU::running();
+    assert(running);
+    if (!running->vm_->memory().contains(Chunk(address, 1))) [[unlikely]]
       return false;
     *reinterpret_cast<uint8_t *>(address) = source;
     return true;
   }
 
   static bool lb(uintmax_t address, uint8_t *source) {
-    assert(current());
-    if (!current()->vm_->memory().contains(Chunk(address, 1))) [[unlikely]]
+    VirtualCPU *running = VirtualCPU::running();
+    assert(running);
+    if (!running->vm_->memory().contains(Chunk(address, 1))) [[unlikely]]
       return false;
     *source = *reinterpret_cast<uint8_t *>(address);
     return true;
   }
 
   static VirtualCPU *swtch(VirtualCPU *next) {
-    VirtualCPU *previous = current();
+    VirtualCPU *previous = running(Thread::previous());
 
     if (previous) {
       previous->save();
@@ -158,22 +165,23 @@ public:
       csrc<MachineMode::IP>(MIDELEG);
       csrw<MachineMode::MIDELEG>(0);
       csrw<MachineMode::MEDELEG>(0);
-      current(nullptr);
     }
 
     return previous;
   }
 
   static void fence(size_t hartid, uintmax_t flags) {
-    assert(current());
+    VirtualCPU *running = VirtualCPU::running();
 
-    VirtualCPU &destination = current()->vm_->cpu(hartid);
+    assert(running);
+
+    VirtualCPU &destination = running->vm_->cpu(hartid);
 
     destination.flags_ |= flags;
 
     int core = destination.core_;
 
-    if (&destination == current()) {
+    if (&destination == running) {
       destination.fence();
     } else if (core >= 0) {
       IPI::send(core, fence);
@@ -188,10 +196,12 @@ private:
   }
 
   void set_software_interrupt_pending() {
+    VirtualCPU *running = VirtualCPU::running();
+
     int core = core_;
     flags_ |= SOFTWARE;
 
-    if (current() == this) {
+    if (running == this) {
       update();
     } else if (core >= 0) {
       IPI::send(core, update);
@@ -205,7 +215,6 @@ private:
     csrw<MachineMode::MEDELEG>(MEDELEG);
 
     core_ = mhartid();
-    current(this);
     update();
     fence();
   }
@@ -236,9 +245,9 @@ private:
   }
 
   static void fence(void *) {
-    if (!current())
-      return;
-    current()->fence();
+    VirtualCPU *running = VirtualCPU::running();
+    if (running)
+      running->fence();
   }
 
   void fence() {
@@ -281,11 +290,14 @@ private:
     return nullptr;
   }
 
-  static void current(VirtualCPU *current) { current_[CPU::id()] = current; }
-  static VirtualCPU *current() { return current_[CPU::id()]; }
-
-private:
-  static constinit inline VirtualCPU *current_[Traits<CPU>::Active] = {};
+  static VirtualCPU *running(Thread *thread = Thread::running()) {
+    uintmax_t mstatus = csrr<MachineMode::STATUS>();
+    bool valid = (mstatus & MachineMode::PP) == MachineMode::PP_S;
+    uintptr_t mask = -static_cast<uintptr_t>(valid);
+    VirtualCPU *running = static_cast<VirtualCPU *>(thread);
+    uintptr_t pointer = reinterpret_cast<uintptr_t>(running);
+    return reinterpret_cast<VirtualCPU *>(pointer & mask);
+  }
 
 private:
   int core_;

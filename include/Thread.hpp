@@ -39,6 +39,7 @@ public:
 
   static void init();
   static Thread *running();
+  static Thread *previous();
   static void run();
   static void sleep(List *);
   static bool wakeup(List *);
@@ -69,7 +70,7 @@ private:
 private:
   static inline Scheduler scheduler_;
   static inline volatile unsigned int counter_;
-  static inline Thread *volatile current_[Traits<CPU>::Active];
+  static inline Thread *volatile running_[Traits<CPU>::Active];
   static inline Thread *volatile previous_[Traits<CPU>::Active];
 };
 

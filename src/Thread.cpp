@@ -248,10 +248,11 @@ Thread *Thread::next(decltype(Criterion::IDLE) criterion) {
   }
 
   Thread *next = node->value;
-  current_[CPU::id()] = next;
+  running_[CPU::id()] = next;
   return next;
 }
 
-Thread *Thread::running() { return current_[CPU::id()]; }
+Thread *Thread::running() { return running_[CPU::id()]; }
+Thread *Thread::previous() { return previous_[CPU::id()]; }
 
 } // namespace QUARK
