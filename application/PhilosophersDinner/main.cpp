@@ -5,10 +5,7 @@
 
 using namespace QUARK::ABI;
 
-static constexpr int Iterations = 10;
-static constexpr int Philosophers = 100;
-
-class Philosopher {
+template <size_t Iterations> class Philosopher {
 public:
   Philosopher(int id, Semaphore &lock, Semaphore &left, Semaphore &right)
       : id_(id), lock_(lock), left_(left), right_(right),
@@ -52,35 +49,36 @@ private:
   Thread thread_;
 };
 
-class Table {
+template <size_t Quantity, size_t Iterations> class Table {
+  using Philosopher = ::Philosopher<Iterations>;
+
 public:
   Table() : philosophers_(create()) {
-    for (int i = 0; i < Philosophers; i++) {
+    for (int i = 0; i < Quantity; i++) {
       forks_[i].v();
     }
     lock_.v();
   }
 
   template <QUARK::size_t... Is>
-  QUARK::Meta::Array<Philosophers, Philosopher>
+  QUARK::Meta::Array<Quantity, Philosopher>
   create(QUARK::Meta::IndexSequence<Is...>) {
-    return {
-        Philosopher(Is, lock_, forks_[Is], forks_[(Is + 1) % Philosophers])...};
+    return {Philosopher(Is, lock_, forks_[Is], forks_[(Is + 1) % Quantity])...};
   }
 
-  QUARK::Meta::Array<Philosophers, Philosopher> create() {
+  QUARK::Meta::Array<Quantity, Philosopher> create() {
     using namespace QUARK::Meta;
-    return create(typename MakeIndexSequence<Philosophers>::Result{});
+    return create(typename MakeIndexSequence<Quantity>::Result{});
   }
 
 private:
   Semaphore lock_;
-  Semaphore forks_[Philosophers];
-  QUARK::Meta::Array<Philosophers, Philosopher> philosophers_;
+  Semaphore forks_[Quantity];
+  QUARK::Meta::Array<Quantity, Philosopher> philosophers_;
 };
 
 int main(int, char *[]) {
-  Console::println("Philosophers Dinner:");
-  Table PhilosophersDinner;
+  Console::println("Quantity Dinner:");
+  Table<100, 100> PhilosopherDinner;
   Console::println("\nFinished!");
 }
