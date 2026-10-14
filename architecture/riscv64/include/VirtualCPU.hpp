@@ -50,8 +50,8 @@ public:
   };
 
   VirtualCPU(VirtualMachine *vm, Thread::Criterion criterion)
-      : Semaphore(0), Thread(entry, this, criterion), core_(-1), registers_(),
-        vm_(vm) {}
+      : Semaphore(0), Thread(entry, this, {.criterion = criterion}), core_(-1),
+        registers_(), vm_(vm) {}
 
   ~VirtualCPU() {
     Semaphore::v();
@@ -63,7 +63,7 @@ public:
     entry_ = entry;
     opaque_ = opaque;
     CPU::mbw();
-    this->v();
+    Semaphore::v();
   }
 
   static void kick(size_t core, void *entry, void *opaque) {
@@ -304,7 +304,6 @@ private:
   Atomic<uintmax_t> flags_;
   Registers registers_;
   VirtualMachine *vm_;
-
   void *entry_;
   uint32_t hartid_;
   void *opaque_;

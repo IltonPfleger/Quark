@@ -4,7 +4,7 @@
 
 namespace QUARK {
 
-template <typename DEVICE> class Printer {
+template <typename Handler> class Formatter {
 public:
   template <typename T> struct Hex {
     constexpr explicit Hex(T x) : value_(x) {}
@@ -18,8 +18,8 @@ public:
 
   static void print(char character) {
     if (character == '\n')
-      DEVICE::write('\r');
-    DEVICE::write(character);
+      Handler::write('\r');
+    Handler::write(character);
   }
 
   static void print(const char *s) {

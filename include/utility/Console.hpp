@@ -2,11 +2,11 @@
 
 #include <Meta.hpp>
 #include <Traits.hpp>
-#include <utility/Printer.hpp>
+#include <utility/Formatter.hpp>
 
 namespace QUARK {
 
-class Console : public Printer<Console> {
+class Console : public Formatter<Console> {
   using Device = Meta::GetFromTypeList<Traits<UART>::Devices, 0>::Result;
 
 public:

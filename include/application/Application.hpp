@@ -107,12 +107,11 @@ public:
 
     if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::LIBRARY) {
       direct(header);
-      new (Heap::SYSTEM) Thread(main, 0, Thread::Criterion::NORMAL);
+      new (Heap::SYSTEM) Thread(main, 0);
     } else {
       Process *process = new (Heap::SYSTEM) Process();
       indirect(process);
-      new (Heap::SYSTEM)
-          Thread(main, 0, Thread::Criterion::NORMAL, Thread::USER, process);
+      new (Heap::SYSTEM) Thread(main, 0, {.process = process});
       process->activate();
     }
 

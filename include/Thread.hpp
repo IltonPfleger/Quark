@@ -24,6 +24,12 @@ public:
   using Node = Scheduler::Node;
   using List = collections::MPSC<Node>;
 
+  struct Settings {
+    Criterion criterion = Criterion::NORMAL;
+    Flags flags = USER;
+    Process *process = nullptr;
+  };
+
   using Return = void *;
   using Argument = void *;
   using Function = Return (*)(Argument);
@@ -33,8 +39,9 @@ public:
   Thread(const Thread &&) = delete;
   Thread &operator=(Thread &&) = delete;
   Thread &operator=(const Thread &) = delete;
-  Thread(Function, Argument = 0, Criterion = Criterion::NORMAL, Flags = USER,
-         Process * = nullptr);
+  Thread(Function, Argument, Settings);
+  Thread(Function function, Argument argument = nullptr)
+      : Thread(function, argument, Settings{}) {}
   ~Thread();
 
   static void init();

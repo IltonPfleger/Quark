@@ -26,11 +26,8 @@ void *Handler::handler(Operation operation, const Arguments args) {
   case THREAD_CONSTRUCTOR: {
     auto function = reinterpret_cast<Thread::Function>(args[0]);
     auto argument = reinterpret_cast<Thread::Argument>(args[1]);
-    auto critetion = Thread::Criterion::NORMAL;
-    auto flags = Thread::USER;
-    auto process = Process::current();
-    return new (Heap::SYSTEM)
-        Thread(function, argument, critetion, flags, process);
+    Process *process = Process::current();
+    return new (Heap::SYSTEM) Thread(function, argument, {.process = process});
   }
   case THREAD_JOIN: {
     reinterpret_cast<Thread *>(args[0])->join();

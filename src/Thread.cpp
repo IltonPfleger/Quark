@@ -9,34 +9,6 @@
 
 namespace QUARK {
 
-void Thread::entry(Function f, Argument a) {
-  Thread *current = running();
-
-  if (previous_[CPU::id()])
-    epilogue();
-
-  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
-    if (current->flags_ != KERNEL) {
-      Process *process = current->process_;
-
-      assert(process);
-
-      current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
-
-      uintptr_t istack = reinterpret_cast<uintptr_t>(current->stack_);
-      uintptr_t pstack = Memory::virt2phys(istack);
-      Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
-      Chunk ustack = process->attach({pstack, Traits<Thread>::UserStackSize});
-      Context::demote(ustack, kstack, f, a);
-      return;
-    }
-  }
-
-  CPU::IRQ::enable();
-  f(a);
-  exit();
-}
-
 Thread::Return Thread::idle(Argument) {
   while (counter_ > Traits<CPU>::Active + Traits<Deferred>::Threads) {
     reschedule();
@@ -103,12 +75,14 @@ void Thread::epilogue() {
   }
 }
 
-Thread::Thread(Function e, Argument a, Criterion c, Flags f, Process *p)
+Thread::Thread(Function function, Argument argument, Settings settings)
     : stack_(nullptr), kstack_(Memory::alloc(Traits<Thread>::KernelStackSize)),
-      node_(Node(this, c)), state_(State::READY), flags_(f),
-      context_({kstack_, Traits<Thread>::KernelStackSize}, entry, e, a),
-      blocking_(nullptr), joining_(nullptr), process_(p) {
-  TraceIn(this, (uint8_t)c);
+      node_(Node(this, settings.criterion)), state_(State::READY),
+      flags_(settings.flags),
+      context_({kstack_, Traits<Thread>::KernelStackSize}, entry, function,
+               argument),
+      blocking_(nullptr), joining_(nullptr), process_(settings.process) {
+  TraceIn(this);
 
   {
     CPU::IRQ::Guard _;
@@ -180,7 +154,8 @@ void Thread::init() {
   new (&scheduler_) Scheduler();
 
   for (int i = 0; i < Traits<CPU>::Active; ++i)
-    new (Heap::SYSTEM) Thread(idle, 0, Criterion::IDLE, KERNEL);
+    new (Heap::SYSTEM)
+        Thread(idle, 0, {.criterion = Criterion::IDLE, .flags = KERNEL});
 
   TraceOut();
 }
@@ -250,6 +225,34 @@ Thread *Thread::next(decltype(Criterion::IDLE) criterion) {
   Thread *next = node->value;
   running_[CPU::id()] = next;
   return next;
+}
+
+void Thread::entry(Function f, Argument a) {
+  Thread *current = running();
+
+  if (previous_[CPU::id()])
+    epilogue();
+
+  if constexpr (Traits<Kernel>::Mode == Traits<Kernel>::KERNEL) {
+    if (current->flags_ != KERNEL) {
+      Process *process = current->process_;
+
+      assert(process);
+
+      current->stack_ = Memory::alloc(Traits<Thread>::UserStackSize);
+
+      uintptr_t istack = reinterpret_cast<uintptr_t>(current->stack_);
+      uintptr_t pstack = Memory::virt2phys(istack);
+      Chunk kstack = {current->kstack_, Traits<Thread>::KernelStackSize};
+      Chunk ustack = process->attach({pstack, Traits<Thread>::UserStackSize});
+      Context::demote(ustack, kstack, f, a);
+      return;
+    }
+  }
+
+  CPU::IRQ::enable();
+  f(a);
+  exit();
 }
 
 Thread *Thread::running() { return running_[CPU::id()]; }

@@ -1,14 +1,14 @@
-#ifndef __QUARK_ABI_CONSOLE__
-#define __QUARK_ABI_CONSOLE__
+#ifndef QUARK_ABI_CONSOLE_HPP
+#define QUARK_ABI_CONSOLE_HPP
 
 #include <abi/ABI.hpp>
 #include <architecture/Syscall.hpp>
 #include <utility/Console.hpp>
-#include <utility/Printer.hpp>
+#include <utility/Formatter.hpp>
 
 namespace QUARK::ABI {
 
-class ConsoleHandler : public Printer<ConsoleHandler> {
+class ConsoleHandler : public Formatter<ConsoleHandler> {
 public:
   static void write(char character) {
     Syscall<void>(ABI::WRITE, 0, &character, 1);
