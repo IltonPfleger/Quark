@@ -3,6 +3,7 @@
 
 #include <synchronization/Spin.hpp>
 #include <types.hpp>
+#include <utility/Debug.hpp>
 #include <utility/collections/MPSC.hpp>
 
 namespace QUARK {

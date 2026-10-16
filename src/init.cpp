@@ -11,7 +11,7 @@ extern "C" void init() {
   Machine::init();
 
   if (CPU::id() == Traits<CPU>::BSP) {
-    TraceIn();
+    Trace In({});
     Application::reserve();
     Memory::init();
     Thread::init();
@@ -21,9 +21,6 @@ extern "C" void init() {
 
   if constexpr (Traits<Timer>::Enable)
     Timer::init();
-
-  if (CPU::id() == Traits<CPU>::BSP)
-    TraceOut();
 
   CPU::barrier();
   CPU::mb();

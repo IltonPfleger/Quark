@@ -11,7 +11,7 @@ void Memory::init() {
   constexpr auto RamStart = Traits<MemoryMap>::RamStart;
   constexpr auto RamEnd = Traits<MemoryMap>::RamEnd;
 
-  TraceIn();
+  Trace In({});
 
   for (uintptr_t c = RamEnd; c > RamStart;) {
     c -= PageSize;
@@ -26,8 +26,6 @@ void Memory::init() {
       continue;
     allocator_.insert(reinterpret_cast<void *>(page.start()), page.length());
   }
-
-  TraceOut();
 }
 
 uintptr_t Memory::virt2phys(uintptr_t address) {
@@ -45,21 +43,18 @@ uintptr_t Memory::phys2virt(uintptr_t address) {
 }
 
 void *Memory::alloc(size_t size) {
+  void *chunk;
+
   if (size == 0)
     return nullptr;
 
-  CPU::IRQ::Guard _;
-
+  CPU::IRQ::Guard In1;
   spin_.acquire();
-
-  TraceIn(size);
-
-  void *chunk = allocator_.remove(size);
-
-  assert(chunk);
-
-  TraceOut(chunk);
-
+  {
+    Trace In2(&chunk, size);
+    chunk = allocator_.remove(size);
+    assert(chunk);
+  }
   spin_.release();
 
   return chunk;
@@ -72,13 +67,10 @@ void Memory::free(void *chunk, size_t size) {
   CPU::IRQ::Guard _;
 
   spin_.acquire();
-
-  TraceIn(chunk, size);
-
-  allocator_.insert(chunk, size);
-
-  TraceOut();
-
+  {
+    Trace In({}, chunk, size);
+    allocator_.insert(chunk, size);
+  }
   spin_.release();
 }
 

@@ -2,7 +2,6 @@
 #define __QUARK_RISCV64_CONTEXT_FRAME__
 
 #include <types.hpp>
-#include <utility/Debug.hpp>
 
 namespace QUARK {
 
@@ -16,10 +15,7 @@ struct ContextFrame {
   uint64_t ksp;
   uint64_t status, cause, value, pc;
 
-  uint64_t &operator[](size_t i) {
-    assert(i != 0);
-    return (&ra)[i - 1];
-  }
+  uint64_t &operator[](size_t i) { return (&ra)[i - 1]; }
 
   uint64_t operator[](size_t i) const {
     if (i == 0) [[unlikely]]

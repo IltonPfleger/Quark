@@ -98,7 +98,7 @@ public:
   }
 
   static void init() {
-    TraceIn();
+    Trace In({});
 
     using Function = Thread::Return (*)(Thread::Argument);
 
@@ -114,8 +114,6 @@ public:
       new (Heap::SYSTEM) Thread(main, 0, {.process = process});
       process->activate();
     }
-
-    TraceOut();
   };
 };
 

@@ -280,7 +280,7 @@ private:
 
     csrw<MachineMode::EPC>(self->entry_);
 
-    uintptr_t stack = reinterpret_cast<uintptr_t>(Thread::running()->kstack_);
+    uintptr_t stack = reinterpret_cast<uintptr_t>(self->kstack_);
     CoreContextHandler<MachineMode>::stack(stack);
 
     CPU::ib();

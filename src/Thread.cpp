@@ -19,7 +19,7 @@ Thread::Return Thread::idle(Argument) {
   CPU::barrier();
 
   if (CPU::id() == Traits<CPU>::BSP)
-    Trace("\n*** Shutdown! ***\n");
+    Console::println("\n*** Shutdown! ***\n");
 
   CPU::barrier();
 
@@ -82,19 +82,17 @@ Thread::Thread(Function function, Argument argument, Settings settings)
       context_({kstack_, Traits<Thread>::KernelStackSize}, entry, function,
                argument),
       blocking_(nullptr), joining_(nullptr), process_(settings.process) {
-  TraceIn(this);
+  Trace In({}, this);
 
   {
     CPU::IRQ::Guard _;
     CPU::Atomic::finc(counter_);
     scheduler_.insert(&node_);
   }
-
-  TraceOut();
 }
 
 Thread::~Thread() {
-  TraceIn(this);
+  Trace In({}, this);
 
   join();
 
@@ -105,8 +103,6 @@ Thread::~Thread() {
   if (kstack_) {
     Memory::free(kstack_, Traits<Thread>::KernelStackSize);
   }
-
-  TraceOut();
 }
 
 void Thread::kill() {
@@ -149,15 +145,13 @@ void Thread::exit() {
 }
 
 void Thread::init() {
-  TraceIn();
+  Trace In({});
 
   new (&scheduler_) Scheduler();
 
   for (int i = 0; i < Traits<CPU>::Active; ++i)
     new (Heap::SYSTEM)
         Thread(idle, 0, {.criterion = Criterion::IDLE, .flags = KERNEL});
-
-  TraceOut();
 }
 
 void Thread::run() { Thread::next()->context_.dispatch(); }

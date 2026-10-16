@@ -2,6 +2,7 @@ include Makedefs.mk
 
 SOURCES       := $(shell find src -name '*.cpp')
 SOURCES 	  += $(shell find architecture/$(ARCH)/src -name '*.cpp')
+SOURCES 	  += $(shell find architecture/common/src -name '*.cpp')
 OBJECTS       := $(patsubst %.cpp,$(BUILD)/%.o,$(SOURCES))
 DEPENDENCIES  := $(OBJECTS:.o=.d)
 

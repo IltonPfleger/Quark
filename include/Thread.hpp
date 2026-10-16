@@ -10,14 +10,13 @@ namespace QUARK {
 
 class Thread {
   friend class PeriodicThread;
-  friend class VirtualCPU;
   friend class Process;
 
 public:
   typedef uintmax_t Flags;
 
   enum class State { RUNNING, READY, BLOCKED, FINISHING, FINISHED };
-  enum : Flags { NONE, KERNEL, USER, DEAD };
+  enum : Flags { NONE, KERNEL, DEAD };
 
   using Scheduler = QUARK::Scheduler;
   using Criterion = Scheduler::Criterion;
@@ -26,7 +25,7 @@ public:
 
   struct Settings {
     Criterion criterion = Criterion::NORMAL;
-    Flags flags = USER;
+    Flags flags = NONE;
     Process *process = nullptr;
   };
 
@@ -63,7 +62,7 @@ private:
   static void epilogue();
   static Thread *next(decltype(Criterion::IDLE) = Criterion::IDLE);
 
-private:
+protected:
   Process *process_;
   void *stack_;
   void *kstack_;

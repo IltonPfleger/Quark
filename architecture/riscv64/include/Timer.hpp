@@ -1,18 +1,13 @@
 #pragma once
 
 #include <Traits.hpp>
-#include <architecture/CLINT.hpp>
 #include <architecture/ContextFrame.hpp>
-#include <architecture/TrapHandler.hpp>
-#include <architecture/VirtualCPU.hpp>
-#include <architecture/common/Timer.hpp>
+#include <architecture/common/include/Timer.hpp>
 
 namespace QUARK {
 
-class Timer : public ArchitectureCommon::Timer {
+class Timer : public Architecture::Timer {
 public:
-  static Microsecond now() { return us(CLINT::mtime()); }
-
   class Delay {
   public:
     template <typename T> Delay(T delta) {
@@ -22,33 +17,12 @@ public:
     }
   };
 
-  static void init() {
-    if constexpr (!Traits<RISCV>::Supervisor) {
-      TrapHandler<MachineMode>::install(7, dispatch);
-      csrs<MachineMode::IE>(MachineMode::TI);
-      CLINT::write();
-    } else {
-      TrapHandler<SupervisorMode>::install(5, dispatch);
-      csrs<SupervisorMode::IE>(SupervisorMode::TI);
-    }
-  }
+  static Microsecond now();
+  static void init();
 
 private:
-  static Microsecond us(uintmax_t ticks) {
-    return Microsecond((ticks * 1'000'000ULL) / Traits<CLINT>::Clock);
-  }
-
-  static void dispatch(ContextFrame *) {
-    if constexpr (Traits<Application>::Virtualization) {
-      VirtualCPU::update();
-      CLINT::write();
-    } else if (!Traits<RISCV>::Supervisor) {
-      CLINT::write();
-    } else {
-      CPU::syscall();
-    }
-    ArchitectureCommon::Timer::handler(CPU::id());
-  }
+  static Microsecond us(uintmax_t);
+  static void handler(ContextFrame *);
 };
 
 } // namespace QUARK
